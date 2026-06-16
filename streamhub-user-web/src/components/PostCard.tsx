@@ -3,7 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import type { PostListItem } from "@/lib/types";
 
-/** Notice/announcement row in ng-front tone: surface card, title + excerpt + date. */
+/** Notice/announcement row in production-app tone: surface card, title + excerpt + date. */
 export function PostCard({ post }: { post: PostListItem }) {
   return (
     <Link

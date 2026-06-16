@@ -8,7 +8,7 @@ const config: Config = {
         sans: ['"Noto Sans KR"', "Inter", "system-ui", "sans-serif"],
       },
       colors: {
-        // PalmPlus ng-front dark palette (dark-only).
+        // production-app dark palette (dark-only).
         bg: "rgb(var(--bg) / <alpha-value>)",
         surface: "rgb(var(--surface) / <alpha-value>)",
         card: "rgb(var(--card) / <alpha-value>)",

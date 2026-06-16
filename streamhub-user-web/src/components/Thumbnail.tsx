@@ -7,7 +7,7 @@ import type { ContentType } from "@/lib/types";
 
 /**
  * Thumbnail with graceful fallback. Seed content has no thumbnail and remote images can
- * fail, so both paths fall back to a placeholder (ng-front no_image tone) — never a broken image.
+ * fail, so both paths fall back to a placeholder (production-app no_image tone) — never a broken image.
  */
 export function Thumbnail({
   url,

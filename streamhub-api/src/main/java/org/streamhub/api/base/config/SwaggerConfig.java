@@ -26,7 +26,7 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("StreamHub Admin API")
-                        .description("관리자 내부 API (PalmPlus 관리자 API 포트폴리오 클론)")
+                        .description("관리자 내부 API (a production service 관리자 API 포트폴리오 클론)")
                         .version("v1"))
                 .components(new Components().addSecuritySchemes(BEARER_SCHEME, bearer))
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME));

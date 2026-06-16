@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServic
 /**
  * StreamHub Admin internal API.
  *
- * <p>Portfolio clone of the PalmPlus admin API. Demonstrates the same production stack:
+ * <p>Portfolio clone of the a production service admin API. Demonstrates the same production stack:
  * Spring Boot 3.4 / Java 21, stateless JWT security, JPA + MyBatis hybrid persistence,
  * Redis caching, and S3-compatible object storage (MinIO).
  */

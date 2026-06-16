@@ -8,7 +8,7 @@
 
 ## 1. 개요
 
-실제 운영 중인 교회/스트리밍 플랫폼(PalmPlus)의 **관리자 사이트 + 내부 API**를 카피하여,
+실제 운영 중인 교회/스트리밍 플랫폼(레퍼런스 서비스)의 **관리자 사이트 + 내부 API**를 카피하여,
 실무에서 쓴 핵심 기술을 그대로 증명하는 포트폴리오 프로젝트.
 
 - 전부를 복제하지 않고 **3개 도메인의 수직 슬라이스**(프론트 화면 → API → DB)를 완성한다.
@@ -28,7 +28,7 @@
 
 ## 2. 기술 스택 (실제 ↔ 카피 매핑)
 
-| 레이어 | 실제 (PalmPlus) | 카피 (streamhub) | 비고 |
+| 레이어 | 실제 (레퍼런스 서비스) | 카피 (streamhub) | 비고 |
 |---|---|---|---|
 | 백엔드 프레임워크 | Spring Boot 3.4.x / Java 21 | **동일** | |
 | ORM | JPA(Hibernate 6) + MyBatis 3.0.4 | **동일** | 하이브리드 그대로 |
@@ -308,7 +308,7 @@ WATCH_HISTORY (id PK, member_id FK, content_id FK, watched_at, watch_seconds)
 - [x] 배포 스크립트 `deploy/scripts/deploy-api.sh`(amd64 빌드→ECR→SSM 롤) + CI/CD `.github/workflows/`
 - [x] 런북 `deploy/README.md`(새 계정 체크리스트·과금 알람·https(Caddy)·철거)
 - [ ] ⏳ **적용**: 사용자가 새 AWS 계정 준비 후 `terraform apply` → `deploy-api.sh` → Vercel
-  - 기존 jh_dev 계정 사용 금지(사용자 지시). 혼합콘텐츠(https→http) 해결 필요 = Caddy+도메인.
+  - 기존 이전 AWS 계정 계정 사용 금지(사용자 지시). 혼합콘텐츠(https→http) 해결 필요 = Caddy+도메인.
 
 ### Phase 2 — 콘텐츠(영상) 관리 ✅ 완료
 - [x] DDL + 시드 (channel/content/hashtag/content_hashtag/content_file) — 5채널/8해시태그/24콘텐츠
@@ -336,7 +336,7 @@ WATCH_HISTORY (id PK, member_id FK, content_id FK, watched_at, watch_seconds)
 - [x] ✅ **검증(curl+Playwright)**: 로그인/승인 액션이 SQS 거쳐 실시간 적재·조회 E2E 통과
 
 ### 배포 적용 — plan 검증 완료, apply는 보류(비용)
-- [x] 새 계정(203677518232) 연결, `terraform plan` 성공 — 18개 자원 검증, **실제 생성 0 / $0**
+- [x] 새 AWS 계정 연결, `terraform plan` 성공 — 18개 자원 검증, **실제 생성 0 / $0**
 - [x] 자격증명: `aws login` 임시세션 → env 주입으로 plan (토큰을 Go SDK가 못 읽는 이슈 우회)
 - [~] **apply는 안 함** — AWS 프리티어가 2025 개편(6개월/$200 크레딧, 상시 ~$34/월)이라 라이브 불필요 판단. 배포 역량은 plan-verified IaC로 증명.
 

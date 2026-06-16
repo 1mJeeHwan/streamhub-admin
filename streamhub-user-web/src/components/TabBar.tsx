@@ -13,7 +13,7 @@ const TABS = [
   { href: "/mypage", label: "MY", icon: User },
 ];
 
-/** Bottom tab bar, fixed to the centered phone frame (PalmPlus-style). Search lives in the AppBar. */
+/** Bottom tab bar, fixed to the centered phone frame (production-style). Search lives in the AppBar. */
 export function TabBar() {
   const pathname = usePathname();
 

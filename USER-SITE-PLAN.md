@@ -42,7 +42,7 @@ cd streamhub-web && nvm use 20 && npm run dev        # 관리자 프론트 3000
 
 ## 1. 이번 목표 & 범위 (v1)
 
-실제 PalmPlus의 사용자용 미디어 사이트(`ng-front`+`ng-api`)에 해당하는 **공개 미디어 웹앱**을 핵심 기능만 추려 추가.
+실제 레퍼런스 서비스의 사용자용 미디어 사이트(`사용자 앱`+`사용자 API`)에 해당하는 **공개 미디어 웹앱**을 핵심 기능만 추려 추가.
 - **Flutter 미사용** — 순수 웹앱(Next.js).
 - **제공 콘텐츠 3종:** 게시글(텍스트 글), 영상(VIDEO), 음악(SOUND).
 - **디자인 자유** (관리자와 똑같을 필요 없음).
@@ -57,7 +57,7 @@ cd streamhub-web && nvm use 20 && npm run dev        # 관리자 프론트 3000
 
 - **새 프론트엔드:** `streamhub-user-web/` (Next.js 14, TS, Tailwind, React Query, Orval). 포트 **3001**(관리자 3000과 공존). 인증 없음(공개).
 - **백엔드:** 새 서비스 만들지 않고 **기존 `streamhub-api`에 공개 네임스페이스 `/pub/v1/**` 추가**. `SecurityConfig`의 `PUBLIC_PATHS`에 `/pub/**` 추가(permitAll, JWT 불필요). 공유 DB·기존 Mapper 재사용.
-  - (실제 시스템은 ng-api/ng-admin-api로 서비스 분리. v1은 단순화 — 이유: 컨텍스트/작업량 절약. 문서에 "추후 별도 서비스 분리 가능" 명시.)
+  - (실제 시스템은 사용자 API/ng-admin-api로 서비스 분리. v1은 단순화 — 이유: 컨텍스트/작업량 절약. 문서에 "추후 별도 서비스 분리 가능" 명시.)
 - **새 도메인:** `post`(게시글) — `org.streamhub.api.v1.post`.
 
 ---

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  /* PalmPlus ng-front dark tokens (R G B channels for Tailwind alpha). */
+  /* production-app dark tokens (R G B channels for Tailwind alpha). */
   --bg: 21 23 29; /* #15171D background */
   --surface: 32 34 43; /* #20222B layer_popup (section/card bg) */
   --card: 34 37 46; /* #22252E select_bg (elevated) */

@@ -79,7 +79,7 @@ with `docker-compose` and deploys to AWS via Terraform.
 | **Audit log** | admin actions published/consumed via SQS, visible to system admins only |
 
 ### User site (`streamhub-user-web`)
-A mobile-first public media site in the tone of the real PalmPlus user app.
+A mobile-first public media site in the tone of a real production user app.
 - **Video / music** (HTML5 players) and **posts** — only `PUBLISHED` content is exposed
 - **URL-based unified search** (`?q=`, shareable/refresh-safe, title match) · pagination
 - **Member login + my page** — member-scoped JWT, localStorage session, protected routes

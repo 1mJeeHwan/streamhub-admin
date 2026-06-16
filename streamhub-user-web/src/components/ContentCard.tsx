@@ -8,7 +8,7 @@ function isNew(createdAt: string): boolean {
   return Date.now() - t < 14 * 24 * 60 * 60 * 1000;
 }
 
-/** ng-front content card: rounded-6 thumbnail + bold title + inactive subtitle. */
+/** production-app content card: rounded-6 thumbnail + bold title + inactive subtitle. */
 export function ContentCard({ item }: { item: ContentListItem }) {
   const isMusic = item.type === "SOUND";
   const href = `${isMusic ? "/music" : "/video"}/${item.id}`;

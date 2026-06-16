@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-/** ng-front section wrapper: bold 24px title + cyan "더보기" link, content below. */
+/** production-app section wrapper: bold 24px title + cyan "더보기" link, content below. */
 export function ContentContainer({
   title,
   moreHref,
