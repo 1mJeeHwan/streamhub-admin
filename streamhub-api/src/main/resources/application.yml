@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: streamhub-api
+  profiles:
+    active: local
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+  jpa:
+    hibernate:
+      ddl-auto: update          # dev: Hibernate manages schema from entities
+      naming:
+        # Preserve the exact @Table/@Column names (e.g. MEMBER, not member) so the
+        # MyBatis XML and JPA agree on case — required on case-sensitive MySQL (Linux).
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+
+mybatis:
+  mapper-locations: classpath:mappers/*.xml
+  configuration:
+    map-underscore-to-camel-case: true   # member_id -> memberId
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui/index.html
+    tags-sorter: alpha
+    operations-sorter: method
+  api-docs:
+    path: /v3/api-docs
+
+server:
+  port: 8080
+
+jwt:
+  # Dev default; override with JWT_SECRET in any real environment. Must be long for HMAC512.
+  secret: ${JWT_SECRET:streamhub-admin-dev-secret-key-please-change-in-production-0123456789}
+  access-exp-seconds: 3600       # 1h
+  refresh-exp-seconds: 28800     # 8h
+
+# Audit-log SQS queue name (created on startup locally; by Terraform in prod).
+app:
+  sqs:
+    action-log-queue: ${SQS_ACTION_LOG_QUEUE:streamhub-action-log}

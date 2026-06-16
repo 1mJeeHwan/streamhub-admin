@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.streamhub.api.v1.content.mapper.ContentMapper">
+
+    <sql id="searchWhere">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND c.title LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="type != null and type != ''">
+                AND c.type = #{type}
+            </if>
+            <if test="status != null and status != ''">
+                AND c.status = #{status}
+            </if>
+            <if test="channelId != null">
+                AND c.channel_id = #{channelId}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectList" resultType="org.streamhub.api.v1.content.dto.ContentListItem">
+        SELECT
+            c.id            AS id,
+            c.title         AS title,
+            c.type          AS type,
+            c.status        AS status,
+            c.channel_id    AS channel_id,
+            ch.name         AS channel_name,
+            chu.name        AS church_name,
+            c.thumbnail_key AS thumbnail_key,
+            c.view_count    AS view_count,
+            c.duration_sec  AS duration_sec,
+            c.created_at    AS created_at,
+            (SELECT GROUP_CONCAT(h.name ORDER BY h.name SEPARATOR ',')
+               FROM CONTENT_HASHTAG cht JOIN HASHTAG h ON h.id = cht.hashtag_id
+              WHERE cht.content_id = c.id) AS hashtags
+        FROM CONTENT c
+            JOIN CHANNEL ch  ON c.channel_id = ch.id
+            JOIN CHURCH chu  ON ch.church_id = chu.id
+        <include refid="searchWhere"/>
+        ORDER BY c.created_at DESC, c.id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countList" resultType="long">
+        SELECT COUNT(*)
+        FROM CONTENT c
+        <include refid="searchWhere"/>
+    </select>
+
+    <select id="selectDetail" resultType="org.streamhub.api.v1.content.dto.ContentDetail">
+        SELECT
+            c.id            AS id,
+            c.title         AS title,
+            c.description   AS description,
+            c.type          AS type,
+            c.status        AS status,
+            c.channel_id    AS channel_id,
+            ch.name         AS channel_name,
+            chu.name        AS church_name,
+            c.media_url     AS media_url,
+            c.thumbnail_key AS thumbnail_key,
+            c.duration_sec  AS duration_sec,
+            c.view_count    AS view_count,
+            c.created_at    AS created_at,
+            c.updated_at    AS updated_at
+        FROM CONTENT c
+            JOIN CHANNEL ch  ON c.channel_id = ch.id
+            JOIN CHURCH chu  ON ch.church_id = chu.id
+        WHERE c.id = #{id}
+    </select>
+
+</mapper>

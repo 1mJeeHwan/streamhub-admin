@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:mysql://mysql:3306/streamhub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&useSSL=false
+    username: streamhub
+    password: streamhub
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+# S3-compatible object storage (MinIO) — service hostname inside the compose network.
+storage:
+  endpoint: http://minio:9000
+  region: us-east-1
+  access-key: streamhub
+  secret-key: streamhub123
+  bucket: streamhub-media
+
+# SQS via LocalStack (compose service hostname).
+spring.cloud.aws:
+  region.static: ap-northeast-2
+  credentials:
+    access-key: test
+    secret-key: test
+  sqs.endpoint: http://localstack:4566

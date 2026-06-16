@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.streamhub.api.v1.actionlog.mapper.ActionLogMapper">
+
+    <sql id="searchWhere">
+        <where>
+            <if test="action != null and action != ''">
+                AND action = #{action}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (admin_name LIKE CONCAT('%', #{keyword}, '%')
+                     OR detail LIKE CONCAT('%', #{keyword}, '%')
+                     OR target_id LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectList" resultType="org.streamhub.api.v1.actionlog.dto.ActionLogItem">
+        SELECT id, admin_id, admin_name, action, target_type, target_id, detail, created_at
+        FROM ACTION_LOG
+        <include refid="searchWhere"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countList" resultType="long">
+        SELECT COUNT(*)
+        FROM ACTION_LOG
+        <include refid="searchWhere"/>
+    </select>
+
+</mapper>

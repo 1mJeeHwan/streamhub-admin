@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.streamhub.api.v1.post.mapper.PostMapper">
+
+    <sql id="searchWhere">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND p.title LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND p.status = #{status}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectList" resultType="org.streamhub.api.v1.post.dto.PostListItem">
+        SELECT
+            p.id            AS id,
+            p.title         AS title,
+            LEFT(p.body, 120) AS excerpt,
+            p.thumbnail_key AS thumbnail_key,
+            p.created_at    AS created_at
+        FROM POST p
+        <include refid="searchWhere"/>
+        ORDER BY p.created_at DESC, p.id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countList" resultType="long">
+        SELECT COUNT(*)
+        FROM POST p
+        <include refid="searchWhere"/>
+    </select>
+
+</mapper>

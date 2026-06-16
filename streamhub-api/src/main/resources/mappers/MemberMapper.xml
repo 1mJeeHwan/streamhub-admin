@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.streamhub.api.v1.member.mapper.MemberMapper">
+
+    <!-- Shared filter block: keyword (name/email/phone), status, church. -->
+    <sql id="searchWhere">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (m.name LIKE CONCAT('%', #{keyword}, '%')
+                     OR m.email LIKE CONCAT('%', #{keyword}, '%')
+                     OR m.phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="userStatus != null and userStatus != ''">
+                AND m.user_status = #{userStatus}
+            </if>
+            <if test="churchId != null">
+                AND m.church_id = #{churchId}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectList" resultType="org.streamhub.api.v1.member.dto.MemberListItem">
+        SELECT
+            m.id                AS id,
+            m.name              AS name,
+            m.email             AS email,
+            m.phone             AS phone,
+            m.user_status       AS user_status,
+            m.live_yn           AS live_yn,
+            m.church_id         AS church_id,
+            c.name              AS church_name,
+            r.name              AS region_name,
+            co.name             AS country_name,
+            m.created_at        AS created_at
+        FROM MEMBER m
+            JOIN CHURCH c   ON m.church_id = c.id
+            JOIN REGION r   ON c.region_id = r.id
+            JOIN COUNTRY co ON r.country_id = co.id
+        <include refid="searchWhere"/>
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countList" resultType="long">
+        SELECT COUNT(*)
+        FROM MEMBER m
+        <include refid="searchWhere"/>
+    </select>
+
+    <select id="selectDetail" resultType="org.streamhub.api.v1.member.dto.MemberDetail">
+        SELECT
+            m.id                AS id,
+            m.name              AS name,
+            m.email             AS email,
+            m.phone             AS phone,
+            m.user_status       AS user_status,
+            m.live_yn           AS live_yn,
+            m.church_id         AS church_id,
+            c.name              AS church_name,
+            r.id                AS region_id,
+            r.name              AS region_name,
+            co.id               AS country_id,
+            co.name             AS country_name,
+            m.created_at        AS created_at,
+            m.updated_at        AS updated_at
+        FROM MEMBER m
+            JOIN CHURCH c   ON m.church_id = c.id
+            JOIN REGION r   ON c.region_id = r.id
+            JOIN COUNTRY co ON r.country_id = co.id
+        WHERE m.id = #{id}
+    </select>
+
+</mapper>

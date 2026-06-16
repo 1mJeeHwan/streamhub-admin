@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.streamhub.api.v1.statistics.mapper.StatMapper">
+
+    <select id="summary" resultType="org.streamhub.api.v1.statistics.dto.SummaryResponse">
+        SELECT
+            (SELECT COUNT(*) FROM MEMBER)                                   AS total_members,
+            (SELECT COUNT(*) FROM MEMBER WHERE created_at &gt;= #{since})      AS new_members7d,
+            (SELECT COALESCE(SUM(view_count), 0) FROM CONTENT)              AS total_views,
+            (SELECT COUNT(*) FROM CONTENT)                                  AS total_contents
+    </select>
+
+    <select id="memberTrend" resultType="org.streamhub.api.v1.statistics.dto.TrendPoint">
+        SELECT
+            DATE_FORMAT(created_at, '%Y-%m-%d') AS date,
+            COUNT(*)                            AS count
+        FROM MEMBER
+        WHERE created_at BETWEEN #{from} AND #{to}
+        GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+        ORDER BY date
+    </select>
+
+    <select id="topContents" resultType="org.streamhub.api.v1.statistics.dto.TopContentItem">
+        SELECT
+            c.id         AS id,
+            c.title      AS title,
+            c.view_count AS view_count,
+            ch.name      AS channel_name
+        FROM CONTENT c
+            JOIN CHANNEL ch ON c.channel_id = ch.id
+        ORDER BY c.view_count DESC, c.id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="watchByChannel" resultType="org.streamhub.api.v1.statistics.dto.ChannelWatchItem">
+        SELECT
+            ch.name                          AS channel_name,
+            COALESCE(SUM(w.watch_seconds), 0) AS total_seconds
+        FROM WATCH_HISTORY w
+            JOIN CONTENT c  ON w.content_id = c.id
+            JOIN CHANNEL ch ON c.channel_id = ch.id
+        GROUP BY ch.id, ch.name
+        ORDER BY total_seconds DESC
+    </select>
+
+</mapper>
