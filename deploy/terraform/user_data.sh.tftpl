@@ -1,0 +1,54 @@
+#!/bin/bash
+set -euxo pipefail
+
+# 1 GB instance: add 2 GB swap so the JVM has headroom.
+dd if=/dev/zero of=/swapfile bs=1M count=2048
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+# Docker
+dnf install -y docker
+systemctl enable --now docker
+
+# Fetch secrets from SSM (the EC2 role has read access).
+DB_PASSWORD=$(aws ssm get-parameter --name "${db_password_param}" --with-decryption --query Parameter.Value --output text --region ${region})
+JWT_SECRET=$(aws ssm get-parameter --name "${jwt_secret_param}" --with-decryption --query Parameter.Value --output text --region ${region})
+
+# Persist runtime env so redeploys reuse it.
+mkdir -p /etc/streamhub
+cat > /etc/streamhub/api.env <<EOF
+SPRING_PROFILES_ACTIVE=prod
+DB_HOST=${db_host}
+DB_PORT=3306
+DB_NAME=${db_name}
+DB_USER=${db_user}
+DB_PASSWORD=$DB_PASSWORD
+REDIS_HOST=redis
+REDIS_PORT=6379
+S3_BUCKET=${s3_bucket}
+AWS_REGION=${region}
+SQS_ACTION_LOG_QUEUE=${sqs_queue}
+JWT_SECRET=$JWT_SECRET
+EOF
+chmod 600 /etc/streamhub/api.env
+
+# Idempotent (re)deploy helper, reused by the CI/deploy script via SSM.
+cat > /usr/local/bin/streamhub-deploy <<EOF
+#!/bin/bash
+set -euo pipefail
+aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${ecr_registry}
+docker network create streamhub 2>/dev/null || true
+docker pull ${ecr_url}:latest
+docker rm -f redis 2>/dev/null || true
+docker run -d --name redis --network streamhub --restart always redis:7-alpine
+docker rm -f streamhub-api 2>/dev/null || true
+docker run -d --name streamhub-api --network streamhub --restart always -p 8080:8080 \
+  --env-file /etc/streamhub/api.env ${ecr_url}:latest
+EOF
+chmod +x /usr/local/bin/streamhub-deploy
+
+# First boot: the image may not be pushed yet. Try; ignore failure so the
+# instance still comes up (CI/deploy-api.sh pushes the image, then re-runs this).
+/usr/local/bin/streamhub-deploy || echo "image not in ECR yet; run deploy-api.sh to push and start"
