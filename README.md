@@ -11,6 +11,25 @@
 
 ---
 
+## 스크린샷
+
+### 사용자 사이트 (모바일 · 다크)
+<p>
+  <img src="docs/screenshots/user-home.png" width="200" alt="홈" />
+  <img src="docs/screenshots/user-video.png" width="200" alt="영상 상세" />
+  <img src="docs/screenshots/user-search.png" width="200" alt="통합 검색" />
+  <img src="docs/screenshots/user-mypage.png" width="200" alt="마이페이지" />
+</p>
+
+### 관리자 콘솔 (데스크탑)
+<img src="docs/screenshots/admin-dashboard.png" width="860" alt="통계 대시보드" />
+
+| 회원관리 (AG Grid) | 콘텐츠관리 |
+|---|---|
+| <img src="docs/screenshots/admin-members.png" width="420" alt="회원관리" /> | <img src="docs/screenshots/admin-content.png" width="420" alt="콘텐츠관리" /> |
+
+---
+
 ## 아키텍처
 
 ```
