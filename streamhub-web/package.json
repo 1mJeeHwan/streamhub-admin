@@ -1,0 +1,50 @@
+{
+  "name": "streamhub-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "gen": "orval"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
+    "@tanstack/react-query": "^5.62.7",
+    "ag-grid-community": "^33.0.3",
+    "ag-grid-react": "^33.0.3",
+    "apexcharts": "^4.3.0",
+    "axios": "^1.7.9",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.468.0",
+    "next": "14.2.21",
+    "next-auth": "5.0.0-beta.25",
+    "react": "^18.3.1",
+    "react-apexcharts": "^1.7.0",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.54.2",
+    "zod": "^3.24.1",
+    "zustand": "^4.5.5"
+  },
+  "overrides": {
+    "eslint": {
+      "ajv": "^6.12.6",
+      "ajv-keywords": "^3.5.2"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "ajv": "^8.17.1",
+    "ajv-keywords": "^5.1.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.21",
+    "orval": "^7.3.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
+  }
+}
