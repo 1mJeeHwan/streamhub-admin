@@ -10,6 +10,7 @@ import {
   type MemberListItem,
   type MemberSearchRequest,
 } from "@/apis/query/streamHubAdminAPI.schemas";
+import { SUCCESS_CODE } from "@/types/api";
 
 const MemberGrid = dynamic(() => import("@/components/member/MemberGrid"), {
   ssr: false,
@@ -21,7 +22,6 @@ const MemberGrid = dynamic(() => import("@/components/member/MemberGrid"), {
 });
 
 const PAGE_SIZE = 10;
-const SUCCESS_CODE = "0000";
 
 type StatusFilter = "ALL" | MemberSearchRequestUserStatus;
 

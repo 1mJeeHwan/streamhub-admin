@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Loader2, Plus } from "lucide-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { useList1 } from "@/apis/query/content/content";
+import { list1 } from "@/apis/query/content/content";
 import {
   ContentSearchRequestStatus,
   ContentSearchRequestType,
@@ -51,9 +52,6 @@ export default function ContentPage() {
   const [typeDraft, setTypeDraft] = useState<TypeFilter>("ALL");
   const [statusDraft, setStatusDraft] = useState<StatusFilter>("ALL");
 
-  const listMutation = useList1();
-  const { mutate: fetchList } = listMutation;
-
   const searchRequest = useMemo<ContentSearchRequest>(
     () => ({
       // UI pageNumber is 1-based (for display); the backend expects 0-based.
@@ -66,11 +64,15 @@ export default function ContentPage() {
     [pageNumber, keyword, type, status],
   );
 
-  useEffect(() => {
-    fetchList({ data: searchRequest });
-  }, [fetchList, searchRequest]);
+  // List is a POST search, but it's a read — model it as a cached query keyed by the criteria
+  // so page/filter changes refetch automatically and prior results stay visible (no flicker).
+  const listQuery = useQuery({
+    queryKey: ["content-list", searchRequest],
+    queryFn: ({ signal }) => list1(searchRequest, signal),
+    placeholderData: keepPreviousData,
+  });
 
-  const result = listMutation.data?.resultObject;
+  const result = listQuery.data?.resultObject;
   const rows: ContentListItem[] = result?.contents ?? [];
   const totalCount = result?.totalCount ?? 0;
   const totalPage = result?.totalPage ?? 0;
@@ -192,11 +194,11 @@ export default function ContentPage() {
       </div>
 
       {/* Results */}
-      {listMutation.isPending ? (
+      {listQuery.isLoading ? (
         <div className="flex h-[560px] items-center justify-center rounded-md border border-slate-200 bg-white">
           <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
         </div>
-      ) : listMutation.isError ? (
+      ) : listQuery.isError ? (
         <div className="flex h-[560px] items-center justify-center rounded-md border border-slate-200 bg-white">
           <p className="text-sm text-red-600">목록을 불러오지 못했습니다.</p>
         </div>

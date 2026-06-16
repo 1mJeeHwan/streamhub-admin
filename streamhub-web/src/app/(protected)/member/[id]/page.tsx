@@ -12,8 +12,7 @@ import { useDetail, useUpdate } from "@/apis/query/member/member";
 import type { MemberDetail } from "@/apis/query/streamHubAdminAPI.schemas";
 import { formatDate } from "@/lib/format";
 import StatusBadge from "@/components/member/StatusBadge";
-
-const SUCCESS_CODE = "0000";
+import { SUCCESS_CODE } from "@/types/api";
 
 const updateSchema = z.object({
   name: z.string().min(1, "이름을 입력하세요."),

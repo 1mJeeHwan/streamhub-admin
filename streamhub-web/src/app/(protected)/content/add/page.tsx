@@ -15,8 +15,8 @@ import {
   type ContentCreateRequest,
 } from "@/apis/query/streamHubAdminAPI.schemas";
 import ThumbnailUpload from "@/components/content/ThumbnailUpload";
-
-const SUCCESS_CODE = "0000";
+import { FIELD_CLASS, parseHashtags } from "@/lib/content-form";
+import { SUCCESS_CODE } from "@/types/api";
 
 const createSchema = z.object({
   title: z.string().min(1, "제목을 입력하세요."),
@@ -35,20 +35,6 @@ const createSchema = z.object({
 });
 
 type CreateFormValues = z.infer<typeof createSchema>;
-
-function parseHashtags(input?: string): string[] | undefined {
-  if (!input) {
-    return undefined;
-  }
-  const list = input
-    .split(",")
-    .map((tag) => tag.trim().replace(/^#/, ""))
-    .filter((tag) => tag.length > 0);
-  return list.length > 0 ? list : undefined;
-}
-
-const FIELD_CLASS =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand";
 
 export default function ContentAddPage() {
   const router = useRouter();
