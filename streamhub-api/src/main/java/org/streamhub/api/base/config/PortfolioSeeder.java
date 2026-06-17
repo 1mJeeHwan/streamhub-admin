@@ -696,7 +696,8 @@ public class PortfolioSeeder implements CommandLineRunner {
      * donations, special-offering-day spikes (mid-month & month-end).
      */
     private LocalDateTime distributedDateTime(LocalDateTime now, Random rnd, boolean donation) {
-        int daysAgo = (int) Math.round(Math.sqrt(rnd.nextDouble()) * WINDOW_DAYS);
+        // 1 - sqrt(u) concentrates daysAgo near 0 → density highest on recent days (true uptrend).
+        int daysAgo = (int) Math.round((1.0 - Math.sqrt(rnd.nextDouble())) * WINDOW_DAYS);
         LocalDateTime when = now.minusDays(daysAgo);
 
         // Weekend spike: with extra probability, nudge onto the nearest weekend day.
@@ -718,7 +719,9 @@ public class PortfolioSeeder implements CommandLineRunner {
         }
 
         when = when.withHour(9 + rnd.nextInt(14)).withMinute(rnd.nextInt(60)).withSecond(0).withNano(0);
-        // Weekend / offering-day nudges can land slightly in the future — clamp to the present.
-        return when.isAfter(now) ? now.minusDays(1).withSecond(0).withNano(0) : when;
+        // Weekend / offering-day nudges can land slightly in the future — clamp to earlier today.
+        return when.isAfter(now)
+                ? now.minusHours(1 + rnd.nextInt(8)).withSecond(0).withNano(0)
+                : when;
     }
 }
