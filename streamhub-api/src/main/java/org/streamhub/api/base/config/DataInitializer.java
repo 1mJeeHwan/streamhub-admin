@@ -214,6 +214,23 @@ public class DataInitializer implements CommandLineRunner {
             "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
     };
 
+    // License-safe (Unsplash) church/worship photos used as content thumbnails so the user
+    // site looks like a real church-broadcast service. VIDEO → sanctuary/sermon scenes,
+    // SOUND → worship/praise scenes. URLs verified to resolve (HTTP 200, image/jpeg).
+    private static final String THUMB_Q = "?w=640&q=80&auto=format&fit=crop";
+    private static final String[] SERMON_THUMBS = {
+            "https://images.unsplash.com/photo-1438032005730-c779502df39b" + THUMB_Q, // stained-glass sanctuary
+            "https://images.unsplash.com/photo-1473177104440-ffee2f376098" + THUMB_Q, // cathedral nave
+            "https://images.unsplash.com/photo-1519491050282-cf00c82424b4" + THUMB_Q, // wooden chapel pews
+            "https://images.unsplash.com/photo-1510590337019-5ef8d3d32116" + THUMB_Q, // open Bible, congregation
+            "https://images.unsplash.com/photo-1529070538774-1843cb3265df" + THUMB_Q, // small-group / study
+    };
+    private static final String[] WORSHIP_THUMBS = {
+            "https://images.unsplash.com/photo-1507692049790-de58290a4334" + THUMB_Q, // worship, hands raised
+            "https://images.unsplash.com/photo-1438232992991-995b7058bbb3" + THUMB_Q, // praise night, stage
+            "https://images.unsplash.com/photo-1506157786151-b8491531f063" + THUMB_Q, // worship crowd, lights
+    };
+
     /** Seeds channels (one per church), demo contents, and hashtags. */
     private void seedContent() {
         if (contentRepository.count() > 0) {
@@ -251,12 +268,16 @@ public class DataInitializer implements CommandLineRunner {
             String mediaUrl = type == ContentType.VIDEO
                     ? SAMPLE_VIDEOS[i % SAMPLE_VIDEOS.length]
                     : SAMPLE_AUDIOS[i % SAMPLE_AUDIOS.length];
+            String thumbUrl = type == ContentType.VIDEO
+                    ? SERMON_THUMBS[i % SERMON_THUMBS.length]
+                    : WORSHIP_THUMBS[i % WORSHIP_THUMBS.length];
             Content content = contentRepository.save(Content.builder()
                     .channelId(channelIds.get(i % channelIds.size()))
                     .type(type)
                     .title(title)
                     .description(title + " 영상입니다.")
                     .mediaUrl(mediaUrl)
+                    .thumbnailKey(thumbUrl)
                     .durationSec(300 + (i * 37) % 3000)
                     .status(i % 4 == 3 ? ContentStatus.DRAFT : ContentStatus.PUBLISHED)
                     .viewCount((long) ((i * 137) % 5000))
