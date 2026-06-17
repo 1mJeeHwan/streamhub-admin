@@ -10,12 +10,14 @@ import { BackLink } from "@/components/BackLink";
 import { DemoBadge } from "@/components/DemoBadge";
 import { TrackRow } from "@/components/TrackRow";
 import { EmptyState, ErrorState } from "@/components/States";
+import { CheckoutModal } from "@/components/CheckoutModal";
 
 export default function AlbumDetailPage({ params }: { params: { id: string } }) {
   const id = Number(params.id);
   const { data, isLoading, isError, error, refetch } = useAlbum(id);
   const [coverFailed, setCoverFailed] = useState(false);
   const [added, setAdded] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   return (
     <div className="animate-fade-up">
@@ -89,12 +91,17 @@ export default function AlbumDetailPage({ params }: { params: { id: string } }) 
                 {added ? "담김 (데모)" : "장바구니"}
               </button>
               <button
-                onClick={() => setAdded(true)}
+                onClick={() => setCheckoutOpen(true)}
                 className="btn-primary flex-1 py-3 text-sm"
               >
                 구매하기
               </button>
             </div>
+            <CheckoutModal
+              open={checkoutOpen}
+              onClose={() => setCheckoutOpen(false)}
+              item={{ name: data.title, price: data.price ?? 0 }}
+            />
             <p className="mt-2 flex items-center gap-1.5 text-[11px] text-inactive">
               <Info className="h-3.5 w-3.5 shrink-0" />
               구매·결제는 데모 플로우입니다(실 결제 미연동).

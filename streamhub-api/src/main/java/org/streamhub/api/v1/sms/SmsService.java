@@ -104,7 +104,9 @@ public class SmsService {
         String masked = maskNumber(rawNumber);
         SmsChannel channel = resolveChannel(content);
         SmsSender sender = smsSenderRouter.resolve();
-        SmsSendResult result = sender.send(new SmsSendCommand(masked, content, channel));
+        // The dispatcher needs the real recipient (so a real provider could actually deliver);
+        // only the persisted/displayed copy is masked. The mock sender ignores it.
+        SmsSendResult result = sender.send(new SmsSendCommand(rawNumber, content, channel));
         return smsMessageRepository.save(SmsMessage.builder()
                 .toNumber(masked)
                 .content(content)

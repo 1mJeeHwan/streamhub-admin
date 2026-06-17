@@ -130,6 +130,58 @@ A deterministic `PortfolioSeeder` (fixed seed, reset-stable) generates a **6-mon
 
 ---
 
+## Location & commerce expansion (Church finder · Worship registration · CCM commerce · Payment · SMS · Chatbot)
+
+After **researching real production services** (ch114, Duranno mall, Toss Payments, Aligo, etc.), this
+adds church finder, worship/new-family registration, CCM album commerce, payment, SMS, and a chatbot.
+The hard constraint is **zero external API keys** — all data is filled by deterministic **mocks/seeds**,
+and every domain has an **adapter seam** (interface + Provider + `.env` flag) so a real integration is a
+bean swap later. There are **no runtime external calls**, and screens carry a **"demo · test data" badge**.
+See [`docs/expansion-research-and-plan.md`](docs/expansion-research-and-plan.md) for the research,
+the denomination-data limits, and the phased plan.
+
+### Features added
+
+| Domain | Highlights | Routes / endpoints |
+|---|---|---|
+| **Church finder** | **Leaflet + OSM** (key-free map tiles) · **Haversine** distance sort · denomination/radius/keyword filters · browser **Geolocation** (fallback on deny) · markers, worship times, directions | User `/churches` · `/churches/[id]` · `GET /pub/v1/churches`, `/pub/v1/churches/{id}` / Admin `/v1/churches/**` (CRUD) |
+| **Worship · new-family registration** | multi-step form (personal/address/faith) · **dynamic family array (max 5)** · RHF + Zod validation · admin submission list & status transition | User `/churches/[id]/register` · `POST /pub/v1/worship` / Admin `POST /v1/worship/list`, `PATCH /v1/worship/{id}/status` |
+| **CCM albums** | **album ↔ `GOODS_ITEM` bridge** (purchase reuses the order domain) · `Album→Track (1:N)` · **30s HTML5 `<audio>` preview** (single global audio) · offline store **map** | User `/albums` · `/albums/[id]` · `/stores` · `GET /pub/v1/albums`, `/pub/v1/albums/{id}/tracks/{trackId}/preview`, `/pub/v1/stores` / Admin `/v1/album/**`, `/v1/store/**` |
+| **Payment** | **`PaymentProvider` seam** (`mock`/`toss`/`paypal`/`kakao`/`card`) · `request → approve → receipt` flow · `testMode` receipt | `POST /v1/payment/request`, `/v1/payment/approve` · `GET /v1/payment/{orderId}/receipt` |
+| **SMS** | **`SmsSender` seam** (`mock`/`aligo`/`solapi`) · order/registration alerts · admin **custom send** · send history | `POST /v1/sms/send`, `/v1/sms/list` |
+| **Chatbot** | **`ChatProvider` seam** (`rule`/`llm`) · rule-based **intent classification** (product Q&A / FAQ / order lookup) · session & history persisted | User widget `ChatbotWidget` · `POST /v1/chat/send` · `GET /v1/chat/{sessionKey}/history` |
+
+### Adapter seams — where real keys plug in
+
+Going live is a **bean swap + `.env` flag**, not a code branch (services depend only on the interface).
+
+| Seam (interface) | Flag | Default (mock) → real |
+|---|---|---|
+| `PaymentProvider` | `app.payment.provider`, `app.payment.test-mode` | `mock` → `toss`/`paypal`/`kakao` (inject test key) |
+| `SmsSender` | `app.sms.sender` | `mock` → `aligo`/`solapi` (API key + sender number) |
+| `ChatProvider` | `app.chat.provider`, `app.chat.llm.api-key` | `rule` → `llm` |
+| `MusicPreviewProvider` | `app.music.provider` | `seed` → `external` (music API) |
+| `GeocodeProvider` | `church.geocode.provider`, `church.geocode.kakao-rest-key` | `seed` → `kakao` (Kakao Local) |
+| `PostcodeProvider` | `app.worship.postcode.provider` | `mock` → postcode-search API |
+| `MapProvider` (frontend) | — | abstracted so Leaflet/OSM can swap to Kakao Maps SDK |
+
+### Data / public-data conclusion
+
+**There is effectively no public dataset of churches by denomination** — none of data.go.kr, LOCALDATA, or
+Kakao expose a denomination field together with coordinates. So location search is best built as a **map
+API call**, not as owned data (the real-service premise: Kakao Local + Geolocation). This portfolio
+approximates that key-free with a **deterministic seed of ~40 churches** (28 Seoul + 12 Gyeonggi, with
+coordinates, heuristic denomination labels, and worship times). Coordinates are nudged by an index-based
+±offset so no row pinpoints a real address. See the research doc above for details.
+
+### Verification status
+
+- ✅ Backend — **48 tests pass**, **reseed boot** clean, new endpoints return **200** (churches/worship/albums/stores/payment/sms/chat).
+- ✅ User site — **prod build green**, **Playwright** (church map · album preview · chatbot) passes.
+- ⚠️ **Honest note** — payment, SMS, chatbot, and map are all **demo/test mode** (no real charge, dispatch, or external call). **Some admin management screens (church/worship/album/store/SMS) and AWS live streaming are not yet built (future work)**.
+
+---
+
 ## Tech stack
 
 **Backend** — Spring Boot 3.4 · Java 21 · MySQL 8 · Redis · JPA(Hibernate) + MyBatis · Spring Security +

@@ -82,6 +82,7 @@ public class WorshipService {
     @Transactional(readOnly = true)
     public List<ChurchOptionDto> listOpenChurches() {
         return churchRepository.findByOpenYn("Y").stream()
+                .filter(c -> "Y".equals(c.getUseYn())) // hidden churches must not accept registrations either
                 .map(ChurchOptionDto::from)
                 .toList();
     }
@@ -98,7 +99,7 @@ public class WorshipService {
     public WorshipRegisterResponse create(WorshipRegisterRequest request) {
         Church church = churchRepository.findById(request.churchId())
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
-        if (!"Y".equals(church.getOpenYn())) {
+        if (!"Y".equals(church.getOpenYn()) || !"Y".equals(church.getUseYn())) {
             throw new ApiException(ResultCode.INVALID_PARAMETER, "등록을 받지 않는 교회입니다");
         }
         if (!"Y".equals(request.privacyAgreed())) {

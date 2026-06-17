@@ -125,6 +125,55 @@
 
 ---
 
+## 위치기반 · 커머스 확장 (교회찾기 · 예배신청 · CCM 커머스 · 결제 · SMS · 챗봇)
+
+실제 운영 서비스(교회114·두란노몰·토스페이먼츠·알리고 등)를 **웹 리서치**한 뒤,
+교회찾기·예배/새가족 신청·CCM 음반 커머스·결제·SMS·챗봇을 추가했습니다.
+핵심 제약은 **외부 API 키 0** — 모든 데이터는 결정론적 **목업/시드**로 채우고,
+추후 실연동으로 갈아끼울 수 있도록 도메인마다 **어댑터 seam**(인터페이스 + Provider + `.env` 플래그)을 두었습니다.
+런타임 외부 호출은 없으며 화면에는 **"데모 · 테스트 데이터" 배지**를 명시합니다.
+조사 결과·교단 데이터 한계·단계별 플랜은 [`docs/expansion-research-and-plan.md`](docs/expansion-research-and-plan.md) 참고.
+
+### 추가된 기능
+
+| 도메인 | 어필 키워드 | 라우트 / 엔드포인트 |
+|---|---|---|
+| **교회찾기** | **Leaflet + OSM**(키 없는 지도 타일) · **Haversine 거리** 거리순 정렬 · 교단/반경/키워드 필터 · 브라우저 **Geolocation**(거부 시 fallback) · 마커·예배시간·길찾기 | 사용자 `/churches` · `/churches/[id]` · `GET /pub/v1/churches`, `/pub/v1/churches/{id}` / 관리자 `/v1/churches/**`(CRUD) |
+| **예배 · 새가족 신청** | 다단계 등록 폼(인적/주소/신앙배경) · **동적 가족 배열(최대 5)** · RHF + Zod 검증 · 관리자 신청 목록·상태 전이 | 사용자 `/churches/[id]/register` · `POST /pub/v1/worship` / 관리자 `POST /v1/worship/list`, `PATCH /v1/worship/{id}/status` |
+| **CCM 음반** | **앨범 ↔ `GOODS_ITEM` 브리지**(구매=기존 주문 도메인 흡수) · `Album→Track(1:N)` · **30초 HTML5 `<audio>` 미리듣기**(단일 전역 오디오) · 오프라인 직영점 **매장지도** | 사용자 `/albums` · `/albums/[id]` · `/stores` · `GET /pub/v1/albums`, `/pub/v1/albums/{id}/tracks/{trackId}/preview`, `/pub/v1/stores` / 관리자 `/v1/album/**`, `/v1/store/**` |
+| **결제** | **`PaymentProvider` seam**(`mock`/`toss`/`paypal`/`kakao`/`card`) · `request → approve → receipt` 플로우 · `testMode` 영수증 | `POST /v1/payment/request`, `/v1/payment/approve` · `GET /v1/payment/{orderId}/receipt` |
+| **SMS** | **`SmsSender` seam**(`mock`/`aligo`/`solapi`) · 주문/예배신청 알림 · 관리자 **커스텀 발송** · 발송 이력 | `POST /v1/sms/send`, `/v1/sms/list` |
+| **챗봇** | **`ChatProvider` seam**(`rule`/`llm`) · 룰베이스 **의도 분류**(상품문의/FAQ/주문조회) · 세션·히스토리 영속 | 사용자 위젯 `ChatbotWidget` · `POST /v1/chat/send` · `GET /v1/chat/{sessionKey}/history` |
+
+### 어댑터 seam — 실키 주입 지점
+
+실제 연동은 코드 분기가 아니라 **빈 교체 + `.env` 플래그**로 전환됩니다(서비스는 인터페이스에만 의존).
+
+| seam (인터페이스) | 플래그 | 기본(목업) → 실연동 |
+|---|---|---|
+| `PaymentProvider` | `app.payment.provider`, `app.payment.test-mode` | `mock` → `toss`/`paypal`/`kakao` (테스트키 주입) |
+| `SmsSender` | `app.sms.sender` | `mock` → `aligo`/`solapi` (API 키·발신번호) |
+| `ChatProvider` | `app.chat.provider`, `app.chat.llm.api-key` | `rule` → `llm` |
+| `MusicPreviewProvider` | `app.music.provider` | `seed` → `external` (음원 API) |
+| `GeocodeProvider` | `church.geocode.provider`, `church.geocode.kakao-rest-key` | `seed` → `kakao` (Kakao Local) |
+| `PostcodeProvider` | `app.worship.postcode.provider` | `mock` → 우편번호 검색 API |
+| `MapProvider` (프론트) | — | Leaflet/OSM → Kakao Maps SDK 교체 가능하도록 추상화 |
+
+### 데이터 / 공공데이터 결론
+
+**교단별 교회 공공데이터는 사실상 부재** — data.go.kr·LOCALDATA·Kakao 어디에도 교단 구분 필드와 좌표를 함께 주는 데이터셋이 없습니다.
+그래서 위치검색은 "데이터 보유"가 아닌 **지도 API 호출** 방식이 정답이며(실서비스 전제: Kakao Local + Geolocation),
+본 포트폴리오는 키 없이 **결정론적 시드 ~40곳**(서울 28 + 경기 12, 좌표·교단 휴리스틱·예배시간)으로 근사합니다.
+실 상호·주소가 특정되지 않도록 좌표는 인덱스 기반 ±오프셋으로 가공합니다. 상세 근거는 위 리서치 문서 참고.
+
+### 검증 상태
+
+- ✅ 백엔드 — **48테스트 통과**, DB **재시드 부팅** 정상, 신규 엔드포인트 **200 응답**(churches/worship/albums/stores/payment/sms/chat).
+- ✅ 사용자 사이트 — **prod 빌드 그린**, **Playwright**(교회 지도·앨범 미리듣기·챗봇) 통과.
+- ⚠️ **정직 고지** — 결제·SMS·챗봇·지도 모두 **데모/테스트 모드**(실결제·실발송·실외부호출 없음). **관리자 관리화면(교회/예배/앨범/매장/SMS) 일부와 AWS 라이브 연동은 미구현(향후)**.
+
+---
+
 ## 기술 스택
 
 **백엔드** — Spring Boot 3.4 · Java 21 · MySQL 8 · Redis · JPA(Hibernate) + MyBatis · Spring Security + JWT(auth0) · AWS SDK v2(S3/SQS) · spring-cloud-aws · springdoc OpenAPI · Lombok · JUnit 5 + Mockito

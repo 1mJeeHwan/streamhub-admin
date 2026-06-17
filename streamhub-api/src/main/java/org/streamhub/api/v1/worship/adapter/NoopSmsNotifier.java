@@ -17,11 +17,23 @@ public class NoopSmsNotifier implements SmsNotifier {
 
     @Override
     public void notifyRegistrationReceived(String phone, String regNo) {
-        log.info("[DEMO][SMS-noop] registration received → {} ({}) — not actually sent", phone, regNo);
+        log.info("[DEMO][SMS-noop] registration received → {} ({}) — not actually sent", mask(phone), regNo);
     }
 
     @Override
     public void notifyContacted(String phone, String regNo) {
-        log.info("[DEMO][SMS-noop] contacted → {} ({}) — not actually sent", phone, regNo);
+        log.info("[DEMO][SMS-noop] contacted → {} ({}) — not actually sent", mask(phone), regNo);
+    }
+
+    /** Masks the middle group so applicant phone numbers never hit the logs in clear text. */
+    private static String mask(String phone) {
+        if (phone == null) {
+            return "null";
+        }
+        String digits = phone.replaceAll("[^0-9]", "");
+        if (digits.length() < 7) {
+            return "***";
+        }
+        return digits.substring(0, 3) + "-****-" + digits.substring(digits.length() - 4);
     }
 }
