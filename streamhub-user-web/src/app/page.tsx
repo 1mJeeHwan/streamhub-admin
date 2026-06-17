@@ -6,6 +6,7 @@ import { ContentContainer } from "@/components/ContentContainer";
 import { HRow, HItem } from "@/components/HRow";
 import { ContentCard } from "@/components/ContentCard";
 import { PostCard } from "@/components/PostCard";
+import { NearbyChurchesSection } from "@/components/NearbyChurchesSection";
 import { EmptyState, ErrorState } from "@/components/States";
 
 function HomeSkeleton() {
@@ -65,6 +66,8 @@ export default function HomePage() {
           <EmptyState message="등록된 음악이 없습니다." />
         )}
       </ContentContainer>
+
+      <NearbyChurchesSection />
 
       <ContentContainer title="새로운 소식" moreHref="/posts">
         {data.posts.length > 0 ? (

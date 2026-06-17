@@ -3,6 +3,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { AppBar } from "@/components/AppBar";
 import { TabBar } from "@/components/TabBar";
+import { MiniPreviewPlayer } from "@/components/preview/MiniPreviewPlayer";
+import { ChatbotWidget } from "@/components/ChatbotWidget";
 
 export const metadata: Metadata = {
   title: "StreamHub — 함께 드리는 예배",
@@ -30,7 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="app-frame">
             <AppBar />
             <main className="min-h-[60vh] pb-[88px]">{children}</main>
+            <MiniPreviewPlayer />
             <TabBar />
+            <ChatbotWidget />
           </div>
         </Providers>
       </body>

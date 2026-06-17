@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CalendarDays, Church, LogOut, Mail, Phone, User } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
+import { NearbyChurchesSection } from "@/components/NearbyChurchesSection";
 
 function Row({ icon: Icon, label, value }: { icon: typeof Mail; label: string; value: string | null }) {
   return (
@@ -63,6 +64,11 @@ export default function MyPage() {
         <LogOut className="h-4 w-4" />
         로그아웃
       </button>
+
+      {/* Near-me churches widget — parent already pads px-5, so cancel it here. */}
+      <div className="-mx-5 mt-2">
+        <NearbyChurchesSection />
+      </div>
     </section>
   );
 }

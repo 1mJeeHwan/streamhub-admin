@@ -29,7 +29,11 @@ interface RequestOptions {
   token?: string;
 }
 
-async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+/**
+ * Low-level public API request: unwraps the ResultDTO envelope, throws ApiError with the
+ * HTTP status on failure. Exported so sibling modules (e.g. albums.ts) reuse one fetch path.
+ */
+export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
   if (opts.token) headers["Authorization"] = `Bearer ${opts.token}`;
@@ -61,7 +65,8 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   return envelope.resultObject;
 }
 
-function query(params: Record<string, string | number | undefined>): string {
+/** Build a `?a=1&b=2` query string, dropping undefined/empty/null values. */
+export function query(params: Record<string, string | number | undefined>): string {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== "" && v !== null) sp.set(k, String(v));
