@@ -29,7 +29,7 @@ import type {
   ResultDTOResInfinityListContentListItem,
   ResultDTOUploadResponse,
   ResultDTOVoid,
-  UploadBody,
+  Upload1Body,
 } from "../streamHubAdminAPI.schemas";
 
 import { customInstance } from "../../custom-instance";
@@ -37,7 +37,7 @@ import { customInstance } from "../../custom-instance";
 /**
  * @summary 콘텐츠 상세
  */
-export const detail1 = (id: number, signal?: AbortSignal) => {
+export const detail3 = (id: number, signal?: AbortSignal) => {
   return customInstance<ResultDTOContentDetail>({
     url: `/v1/content/${id}`,
     method: "GET",
@@ -45,58 +45,58 @@ export const detail1 = (id: number, signal?: AbortSignal) => {
   });
 };
 
-export const getDetail1QueryKey = (id?: number) => {
+export const getDetail3QueryKey = (id?: number) => {
   return [`/v1/content/${id}`] as const;
 };
 
-export const getDetail1QueryOptions = <
-  TData = Awaited<ReturnType<typeof detail1>>,
+export const getDetail3QueryOptions = <
+  TData = Awaited<ReturnType<typeof detail3>>,
   TError = unknown
 >(
   id: number,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof detail3>>, TError, TData>
     >;
   }
 ) => {
   const { query: queryOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getDetail1QueryKey(id);
+  const queryKey = queryOptions?.queryKey ?? getDetail3QueryKey(id);
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof detail1>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof detail3>>> = ({
     signal,
-  }) => detail1(id, signal);
+  }) => detail3(id, signal);
 
   return {
     queryKey,
     queryFn,
     enabled: !!id,
     ...queryOptions,
-  } as UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData> & {
+  } as UseQueryOptions<Awaited<ReturnType<typeof detail3>>, TError, TData> & {
     queryKey: DataTag<QueryKey, TData, TError>;
   };
 };
 
-export type Detail1QueryResult = NonNullable<
-  Awaited<ReturnType<typeof detail1>>
+export type Detail3QueryResult = NonNullable<
+  Awaited<ReturnType<typeof detail3>>
 >;
-export type Detail1QueryError = unknown;
+export type Detail3QueryError = unknown;
 
-export function useDetail1<
-  TData = Awaited<ReturnType<typeof detail1>>,
+export function useDetail3<
+  TData = Awaited<ReturnType<typeof detail3>>,
   TError = unknown
 >(
   id: number,
   options: {
     query: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof detail3>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof detail1>>,
+          Awaited<ReturnType<typeof detail3>>,
           TError,
-          Awaited<ReturnType<typeof detail1>>
+          Awaited<ReturnType<typeof detail3>>
         >,
         "initialData"
       >;
@@ -105,20 +105,20 @@ export function useDetail1<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function useDetail1<
-  TData = Awaited<ReturnType<typeof detail1>>,
+export function useDetail3<
+  TData = Awaited<ReturnType<typeof detail3>>,
   TError = unknown
 >(
   id: number,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof detail3>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof detail1>>,
+          Awaited<ReturnType<typeof detail3>>,
           TError,
-          Awaited<ReturnType<typeof detail1>>
+          Awaited<ReturnType<typeof detail3>>
         >,
         "initialData"
       >;
@@ -127,14 +127,14 @@ export function useDetail1<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function useDetail1<
-  TData = Awaited<ReturnType<typeof detail1>>,
+export function useDetail3<
+  TData = Awaited<ReturnType<typeof detail3>>,
   TError = unknown
 >(
   id: number,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof detail3>>, TError, TData>
     >;
   },
   queryClient?: QueryClient
@@ -145,21 +145,21 @@ export function useDetail1<
  * @summary 콘텐츠 상세
  */
 
-export function useDetail1<
-  TData = Awaited<ReturnType<typeof detail1>>,
+export function useDetail3<
+  TData = Awaited<ReturnType<typeof detail3>>,
   TError = unknown
 >(
   id: number,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof detail3>>, TError, TData>
     >;
   },
   queryClient?: QueryClient
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
-  const queryOptions = getDetail1QueryOptions(id, options);
+  const queryOptions = getDetail3QueryOptions(id, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -174,7 +174,7 @@ export function useDetail1<
 /**
  * @summary 콘텐츠 수정
  */
-export const update1 = (
+export const update3 = (
   id: number,
   contentCreateRequest: ContentCreateRequest
 ) => {
@@ -186,23 +186,23 @@ export const update1 = (
   });
 };
 
-export const getUpdate1MutationOptions = <
+export const getUpdate3MutationOptions = <
   TError = unknown,
   TContext = unknown
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof update1>>,
+    Awaited<ReturnType<typeof update3>>,
     TError,
     { id: number; data: ContentCreateRequest },
     TContext
   >;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof update1>>,
+  Awaited<ReturnType<typeof update3>>,
   TError,
   { id: number; data: ContentCreateRequest },
   TContext
 > => {
-  const mutationKey = ["update1"];
+  const mutationKey = ["update3"];
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -212,30 +212,30 @@ export const getUpdate1MutationOptions = <
     : { mutation: { mutationKey } };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof update1>>,
+    Awaited<ReturnType<typeof update3>>,
     { id: number; data: ContentCreateRequest }
   > = (props) => {
     const { id, data } = props ?? {};
 
-    return update1(id, data);
+    return update3(id, data);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type Update1MutationResult = NonNullable<
-  Awaited<ReturnType<typeof update1>>
+export type Update3MutationResult = NonNullable<
+  Awaited<ReturnType<typeof update3>>
 >;
-export type Update1MutationBody = ContentCreateRequest;
-export type Update1MutationError = unknown;
+export type Update3MutationBody = ContentCreateRequest;
+export type Update3MutationError = unknown;
 
 /**
  * @summary 콘텐츠 수정
  */
-export const useUpdate1 = <TError = unknown, TContext = unknown>(
+export const useUpdate3 = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof update1>>,
+      Awaited<ReturnType<typeof update3>>,
       TError,
       { id: number; data: ContentCreateRequest },
       TContext
@@ -243,42 +243,42 @@ export const useUpdate1 = <TError = unknown, TContext = unknown>(
   },
   queryClient?: QueryClient
 ): UseMutationResult<
-  Awaited<ReturnType<typeof update1>>,
+  Awaited<ReturnType<typeof update3>>,
   TError,
   { id: number; data: ContentCreateRequest },
   TContext
 > => {
-  const mutationOptions = getUpdate1MutationOptions(options);
+  const mutationOptions = getUpdate3MutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };
 /**
  * @summary 콘텐츠 삭제
  */
-export const _delete = (id: number) => {
+export const delete2 = (id: number) => {
   return customInstance<ResultDTOVoid>({
     url: `/v1/content/${id}`,
     method: "DELETE",
   });
 };
 
-export const getDeleteMutationOptions = <
+export const getDelete2MutationOptions = <
   TError = unknown,
   TContext = unknown
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof _delete>>,
+    Awaited<ReturnType<typeof delete2>>,
     TError,
     { id: number },
     TContext
   >;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof _delete>>,
+  Awaited<ReturnType<typeof delete2>>,
   TError,
   { id: number },
   TContext
 > => {
-  const mutationKey = ["_delete"];
+  const mutationKey = ["delete2"];
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -288,30 +288,30 @@ export const getDeleteMutationOptions = <
     : { mutation: { mutationKey } };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof _delete>>,
+    Awaited<ReturnType<typeof delete2>>,
     { id: number }
   > = (props) => {
     const { id } = props ?? {};
 
-    return _delete(id);
+    return delete2(id);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type _DeleteMutationResult = NonNullable<
-  Awaited<ReturnType<typeof _delete>>
+export type Delete2MutationResult = NonNullable<
+  Awaited<ReturnType<typeof delete2>>
 >;
 
-export type _DeleteMutationError = unknown;
+export type Delete2MutationError = unknown;
 
 /**
  * @summary 콘텐츠 삭제
  */
-export const useDelete = <TError = unknown, TContext = unknown>(
+export const useDelete2 = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof _delete>>,
+      Awaited<ReturnType<typeof delete2>>,
       TError,
       { id: number },
       TContext
@@ -319,19 +319,19 @@ export const useDelete = <TError = unknown, TContext = unknown>(
   },
   queryClient?: QueryClient
 ): UseMutationResult<
-  Awaited<ReturnType<typeof _delete>>,
+  Awaited<ReturnType<typeof delete2>>,
   TError,
   { id: number },
   TContext
 > => {
-  const mutationOptions = getDeleteMutationOptions(options);
+  const mutationOptions = getDelete2MutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };
 /**
  * @summary 콘텐츠 등록
  */
-export const create = (
+export const create2 = (
   contentCreateRequest: ContentCreateRequest,
   signal?: AbortSignal
 ) => {
@@ -344,23 +344,23 @@ export const create = (
   });
 };
 
-export const getCreateMutationOptions = <
+export const getCreate2MutationOptions = <
   TError = unknown,
   TContext = unknown
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof create>>,
+    Awaited<ReturnType<typeof create2>>,
     TError,
     { data: ContentCreateRequest },
     TContext
   >;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof create>>,
+  Awaited<ReturnType<typeof create2>>,
   TError,
   { data: ContentCreateRequest },
   TContext
 > => {
-  const mutationKey = ["create"];
+  const mutationKey = ["create2"];
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -370,30 +370,30 @@ export const getCreateMutationOptions = <
     : { mutation: { mutationKey } };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof create>>,
+    Awaited<ReturnType<typeof create2>>,
     { data: ContentCreateRequest }
   > = (props) => {
     const { data } = props ?? {};
 
-    return create(data);
+    return create2(data);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type CreateMutationResult = NonNullable<
-  Awaited<ReturnType<typeof create>>
+export type Create2MutationResult = NonNullable<
+  Awaited<ReturnType<typeof create2>>
 >;
-export type CreateMutationBody = ContentCreateRequest;
-export type CreateMutationError = unknown;
+export type Create2MutationBody = ContentCreateRequest;
+export type Create2MutationError = unknown;
 
 /**
  * @summary 콘텐츠 등록
  */
-export const useCreate = <TError = unknown, TContext = unknown>(
+export const useCreate2 = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof create>>,
+      Awaited<ReturnType<typeof create2>>,
       TError,
       { data: ContentCreateRequest },
       TContext
@@ -401,12 +401,12 @@ export const useCreate = <TError = unknown, TContext = unknown>(
   },
   queryClient?: QueryClient
 ): UseMutationResult<
-  Awaited<ReturnType<typeof create>>,
+  Awaited<ReturnType<typeof create2>>,
   TError,
   { data: ContentCreateRequest },
   TContext
 > => {
-  const mutationOptions = getCreateMutationOptions(options);
+  const mutationOptions = getCreate2MutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };
@@ -414,33 +414,33 @@ export const useCreate = <TError = unknown, TContext = unknown>(
  * 썸네일/파일을 스토리지(MinIO·S3)에 업로드하고 key/url을 반환한다.
  * @summary 파일 업로드
  */
-export const upload = (uploadBody: UploadBody, signal?: AbortSignal) => {
+export const upload1 = (upload1Body: Upload1Body, signal?: AbortSignal) => {
   return customInstance<ResultDTOUploadResponse>({
     url: `/v1/content/upload`,
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    data: uploadBody,
+    data: upload1Body,
     signal,
   });
 };
 
-export const getUploadMutationOptions = <
+export const getUpload1MutationOptions = <
   TError = unknown,
   TContext = unknown
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof upload>>,
+    Awaited<ReturnType<typeof upload1>>,
     TError,
-    { data: UploadBody },
+    { data: Upload1Body },
     TContext
   >;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof upload>>,
+  Awaited<ReturnType<typeof upload1>>,
   TError,
-  { data: UploadBody },
+  { data: Upload1Body },
   TContext
 > => {
-  const mutationKey = ["upload"];
+  const mutationKey = ["upload1"];
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -450,43 +450,43 @@ export const getUploadMutationOptions = <
     : { mutation: { mutationKey } };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof upload>>,
-    { data: UploadBody }
+    Awaited<ReturnType<typeof upload1>>,
+    { data: Upload1Body }
   > = (props) => {
     const { data } = props ?? {};
 
-    return upload(data);
+    return upload1(data);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type UploadMutationResult = NonNullable<
-  Awaited<ReturnType<typeof upload>>
+export type Upload1MutationResult = NonNullable<
+  Awaited<ReturnType<typeof upload1>>
 >;
-export type UploadMutationBody = UploadBody;
-export type UploadMutationError = unknown;
+export type Upload1MutationBody = Upload1Body;
+export type Upload1MutationError = unknown;
 
 /**
  * @summary 파일 업로드
  */
-export const useUpload = <TError = unknown, TContext = unknown>(
+export const useUpload1 = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof upload>>,
+      Awaited<ReturnType<typeof upload1>>,
       TError,
-      { data: UploadBody },
+      { data: Upload1Body },
       TContext
     >;
   },
   queryClient?: QueryClient
 ): UseMutationResult<
-  Awaited<ReturnType<typeof upload>>,
+  Awaited<ReturnType<typeof upload1>>,
   TError,
-  { data: UploadBody },
+  { data: Upload1Body },
   TContext
 > => {
-  const mutationOptions = getUploadMutationOptions(options);
+  const mutationOptions = getUpload1MutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };
@@ -494,7 +494,7 @@ export const useUpload = <TError = unknown, TContext = unknown>(
  * 검색/필터/페이지네이션된 콘텐츠 목록.
  * @summary 콘텐츠 목록
  */
-export const list1 = (
+export const list6 = (
   contentSearchRequest: ContentSearchRequest,
   signal?: AbortSignal
 ) => {
@@ -507,23 +507,23 @@ export const list1 = (
   });
 };
 
-export const getList1MutationOptions = <
+export const getList6MutationOptions = <
   TError = unknown,
   TContext = unknown
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof list1>>,
+    Awaited<ReturnType<typeof list6>>,
     TError,
     { data: ContentSearchRequest },
     TContext
   >;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof list1>>,
+  Awaited<ReturnType<typeof list6>>,
   TError,
   { data: ContentSearchRequest },
   TContext
 > => {
-  const mutationKey = ["list1"];
+  const mutationKey = ["list6"];
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -533,30 +533,30 @@ export const getList1MutationOptions = <
     : { mutation: { mutationKey } };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof list1>>,
+    Awaited<ReturnType<typeof list6>>,
     { data: ContentSearchRequest }
   > = (props) => {
     const { data } = props ?? {};
 
-    return list1(data);
+    return list6(data);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type List1MutationResult = NonNullable<
-  Awaited<ReturnType<typeof list1>>
+export type List6MutationResult = NonNullable<
+  Awaited<ReturnType<typeof list6>>
 >;
-export type List1MutationBody = ContentSearchRequest;
-export type List1MutationError = unknown;
+export type List6MutationBody = ContentSearchRequest;
+export type List6MutationError = unknown;
 
 /**
  * @summary 콘텐츠 목록
  */
-export const useList1 = <TError = unknown, TContext = unknown>(
+export const useList6 = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof list1>>,
+      Awaited<ReturnType<typeof list6>>,
       TError,
       { data: ContentSearchRequest },
       TContext
@@ -564,12 +564,12 @@ export const useList1 = <TError = unknown, TContext = unknown>(
   },
   queryClient?: QueryClient
 ): UseMutationResult<
-  Awaited<ReturnType<typeof list1>>,
+  Awaited<ReturnType<typeof list6>>,
   TError,
   { data: ContentSearchRequest },
   TContext
 > => {
-  const mutationOptions = getList1MutationOptions(options);
+  const mutationOptions = getList6MutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

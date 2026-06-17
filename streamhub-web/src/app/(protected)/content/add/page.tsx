@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
-import { useChannels, useCreate } from "@/apis/query/content/content";
+import { useChannels, useCreate2 } from "@/apis/query/content/content";
 import {
   ContentCreateRequestStatus,
   ContentCreateRequestType,
@@ -46,7 +46,7 @@ export default function ContentAddPage() {
   const channelsQuery = useChannels();
   const channels = channelsQuery.data?.resultObject ?? [];
 
-  const createMutation = useCreate();
+  const createMutation = useCreate2();
 
   const {
     register,

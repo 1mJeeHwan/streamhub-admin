@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
-import { useDetail, useUpdate } from "@/apis/query/member/member";
+import { useDetail1, useUpdate1 } from "@/apis/query/member/member";
 import type { MemberDetail } from "@/apis/query/streamHubAdminAPI.schemas";
 import { formatDate } from "@/lib/format";
 import StatusBadge from "@/components/member/StatusBadge";
@@ -51,10 +51,10 @@ export default function MemberDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const detailQuery = useDetail(memberId, {
+  const detailQuery = useDetail1(memberId, {
     query: { enabled: Number.isFinite(memberId) },
   });
-  const updateMutation = useUpdate();
+  const updateMutation = useUpdate1();
 
   const detail = detailQuery.data?.resultObject;
 

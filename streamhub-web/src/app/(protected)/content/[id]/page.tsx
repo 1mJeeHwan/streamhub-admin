@@ -10,9 +10,9 @@ import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
 
 import {
   useChannels,
-  useDelete,
-  useDetail1,
-  useUpdate1,
+  useDelete2,
+  useDetail3,
+  useUpdate3,
 } from "@/apis/query/content/content";
 import {
   ContentCreateRequestStatus,
@@ -84,11 +84,11 @@ export default function ContentDetailPage() {
     null,
   );
 
-  const detailQuery = useDetail1(contentId, {
+  const detailQuery = useDetail3(contentId, {
     query: { enabled: Number.isFinite(contentId) },
   });
-  const updateMutation = useUpdate1();
-  const deleteMutation = useDelete();
+  const updateMutation = useUpdate3();
+  const deleteMutation = useDelete2();
   const channelsQuery = useChannels({ query: { enabled: isEditing } });
   const channels = channelsQuery.data?.resultObject ?? [];
 

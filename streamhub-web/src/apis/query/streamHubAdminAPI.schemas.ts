@@ -5,6 +5,122 @@
  * 관리자 내부 API (a production service 관리자 API 포트폴리오 클론)
  * OpenAPI spec version: v1
  */
+export type SubscriptionStatusRequestStatus =
+  (typeof SubscriptionStatusRequestStatus)[keyof typeof SubscriptionStatusRequestStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SubscriptionStatusRequestStatus = {
+  ACTIVE: "ACTIVE",
+  PAUSED: "PAUSED",
+  CANCELED: "CANCELED",
+} as const;
+
+export interface SubscriptionStatusRequest {
+  status: SubscriptionStatusRequestStatus;
+}
+
+export interface ResultDTOSubscriptionDetail {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: SubscriptionDetail;
+}
+
+export type SubscriptionDetailPlanGrade =
+  (typeof SubscriptionDetailPlanGrade)[keyof typeof SubscriptionDetailPlanGrade];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SubscriptionDetailPlanGrade = {
+  BRONZE: "BRONZE",
+  SILVER: "SILVER",
+  GOLD: "GOLD",
+  ANGEL: "ANGEL",
+} as const;
+
+export type SubscriptionDetailStatus =
+  (typeof SubscriptionDetailStatus)[keyof typeof SubscriptionDetailStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SubscriptionDetailStatus = {
+  ACTIVE: "ACTIVE",
+  PAUSED: "PAUSED",
+  CANCELED: "CANCELED",
+} as const;
+
+export interface SubscriptionDetail {
+  id?: number;
+  memberId?: number;
+  memberName?: string;
+  planId?: number;
+  planName?: string;
+  planGrade?: SubscriptionDetailPlanGrade;
+  planPrice?: number;
+  planPeriodMonths?: number;
+  billingKeyMasked?: string;
+  status?: SubscriptionDetailStatus;
+  cycleNo?: number;
+  nextBillingAt?: string;
+  startedAt?: string;
+  canceledAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type PlanCreateRequestGrade =
+  (typeof PlanCreateRequestGrade)[keyof typeof PlanCreateRequestGrade];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const PlanCreateRequestGrade = {
+  BRONZE: "BRONZE",
+  SILVER: "SILVER",
+  GOLD: "GOLD",
+  ANGEL: "ANGEL",
+} as const;
+
+export interface PlanCreateRequest {
+  name: string;
+  grade: PlanCreateRequestGrade;
+  price: number;
+  periodMonths: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  pointRate: number;
+  benefit?: string;
+  active: string;
+}
+
+export type PlanResponseGrade =
+  (typeof PlanResponseGrade)[keyof typeof PlanResponseGrade];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const PlanResponseGrade = {
+  BRONZE: "BRONZE",
+  SILVER: "SILVER",
+  GOLD: "GOLD",
+  ANGEL: "ANGEL",
+} as const;
+
+export interface PlanResponse {
+  id?: number;
+  name?: string;
+  grade?: PlanResponseGrade;
+  price?: number;
+  periodMonths?: number;
+  pointRate?: number;
+  benefit?: string;
+  active?: string;
+  activeSubscriptionCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ResultDTOPlanResponse {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: PlanResponse;
+}
+
 export interface MemberUpdateRequest {
   name: string;
   phone?: string;
@@ -21,6 +137,17 @@ export const MemberDetailUserStatus = {
   INACTIVE: "INACTIVE",
 } as const;
 
+export type MemberDetailGrade =
+  (typeof MemberDetailGrade)[keyof typeof MemberDetailGrade];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const MemberDetailGrade = {
+  BRONZE: "BRONZE",
+  SILVER: "SILVER",
+  GOLD: "GOLD",
+  ANGEL: "ANGEL",
+} as const;
+
 export interface MemberDetail {
   id?: number;
   name?: string;
@@ -28,6 +155,8 @@ export interface MemberDetail {
   phone?: string;
   userStatus?: MemberDetailUserStatus;
   liveYn?: string;
+  grade?: MemberDetailGrade;
+  pointBalance?: number;
   churchId?: number;
   churchName?: string;
   regionId?: number;
@@ -42,6 +171,110 @@ export interface ResultDTOMemberDetail {
   resultCode?: string;
   resultMessage?: string;
   resultObject?: MemberDetail;
+}
+
+export type GoodsCreateRequestStatus =
+  (typeof GoodsCreateRequestStatus)[keyof typeof GoodsCreateRequestStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const GoodsCreateRequestStatus = {
+  SELLING: "SELLING",
+  PAUSED: "PAUSED",
+} as const;
+
+export interface GoodsCreateRequest {
+  categoryId: number;
+  name: string;
+  code: string;
+  description?: string;
+  price: number;
+  listPrice?: number;
+  stock?: number;
+  notiQty?: number;
+  soldOut?: string;
+  useYn?: string;
+  status?: GoodsCreateRequestStatus;
+  thumbnailKey?: string;
+  badges?: string[];
+  options?: GoodsOptionDto[];
+  images?: GoodsImageDto[];
+}
+
+export interface GoodsImageDto {
+  id?: number;
+  s3Key?: string;
+  url?: string;
+  sort?: number;
+}
+
+export interface GoodsOptionDto {
+  id?: number;
+  name?: string;
+  optionType?: string;
+  extraPrice?: number;
+  stock?: number;
+  useYn?: string;
+  sort?: number;
+}
+
+export type GoodsDetailStatus =
+  (typeof GoodsDetailStatus)[keyof typeof GoodsDetailStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const GoodsDetailStatus = {
+  SELLING: "SELLING",
+  PAUSED: "PAUSED",
+} as const;
+
+export interface GoodsDetail {
+  id?: number;
+  categoryId?: number;
+  categoryName?: string;
+  name?: string;
+  code?: string;
+  description?: string;
+  price?: number;
+  listPrice?: number;
+  stock?: number;
+  notiQty?: number;
+  soldOut?: string;
+  useYn?: string;
+  status?: GoodsDetailStatus;
+  saleCount?: number;
+  viewCount?: number;
+  thumbnailKey?: string;
+  thumbnailUrl?: string;
+  badges?: string;
+  options?: GoodsOptionDto[];
+  images?: GoodsImageDto[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ResultDTOGoodsDetail {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: GoodsDetail;
+}
+
+export interface GoodsBulkUpdateRequest {
+  rows: Row[];
+}
+
+export interface Row {
+  id: number;
+  stock?: number;
+  notiQty?: number;
+  price?: number;
+  soldOut?: string;
+  useYn?: string;
+  sort?: number;
+}
+
+export interface ResultDTOInteger {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: number;
 }
 
 export type ContentCreateRequestType =
@@ -126,6 +359,204 @@ export interface ResultDTOContentDetail {
   resultObject?: ContentDetail;
 }
 
+export type SubscriptionSearchRequestStatus =
+  (typeof SubscriptionSearchRequestStatus)[keyof typeof SubscriptionSearchRequestStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SubscriptionSearchRequestStatus = {
+  ACTIVE: "ACTIVE",
+  PAUSED: "PAUSED",
+  CANCELED: "CANCELED",
+} as const;
+
+export interface SubscriptionSearchRequest {
+  pageNumber?: number;
+  pageSize?: number;
+  keyword?: string;
+  status?: SubscriptionSearchRequestStatus;
+  planId?: number;
+}
+
+export interface ResInfinityListSubscriptionListItem {
+  contents?: SubscriptionListItem[];
+  totalCount?: number;
+  totalPage?: number;
+}
+
+export interface ResultDTOResInfinityListSubscriptionListItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: ResInfinityListSubscriptionListItem;
+}
+
+export type SubscriptionListItemPlanGrade =
+  (typeof SubscriptionListItemPlanGrade)[keyof typeof SubscriptionListItemPlanGrade];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SubscriptionListItemPlanGrade = {
+  BRONZE: "BRONZE",
+  SILVER: "SILVER",
+  GOLD: "GOLD",
+  ANGEL: "ANGEL",
+} as const;
+
+export type SubscriptionListItemStatus =
+  (typeof SubscriptionListItemStatus)[keyof typeof SubscriptionListItemStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SubscriptionListItemStatus = {
+  ACTIVE: "ACTIVE",
+  PAUSED: "PAUSED",
+  CANCELED: "CANCELED",
+} as const;
+
+export interface SubscriptionListItem {
+  id?: number;
+  memberId?: number;
+  memberName?: string;
+  planId?: number;
+  planName?: string;
+  planGrade?: SubscriptionListItemPlanGrade;
+  status?: SubscriptionListItemStatus;
+  cycleNo?: number;
+  billingKeyMasked?: string;
+  nextBillingAt?: string;
+  startedAt?: string;
+}
+
+export interface PointLedgerSearchRequest {
+  pageNumber?: number;
+  pageSize?: number;
+  keyword?: string;
+  memberId?: number;
+  churchId?: number;
+}
+
+export type PointLedgerListItemSourceType =
+  (typeof PointLedgerListItemSourceType)[keyof typeof PointLedgerListItemSourceType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const PointLedgerListItemSourceType = {
+  MANUAL: "MANUAL",
+  EXPIRE: "EXPIRE",
+  DONATION: "DONATION",
+} as const;
+
+export type PointLedgerListItemStatus =
+  (typeof PointLedgerListItemStatus)[keyof typeof PointLedgerListItemStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const PointLedgerListItemStatus = {
+  ACTIVE: "ACTIVE",
+  EXPIRED: "EXPIRED",
+} as const;
+
+export interface PointLedgerListItem {
+  id?: number;
+  memberId?: number;
+  memberName?: string;
+  memberEmail?: string;
+  churchId?: number;
+  delta?: number;
+  balanceAfter?: number;
+  reason?: string;
+  sourceType?: PointLedgerListItemSourceType;
+  status?: PointLedgerListItemStatus;
+  expireAt?: string;
+  createdAt?: string;
+}
+
+export interface ResInfinityListPointLedgerListItem {
+  contents?: PointLedgerListItem[];
+  totalCount?: number;
+  totalPage?: number;
+}
+
+export interface ResultDTOResInfinityListPointLedgerListItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: ResInfinityListPointLedgerListItem;
+}
+
+export interface PointGrantRequest {
+  memberId: number;
+  delta: number;
+  reason: string;
+  expireDays?: number;
+}
+
+export interface ResultDTOPointLedgerListItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: PointLedgerListItem;
+}
+
+export type OrderSearchRequestStatus =
+  (typeof OrderSearchRequestStatus)[keyof typeof OrderSearchRequestStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const OrderSearchRequestStatus = {
+  PLACED: "PLACED",
+  PAID: "PAID",
+  READY: "READY",
+  SHIPPING: "SHIPPING",
+  DONE: "DONE",
+  CANCEL: "CANCEL",
+  RETURN: "RETURN",
+} as const;
+
+export interface OrderSearchRequest {
+  pageNumber?: number;
+  pageSize?: number;
+  searchField?: string;
+  keyword?: string;
+  status?: OrderSearchRequestStatus;
+  payMethod?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export type OrderListItemStatus =
+  (typeof OrderListItemStatus)[keyof typeof OrderListItemStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const OrderListItemStatus = {
+  PLACED: "PLACED",
+  PAID: "PAID",
+  READY: "READY",
+  SHIPPING: "SHIPPING",
+  DONE: "DONE",
+  CANCEL: "CANCEL",
+  RETURN: "RETURN",
+} as const;
+
+export interface OrderListItem {
+  id?: number;
+  orderNo?: string;
+  memberId?: number;
+  memberName?: string;
+  status?: OrderListItemStatus;
+  orderedName?: string;
+  receiverName?: string;
+  total?: number;
+  payMethod?: string;
+  trackingNo?: string;
+  itemCount?: number;
+  orderedAt?: string;
+}
+
+export interface ResInfinityListOrderListItem {
+  contents?: OrderListItem[];
+  totalCount?: number;
+  totalPage?: number;
+}
+
+export interface ResultDTOResInfinityListOrderListItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: ResInfinityListOrderListItem;
+}
+
 export type MemberSearchRequestUserStatus =
   (typeof MemberSearchRequestUserStatus)[keyof typeof MemberSearchRequestUserStatus];
 
@@ -154,6 +585,17 @@ export const MemberListItemUserStatus = {
   INACTIVE: "INACTIVE",
 } as const;
 
+export type MemberListItemGrade =
+  (typeof MemberListItemGrade)[keyof typeof MemberListItemGrade];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const MemberListItemGrade = {
+  BRONZE: "BRONZE",
+  SILVER: "SILVER",
+  GOLD: "GOLD",
+  ANGEL: "ANGEL",
+} as const;
+
 export interface MemberListItem {
   id?: number;
   name?: string;
@@ -161,6 +603,8 @@ export interface MemberListItem {
   phone?: string;
   userStatus?: MemberListItemUserStatus;
   liveYn?: string;
+  grade?: MemberListItemGrade;
+  pointBalance?: number;
   churchId?: number;
   churchName?: string;
   regionName?: string;
@@ -184,12 +628,6 @@ export interface IdListRequest {
   idList: number[];
 }
 
-export interface ResultDTOInteger {
-  resultCode?: string;
-  resultMessage?: string;
-  resultObject?: number;
-}
-
 export interface ResultDTOUploadResponse {
   resultCode?: string;
   resultMessage?: string;
@@ -199,6 +637,170 @@ export interface ResultDTOUploadResponse {
 export interface UploadResponse {
   key?: string;
   url?: string;
+}
+
+export type GoodsSearchRequestStatus =
+  (typeof GoodsSearchRequestStatus)[keyof typeof GoodsSearchRequestStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const GoodsSearchRequestStatus = {
+  SELLING: "SELLING",
+  PAUSED: "PAUSED",
+} as const;
+
+export interface GoodsSearchRequest {
+  pageNumber?: number;
+  pageSize?: number;
+  keyword?: string;
+  categoryId?: number;
+  status?: GoodsSearchRequestStatus;
+  soldOut?: string;
+}
+
+export type GoodsListItemStatus =
+  (typeof GoodsListItemStatus)[keyof typeof GoodsListItemStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const GoodsListItemStatus = {
+  SELLING: "SELLING",
+  PAUSED: "PAUSED",
+} as const;
+
+export interface GoodsListItem {
+  id?: number;
+  categoryId?: number;
+  categoryName?: string;
+  name?: string;
+  code?: string;
+  price?: number;
+  listPrice?: number;
+  stock?: number;
+  notiQty?: number;
+  soldOut?: string;
+  useYn?: string;
+  status?: GoodsListItemStatus;
+  saleCount?: number;
+  viewCount?: number;
+  thumbnailKey?: string;
+  thumbnailUrl?: string;
+  badges?: string;
+  optionCount?: number;
+  createdAt?: string;
+}
+
+export interface ResInfinityListGoodsListItem {
+  contents?: GoodsListItem[];
+  totalCount?: number;
+  totalPage?: number;
+}
+
+export interface ResultDTOResInfinityListGoodsListItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: ResInfinityListGoodsListItem;
+}
+
+export interface OnceDonationRequest {
+  memberId: number;
+  amount: number;
+}
+
+export type DonationListItemType =
+  (typeof DonationListItemType)[keyof typeof DonationListItemType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DonationListItemType = {
+  ONCE: "ONCE",
+  SUBSCRIPTION: "SUBSCRIPTION",
+} as const;
+
+export type DonationListItemStatus =
+  (typeof DonationListItemStatus)[keyof typeof DonationListItemStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DonationListItemStatus = {
+  PAID: "PAID",
+  CANCELED: "CANCELED",
+  FAILED: "FAILED",
+} as const;
+
+export interface DonationListItem {
+  id?: number;
+  memberId?: number;
+  memberName?: string;
+  subscriptionId?: number;
+  planName?: string;
+  type?: DonationListItemType;
+  amount?: number;
+  cycleNo?: number;
+  status?: DonationListItemStatus;
+  pointAwarded?: number;
+  testMode?: string;
+  paidAt?: string;
+}
+
+export interface ResultDTODonationListItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: DonationListItem;
+}
+
+export type DonationSearchRequestType =
+  (typeof DonationSearchRequestType)[keyof typeof DonationSearchRequestType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DonationSearchRequestType = {
+  ONCE: "ONCE",
+  SUBSCRIPTION: "SUBSCRIPTION",
+} as const;
+
+export type DonationSearchRequestStatus =
+  (typeof DonationSearchRequestStatus)[keyof typeof DonationSearchRequestStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DonationSearchRequestStatus = {
+  PAID: "PAID",
+  CANCELED: "CANCELED",
+  FAILED: "FAILED",
+} as const;
+
+export interface DonationSearchRequest {
+  pageNumber?: number;
+  pageSize?: number;
+  keyword?: string;
+  type?: DonationSearchRequestType;
+  status?: DonationSearchRequestStatus;
+  from?: string;
+  to?: string;
+}
+
+export interface ResInfinityListDonationListItem {
+  contents?: DonationListItem[];
+  totalCount?: number;
+  totalPage?: number;
+}
+
+export interface ResultDTOResInfinityListDonationListItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: ResInfinityListDonationListItem;
+}
+
+export interface BillingCalendarRequest {
+  year?: number;
+  month?: number;
+}
+
+export interface BillingCalendarItem {
+  date?: string;
+  count?: number;
+  amount?: number;
+}
+
+export interface ResultDTOListBillingCalendarItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: BillingCalendarItem[];
 }
 
 export type ContentSearchRequestType =
@@ -304,6 +906,32 @@ export interface ResultDTOResInfinityListActionLogItem {
   resultObject?: ResInfinityListActionLogItem;
 }
 
+export interface MemberLoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface MemberAuthResponse {
+  token?: string;
+  expiresIn?: number;
+  member?: MemberInfo;
+}
+
+export interface MemberInfo {
+  id?: number;
+  name?: string;
+  email?: string;
+  phone?: string;
+  churchName?: string;
+  createdAt?: string;
+}
+
+export interface ResultDTOMemberAuthResponse {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: MemberAuthResponse;
+}
+
 export interface RefreshRequest {
   refreshToken: string;
 }
@@ -331,6 +959,110 @@ export interface ResultDTOVoid {
 export interface LoginRequest {
   loginId: string;
   password: string;
+}
+
+export interface OrderTrackingRequest {
+  trackingNo: string;
+  shipCompany?: string;
+}
+
+export type OrderDetailStatus =
+  (typeof OrderDetailStatus)[keyof typeof OrderDetailStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const OrderDetailStatus = {
+  PLACED: "PLACED",
+  PAID: "PAID",
+  READY: "READY",
+  SHIPPING: "SHIPPING",
+  DONE: "DONE",
+  CANCEL: "CANCEL",
+  RETURN: "RETURN",
+} as const;
+
+export interface OrderDetail {
+  id?: number;
+  orderNo?: string;
+  memberId?: number;
+  memberName?: string;
+  status?: OrderDetailStatus;
+  orderedName?: string;
+  orderedPhone?: string;
+  receiverName?: string;
+  receiverPhone?: string;
+  receiverAddr?: string;
+  goodsTotal?: number;
+  shipFee?: number;
+  couponDiscount?: number;
+  pointUsed?: number;
+  total?: number;
+  payMethod?: string;
+  trackingNo?: string;
+  shipCompany?: string;
+  orderedAt?: string;
+  updatedAt?: string;
+  items?: OrderItemDto[];
+  receipts?: OrderReceiptDto[];
+}
+
+export interface OrderItemDto {
+  id?: number;
+  goodsId?: number;
+  optionId?: number;
+  goodsName?: string;
+  optionName?: string;
+  unitPrice?: number;
+  qty?: number;
+  lineTotal?: number;
+}
+
+export type OrderReceiptDtoKind =
+  (typeof OrderReceiptDtoKind)[keyof typeof OrderReceiptDtoKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const OrderReceiptDtoKind = {
+  PAY: "PAY",
+  REFUND: "REFUND",
+} as const;
+
+export interface OrderReceiptDto {
+  id?: number;
+  kind?: OrderReceiptDtoKind;
+  amount?: number;
+  method?: string;
+  memo?: string;
+  createdAt?: string;
+}
+
+export interface ResultDTOOrderDetail {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: OrderDetail;
+}
+
+export type OrderStatusChangeRequestStatus =
+  (typeof OrderStatusChangeRequestStatus)[keyof typeof OrderStatusChangeRequestStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const OrderStatusChangeRequestStatus = {
+  PLACED: "PLACED",
+  PAID: "PAID",
+  READY: "READY",
+  SHIPPING: "SHIPPING",
+  DONE: "DONE",
+  CANCEL: "CANCEL",
+  RETURN: "RETURN",
+} as const;
+
+export interface OrderStatusChangeRequest {
+  status: OrderStatusChangeRequestStatus;
+  memo?: string;
+}
+
+export interface ResultDTOListPlanResponse {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: PlanResponse[];
 }
 
 export interface ChannelWatchItem {
@@ -381,6 +1113,72 @@ export interface TrendPoint {
   count?: number;
 }
 
+export interface GoodsCategoryDto {
+  id?: number;
+  parentId?: number;
+  name?: string;
+  depth?: number;
+  sort?: number;
+  imageKey?: string;
+  imageUrl?: string;
+  useYn?: string;
+}
+
+export interface ResultDTOListGoodsCategoryDto {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: GoodsCategoryDto[];
+}
+
+export interface ResultDTOTimeseriesResponse {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: TimeseriesResponse;
+}
+
+export interface TimeseriesResponse {
+  categories?: string[];
+  goodsRevenue?: number[];
+  recurringDonation?: number[];
+  onceDonation?: number[];
+}
+
+export interface DashboardSummaryResponse {
+  todayRevenue?: KpiDelta;
+  newSubscriptions?: KpiDelta;
+  openOrders?: KpiDelta;
+  unansweredInquiry?: KpiDelta;
+  lowStock?: KpiDelta;
+  activeSubscribers?: KpiDelta;
+}
+
+export interface KpiDelta {
+  current?: number;
+  previous?: number;
+  deltaPct?: number;
+  spark?: number[];
+}
+
+export interface ResultDTODashboardSummaryResponse {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: DashboardSummaryResponse;
+}
+
+export interface FeedItem {
+  id?: string;
+  kind?: string;
+  message?: string;
+  actorName?: string;
+  occurredAt?: string;
+}
+
+export interface ResultDTOListFeedItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: FeedItem[];
+}
+
 export interface ChannelDto {
   id?: number;
   name?: string;
@@ -406,7 +1204,66 @@ export interface ResultDTOMeResponse {
   resultObject?: MeResponse;
 }
 
+export interface PostListItem {
+  id?: number;
+  title?: string;
+  excerpt?: string;
+  thumbnailKey?: string;
+  thumbnailUrl?: string;
+  createdAt?: string;
+}
+
+export interface ResInfinityListPostListItem {
+  contents?: PostListItem[];
+  totalCount?: number;
+  totalPage?: number;
+}
+
+export interface ResultDTOResInfinityListPostListItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: ResInfinityListPostListItem;
+}
+
+export interface PostDetail {
+  id?: number;
+  title?: string;
+  body?: string;
+  thumbnailKey?: string;
+  thumbnailUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ResultDTOPostDetail {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: PostDetail;
+}
+
+export interface PublicHomeResponse {
+  videos?: ContentListItem[];
+  musics?: ContentListItem[];
+  posts?: PostListItem[];
+}
+
+export interface ResultDTOPublicHomeResponse {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: PublicHomeResponse;
+}
+
+export interface ResultDTOMemberInfo {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: MemberInfo;
+}
+
 export type UploadBody = {
+  file: Blob;
+};
+
+export type Upload1Body = {
   file: Blob;
 };
 
@@ -417,3 +1274,37 @@ export type TopContentsParams = {
 export type MemberTrendParams = {
   days?: number;
 };
+
+export type MemberLedgerParams = {
+  pageNumber?: number;
+  pageSize?: number;
+};
+
+export type TimeseriesParams = {
+  days?: number;
+};
+
+export type FeedParams = {
+  limit?: number;
+};
+
+export type PostsParams = {
+  keyword?: string;
+  pageNumber?: number;
+  pageSize?: number;
+};
+
+export type ContentsParams = {
+  type?: ContentsType;
+  keyword?: string;
+  pageNumber?: number;
+  pageSize?: number;
+};
+
+export type ContentsType = (typeof ContentsType)[keyof typeof ContentsType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ContentsType = {
+  VIDEO: "VIDEO",
+  SOUND: "SOUND",
+} as const;

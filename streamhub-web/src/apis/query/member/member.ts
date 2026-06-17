@@ -35,7 +35,7 @@ import { customInstance } from "../../custom-instance";
 /**
  * @summary 회원 상세
  */
-export const detail = (id: number, signal?: AbortSignal) => {
+export const detail1 = (id: number, signal?: AbortSignal) => {
   return customInstance<ResultDTOMemberDetail>({
     url: `/v1/member/${id}`,
     method: "GET",
@@ -43,56 +43,58 @@ export const detail = (id: number, signal?: AbortSignal) => {
   });
 };
 
-export const getDetailQueryKey = (id?: number) => {
+export const getDetail1QueryKey = (id?: number) => {
   return [`/v1/member/${id}`] as const;
 };
 
-export const getDetailQueryOptions = <
-  TData = Awaited<ReturnType<typeof detail>>,
+export const getDetail1QueryOptions = <
+  TData = Awaited<ReturnType<typeof detail1>>,
   TError = unknown
 >(
   id: number,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof detail>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData>
     >;
   }
 ) => {
   const { query: queryOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getDetailQueryKey(id);
+  const queryKey = queryOptions?.queryKey ?? getDetail1QueryKey(id);
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof detail>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof detail1>>> = ({
     signal,
-  }) => detail(id, signal);
+  }) => detail1(id, signal);
 
   return {
     queryKey,
     queryFn,
     enabled: !!id,
     ...queryOptions,
-  } as UseQueryOptions<Awaited<ReturnType<typeof detail>>, TError, TData> & {
+  } as UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData> & {
     queryKey: DataTag<QueryKey, TData, TError>;
   };
 };
 
-export type DetailQueryResult = NonNullable<Awaited<ReturnType<typeof detail>>>;
-export type DetailQueryError = unknown;
+export type Detail1QueryResult = NonNullable<
+  Awaited<ReturnType<typeof detail1>>
+>;
+export type Detail1QueryError = unknown;
 
-export function useDetail<
-  TData = Awaited<ReturnType<typeof detail>>,
+export function useDetail1<
+  TData = Awaited<ReturnType<typeof detail1>>,
   TError = unknown
 >(
   id: number,
   options: {
     query: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof detail>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof detail>>,
+          Awaited<ReturnType<typeof detail1>>,
           TError,
-          Awaited<ReturnType<typeof detail>>
+          Awaited<ReturnType<typeof detail1>>
         >,
         "initialData"
       >;
@@ -101,20 +103,20 @@ export function useDetail<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function useDetail<
-  TData = Awaited<ReturnType<typeof detail>>,
+export function useDetail1<
+  TData = Awaited<ReturnType<typeof detail1>>,
   TError = unknown
 >(
   id: number,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof detail>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof detail>>,
+          Awaited<ReturnType<typeof detail1>>,
           TError,
-          Awaited<ReturnType<typeof detail>>
+          Awaited<ReturnType<typeof detail1>>
         >,
         "initialData"
       >;
@@ -123,14 +125,14 @@ export function useDetail<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function useDetail<
-  TData = Awaited<ReturnType<typeof detail>>,
+export function useDetail1<
+  TData = Awaited<ReturnType<typeof detail1>>,
   TError = unknown
 >(
   id: number,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof detail>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData>
     >;
   },
   queryClient?: QueryClient
@@ -141,21 +143,21 @@ export function useDetail<
  * @summary 회원 상세
  */
 
-export function useDetail<
-  TData = Awaited<ReturnType<typeof detail>>,
+export function useDetail1<
+  TData = Awaited<ReturnType<typeof detail1>>,
   TError = unknown
 >(
   id: number,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof detail>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof detail1>>, TError, TData>
     >;
   },
   queryClient?: QueryClient
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
-  const queryOptions = getDetailQueryOptions(id, options);
+  const queryOptions = getDetail1QueryOptions(id, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -170,7 +172,7 @@ export function useDetail<
 /**
  * @summary 회원 수정
  */
-export const update = (
+export const update1 = (
   id: number,
   memberUpdateRequest: MemberUpdateRequest
 ) => {
@@ -182,23 +184,23 @@ export const update = (
   });
 };
 
-export const getUpdateMutationOptions = <
+export const getUpdate1MutationOptions = <
   TError = unknown,
   TContext = unknown
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof update>>,
+    Awaited<ReturnType<typeof update1>>,
     TError,
     { id: number; data: MemberUpdateRequest },
     TContext
   >;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof update>>,
+  Awaited<ReturnType<typeof update1>>,
   TError,
   { id: number; data: MemberUpdateRequest },
   TContext
 > => {
-  const mutationKey = ["update"];
+  const mutationKey = ["update1"];
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -208,30 +210,30 @@ export const getUpdateMutationOptions = <
     : { mutation: { mutationKey } };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof update>>,
+    Awaited<ReturnType<typeof update1>>,
     { id: number; data: MemberUpdateRequest }
   > = (props) => {
     const { id, data } = props ?? {};
 
-    return update(id, data);
+    return update1(id, data);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type UpdateMutationResult = NonNullable<
-  Awaited<ReturnType<typeof update>>
+export type Update1MutationResult = NonNullable<
+  Awaited<ReturnType<typeof update1>>
 >;
-export type UpdateMutationBody = MemberUpdateRequest;
-export type UpdateMutationError = unknown;
+export type Update1MutationBody = MemberUpdateRequest;
+export type Update1MutationError = unknown;
 
 /**
  * @summary 회원 수정
  */
-export const useUpdate = <TError = unknown, TContext = unknown>(
+export const useUpdate1 = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof update>>,
+      Awaited<ReturnType<typeof update1>>,
       TError,
       { id: number; data: MemberUpdateRequest },
       TContext
@@ -239,12 +241,12 @@ export const useUpdate = <TError = unknown, TContext = unknown>(
   },
   queryClient?: QueryClient
 ): UseMutationResult<
-  Awaited<ReturnType<typeof update>>,
+  Awaited<ReturnType<typeof update1>>,
   TError,
   { id: number; data: MemberUpdateRequest },
   TContext
 > => {
-  const mutationOptions = getUpdateMutationOptions(options);
+  const mutationOptions = getUpdate1MutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };
@@ -252,7 +254,7 @@ export const useUpdate = <TError = unknown, TContext = unknown>(
  * 검색/필터/페이지네이션된 회원 목록을 반환한다.
  * @summary 회원 목록
  */
-export const list = (
+export const list3 = (
   memberSearchRequest: MemberSearchRequest,
   signal?: AbortSignal
 ) => {
@@ -265,23 +267,23 @@ export const list = (
   });
 };
 
-export const getListMutationOptions = <
+export const getList3MutationOptions = <
   TError = unknown,
   TContext = unknown
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof list>>,
+    Awaited<ReturnType<typeof list3>>,
     TError,
     { data: MemberSearchRequest },
     TContext
   >;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof list>>,
+  Awaited<ReturnType<typeof list3>>,
   TError,
   { data: MemberSearchRequest },
   TContext
 > => {
-  const mutationKey = ["list"];
+  const mutationKey = ["list3"];
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -291,28 +293,30 @@ export const getListMutationOptions = <
     : { mutation: { mutationKey } };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof list>>,
+    Awaited<ReturnType<typeof list3>>,
     { data: MemberSearchRequest }
   > = (props) => {
     const { data } = props ?? {};
 
-    return list(data);
+    return list3(data);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type ListMutationResult = NonNullable<Awaited<ReturnType<typeof list>>>;
-export type ListMutationBody = MemberSearchRequest;
-export type ListMutationError = unknown;
+export type List3MutationResult = NonNullable<
+  Awaited<ReturnType<typeof list3>>
+>;
+export type List3MutationBody = MemberSearchRequest;
+export type List3MutationError = unknown;
 
 /**
  * @summary 회원 목록
  */
-export const useList = <TError = unknown, TContext = unknown>(
+export const useList3 = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof list>>,
+      Awaited<ReturnType<typeof list3>>,
       TError,
       { data: MemberSearchRequest },
       TContext
@@ -320,12 +324,12 @@ export const useList = <TError = unknown, TContext = unknown>(
   },
   queryClient?: QueryClient
 ): UseMutationResult<
-  Awaited<ReturnType<typeof list>>,
+  Awaited<ReturnType<typeof list3>>,
   TError,
   { data: MemberSearchRequest },
   TContext
 > => {
-  const mutationOptions = getListMutationOptions(options);
+  const mutationOptions = getList3MutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

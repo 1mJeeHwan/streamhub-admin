@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-import { useList2 } from "@/apis/query/action-log/action-log";
+import { useList7 } from "@/apis/query/action-log/action-log";
 import type {
   ActionLogItem,
   ActionLogSearchRequest,
@@ -44,7 +44,7 @@ export default function ActionLogPage() {
   const [keywordDraft, setKeywordDraft] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
 
-  const listMutation = useList2();
+  const listMutation = useList7();
   const { mutate: fetchList } = listMutation;
 
   const searchRequest = useMemo<ActionLogSearchRequest>(

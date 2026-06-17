@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Loader2, Plus } from "lucide-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { list1 } from "@/apis/query/content/content";
+import { list6 } from "@/apis/query/content/content";
 import {
   ContentSearchRequestStatus,
   ContentSearchRequestType,
@@ -68,7 +68,7 @@ export default function ContentPage() {
   // so page/filter changes refetch automatically and prior results stay visible (no flicker).
   const listQuery = useQuery({
     queryKey: ["content-list", searchRequest],
-    queryFn: ({ signal }) => list1(searchRequest, signal),
+    queryFn: ({ signal }) => list6(searchRequest, signal),
     placeholderData: keepPreviousData,
   });
 

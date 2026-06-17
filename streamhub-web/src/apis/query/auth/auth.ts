@@ -192,7 +192,7 @@ export const useLogout = <TError = unknown, TContext = unknown>(
  * 아이디/비밀번호로 access/refresh 토큰을 발급한다.
  * @summary 로그인
  */
-export const login = (loginRequest: LoginRequest, signal?: AbortSignal) => {
+export const login1 = (loginRequest: LoginRequest, signal?: AbortSignal) => {
   return customInstance<ResultDTOTokenResponse>({
     url: `/auth/login`,
     method: "POST",
@@ -202,23 +202,23 @@ export const login = (loginRequest: LoginRequest, signal?: AbortSignal) => {
   });
 };
 
-export const getLoginMutationOptions = <
+export const getLogin1MutationOptions = <
   TError = unknown,
   TContext = unknown
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof login>>,
+    Awaited<ReturnType<typeof login1>>,
     TError,
     { data: LoginRequest },
     TContext
   >;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof login>>,
+  Awaited<ReturnType<typeof login1>>,
   TError,
   { data: LoginRequest },
   TContext
 > => {
-  const mutationKey = ["login"];
+  const mutationKey = ["login1"];
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -228,30 +228,30 @@ export const getLoginMutationOptions = <
     : { mutation: { mutationKey } };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof login>>,
+    Awaited<ReturnType<typeof login1>>,
     { data: LoginRequest }
   > = (props) => {
     const { data } = props ?? {};
 
-    return login(data);
+    return login1(data);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type LoginMutationResult = NonNullable<
-  Awaited<ReturnType<typeof login>>
+export type Login1MutationResult = NonNullable<
+  Awaited<ReturnType<typeof login1>>
 >;
-export type LoginMutationBody = LoginRequest;
-export type LoginMutationError = unknown;
+export type Login1MutationBody = LoginRequest;
+export type Login1MutationError = unknown;
 
 /**
  * @summary 로그인
  */
-export const useLogin = <TError = unknown, TContext = unknown>(
+export const useLogin1 = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof login>>,
+      Awaited<ReturnType<typeof login1>>,
       TError,
       { data: LoginRequest },
       TContext
@@ -259,12 +259,12 @@ export const useLogin = <TError = unknown, TContext = unknown>(
   },
   queryClient?: QueryClient
 ): UseMutationResult<
-  Awaited<ReturnType<typeof login>>,
+  Awaited<ReturnType<typeof login1>>,
   TError,
   { data: LoginRequest },
   TContext
 > => {
-  const mutationOptions = getLoginMutationOptions(options);
+  const mutationOptions = getLogin1MutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };
