@@ -59,6 +59,13 @@ public class PortfolioSeeder implements CommandLineRunner {
     /** Deterministic baseline window: the most recent 180 days. */
     private static final int WINDOW_DAYS = 180;
 
+    /**
+     * How many of the seeded subscriptions start within the last 7 days (one per day, offset
+     * 0..N-1) so the dashboard "new subscriptions" KPI — which counts subscriptions started
+     * today / this week — is non-zero. Offset 0 lands today, guaranteeing {@code current > 0}.
+     */
+    private static final int RECENT_SUBSCRIPTION_COUNT = 5;
+
     /** Per-step fixed seeds so each step is reproducible regardless of the others. */
     private static final long SEED_GOODS = 1001L;
     private static final long SEED_SUBSCRIPTIONS = 1003L;
@@ -356,6 +363,7 @@ public class PortfolioSeeder implements CommandLineRunner {
 
         List<Subscription> subscriptions = new ArrayList<>();
         List<Member> gradedMembers = new ArrayList<>();
+        int subscriberSeq = 0; // running index over subscribing members, drives the recent cohort
         for (int i = 0; i < members.size(); i++) {
             // ~40% of members subscribe (deterministic stride).
             if (i % 5 >= 2) {
@@ -370,14 +378,37 @@ public class PortfolioSeeder implements CommandLineRunner {
                     : SubscriptionStatus.CANCELED;
 
             int cycleNo = 1 + rnd.nextInt(7); // 1..7 cycles billed so far
-            LocalDateTime startedAt = now.minusMonths(cycleNo).minusDays(rnd.nextInt(28));
+            // Draw the historical jitter unconditionally so the RNG stream stays identical for
+            // every later subscription regardless of the recent-cohort override below.
+            int startJitterDays = rnd.nextInt(28);
+            int cancelJitterDays = rnd.nextInt(20);
+
+            boolean recent = subscriberSeq < RECENT_SUBSCRIPTION_COUNT;
+            if (recent) {
+                // Fresh subscriptions: started within the last week (offset 0 == today), always
+                // ACTIVE on their first cycle so the "new subscriptions" KPI window is non-zero.
+                status = SubscriptionStatus.ACTIVE;
+                cycleNo = 1;
+            }
+
+            LocalDateTime startedAt;
+            if (recent) {
+                // Anchor at the start of the day N days ago (offset 0 == today's 00:00), nudged to
+                // 09:00 only when that still precedes now — never lands in the future.
+                LocalDateTime dayStart = now.minusDays(subscriberSeq).toLocalDate().atStartOfDay();
+                LocalDateTime atNine = dayStart.plusHours(9);
+                startedAt = atNine.isAfter(now) ? dayStart : atNine;
+            } else {
+                startedAt = now.minusMonths(cycleNo).minusDays(startJitterDays);
+            }
             LocalDateTime nextBillingAt = status == SubscriptionStatus.CANCELED
                     ? null
                     : startedAt.plusMonths(cycleNo + 1L);
             LocalDateTime canceledAt = status == SubscriptionStatus.CANCELED
-                    ? startedAt.plusMonths(cycleNo).plusDays(rnd.nextInt(20))
+                    ? startedAt.plusMonths(cycleNo).plusDays(cancelJitterDays)
                     : null;
             String billingKeyMasked = String.format("bk_****%04d", 1000 + i);
+            subscriberSeq++;
 
             subscriptions.add(Subscription.builder()
                     .memberId(member.getId())
