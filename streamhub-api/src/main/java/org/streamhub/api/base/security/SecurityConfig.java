@@ -32,6 +32,12 @@ public class SecurityConfig {
     private static final String[] PUBLIC_PATHS = {
             "/auth/**",
             "/pub/**",
+            // Public chatbot widget (C5): only the send + per-session history reads are open so the
+            // anonymous widget reaches the rule-based provider. Scoped to these two patterns on
+            // purpose — the admin console at /v1/chat-admin/** is a different prefix and stays
+            // authenticated (it does NOT match "/v1/chat/**").
+            "/v1/chat/send",
+            "/v1/chat/*/history",
             "/swagger-ui/**",
             "/v3/api-docs/**",
             "/actuator/health"

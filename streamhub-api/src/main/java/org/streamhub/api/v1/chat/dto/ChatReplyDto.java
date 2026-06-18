@@ -8,10 +8,10 @@ import org.streamhub.api.v1.chat.entity.ChatIntent;
  * Chat reply response (C5). Always carries {@code testMode} so the widget can show the
  * "데모 챗봇 · 룰베이스(실 LLM 미연동)" label (정직 표기, spec §7).
  *
- * @param text         bot reply text
- * @param intent       classified intent
+ * @param text         bot reply text (rule-based; not LLM-generated)
+ * @param intent       intent classified from this single message
  * @param quickReplies suggested follow-up buttons
- * @param testMode     always true in the demo
+ * @param testMode     always true — signals rule-based demo, not a real LLM auto-response
  */
 public record ChatReplyDto(
         String text,

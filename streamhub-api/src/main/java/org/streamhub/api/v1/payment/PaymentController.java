@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultDTO;
 import org.streamhub.api.v1.payment.dto.PayApproveCommand;
+import org.streamhub.api.v1.payment.dto.PayCancelCommand;
 import org.streamhub.api.v1.payment.dto.PayRequestCommand;
 import org.streamhub.api.v1.payment.dto.PaymentListItem;
 import org.streamhub.api.v1.payment.dto.PaymentReceiptDto;
@@ -55,6 +56,14 @@ public class PaymentController {
     @PostMapping("/approve")
     public ResultDTO<PaymentResultDto> approve(@Valid @RequestBody PayApproveCommand request) {
         return ResultDTO.ok(paymentService.approve(request));
+    }
+
+    @Operation(summary = "결제 취소/환불",
+            description = "승인된 결제를 PG에 취소 요청한 뒤(실 PG 연동 시 실제 환불), 주문을 CANCEL/RETURN으로 전이하고 "
+                    + "재고 복원 + 환불(REFUND) 영수증을 발급한다. PG 취소를 먼저 호출해 실패 시 내부 원장 반전이 일어나지 않는다.")
+    @PostMapping("/refund")
+    public ResultDTO<PaymentResultDto> refund(@Valid @RequestBody PayCancelCommand request) {
+        return ResultDTO.ok(paymentService.refund(request));
     }
 
     @Operation(summary = "결제 영수증", description = "주문의 최신 결제(PAY) 영수증을 반환한다.")

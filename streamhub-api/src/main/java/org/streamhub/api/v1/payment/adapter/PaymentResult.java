@@ -35,4 +35,12 @@ public record PaymentResult(
     public static PaymentResult approved(String provider, String txnId, Long amount, String memo) {
         return new PaymentResult(PayStatus.APPROVED, provider, txnId, amount, memo, null);
     }
+
+    /**
+     * A successful payment cancel/refund (status {@link PayStatus#CANCELED}); carries the refunded
+     * amount and a human-readable note.
+     */
+    public static PaymentResult canceled(String provider, String txnId, Long amount, String memo) {
+        return new PaymentResult(PayStatus.CANCELED, provider, txnId, amount, memo, null);
+    }
 }

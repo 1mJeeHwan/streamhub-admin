@@ -9,4 +9,7 @@ import org.streamhub.api.v1.goods.entity.GoodsCategory;
  * without touching the existing goods repositories.
  */
 public interface GoodsCategoryAdminRepository extends JpaRepository<GoodsCategory, Long> {
+
+    /** Number of direct child categories under {@code parentId}; used by the delete guard. */
+    long countByParentId(Long parentId);
 }

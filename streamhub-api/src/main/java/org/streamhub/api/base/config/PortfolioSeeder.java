@@ -100,6 +100,16 @@ public class PortfolioSeeder implements CommandLineRunner {
     private static final int TARGET_DONATIONS = 1400;
     private static final int TARGET_ORDERS = 1700;
 
+    /**
+     * Demo shipment data (NOT real shipments). SHIPPING/DONE orders get a format-valid CJ대한통운
+     * (code {@code 04}) invoice so the buy→배송조회 demo renders a timeline out of the box. The
+     * numbers are clearly synthetic (a fixed {@code 6} prefix + a high running serial), so a real
+     * courier API reports "invalid invoice" — the UI degrades gracefully — while the mock provider
+     * returns a full sample timeline.
+     */
+    private static final String DEMO_CARRIER_CODE = "04";
+    private static final long DEMO_INVOICE_BASE = 50_000_000_000L;
+
     private static final String[] CATEGORY_NAMES = {"음반", "도서", "의류", "소품"};
     private static final String[][] GOODS_NOUNS = {
             {"찬양 앨범", "워십 라이브", "성가대 음반", "어쿠스틱 찬양", "캐럴 모음", "오르간 연주집", "복음성가 베스트", "묵상 음악"},
@@ -706,15 +716,15 @@ public class PortfolioSeeder implements CommandLineRunner {
             String payMethod = (i % 4 == 0) ? "BANK" : "CARD";
             OrderStatus status = resolveStatus(now, orderedAt, rnd);
 
-            // Demo invoice (numeric). These are not real shipments, so the courier API will report
-            // "invalid invoice" (carriers validate a checksum) — the UI surfaces that gracefully.
-            // Point a demo order at a real format-valid invoice to see the live 200 response shape.
-            String trackingNo = (status == OrderStatus.SHIPPING || status == OrderStatus.DONE)
-                    ? String.format("6%011d", 50_000_000_000L + i)
-                    : null;
+            // Demo (NOT real) shipment: only SHIPPING/DONE orders carry an invoice, so the buy→배송조회
+            // demo shows a timeline. Format-valid but clearly synthetic; courier API → "invalid
+            // invoice" (graceful), mock provider → full sample timeline. Idempotent by construction:
+            // this is a one-time seed (guarded by count() above), and the value is only set for
+            // shipped orders — pre-shipment orders stay null so the pending state is exercised too.
+            String trackingNo = demoTrackingNo(status, i);
             // Store the carrier CODE (04 = CJ대한통운) so the admin carrier dropdown and the
             // delivery-tracking API can use it directly (C8). Display name resolved from the list.
-            String shipCompany = trackingNo != null ? "04" : null;
+            String shipCompany = trackingNo != null ? DEMO_CARRIER_CODE : null;
 
             String orderNo = buildOrderNo(orderedAt, daySeq);
 
@@ -780,6 +790,18 @@ public class PortfolioSeeder implements CommandLineRunner {
             orderReceiptRepository.saveAll(receipts);
         }
         log.info("Seeded {} orders (with items and receipts)", TARGET_ORDERS);
+    }
+
+    /**
+     * Demo (NOT real) tracking number for a shipped order, or {@code null} when the order has not
+     * shipped yet. Format-valid ({@code 6} + 11-digit running serial) so the buy→배송조회 demo shows
+     * a timeline (mock provider) or degrades gracefully (real courier reports "invalid invoice").
+     */
+    private String demoTrackingNo(OrderStatus status, int index) {
+        if (status != OrderStatus.SHIPPING && status != OrderStatus.DONE) {
+            return null;
+        }
+        return String.format("6%011d", DEMO_INVOICE_BASE + index);
     }
 
     /** Builds a sale-count-weighted goods index array (Pareto line-item selection). */

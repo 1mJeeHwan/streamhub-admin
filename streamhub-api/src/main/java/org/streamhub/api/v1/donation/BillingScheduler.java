@@ -51,7 +51,16 @@ public class BillingScheduler {
                 billingService.chargeOneCycle(subscription.getId(), now);
                 processed++;
             } catch (RuntimeException e) {
+                // The cycle transaction rolled back. Record the failure in its own transaction so
+                // the FAILED record + backoff/auto-pause persist and the subscription does not keep
+                // re-firing on the next 5-minute scan.
                 log.warn("Billing failed for subscription {}: {}", subscription.getId(), e.getMessage());
+                try {
+                    billingService.recordFailure(subscription.getId(), now, e.getMessage());
+                } catch (RuntimeException recordError) {
+                    log.error("Failed to record billing failure for subscription {}: {}",
+                            subscription.getId(), recordError.getMessage());
+                }
             }
         }
         log.info("Billing run: {} subscriptions charged", processed);

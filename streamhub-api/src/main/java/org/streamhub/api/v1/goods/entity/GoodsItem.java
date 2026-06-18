@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -30,6 +31,16 @@ public class GoodsItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /**
+     * Optimistic-lock version guarding concurrent admin stock edits. Primitive {@code long}
+     * (not {@code Long}) so rows created before this column existed — back-filled as NULL by
+     * {@code ddl-auto=update} — are read by Hibernate as {@code 0} rather than tripping a
+     * spurious lock failure on first update.
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     /** FK → GOODS_CATEGORY. */
     @Column(name = "category_id", nullable = false)
@@ -159,24 +170,4 @@ public class GoodsItem {
         this.updatedAt = LocalDateTime.now();
     }
 
-    /** Restores stock and decrements the sale count (used on cancel/return). */
-    public void addStock(int qty) {
-        this.stock += qty;
-        this.saleCount = Math.max(0, this.saleCount - qty);
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    /**
-     * Deducts stock and increments the sale count (used on payment confirmation).
-     *
-     * @throws IllegalStateException if there is insufficient stock
-     */
-    public void subtractStock(int qty) {
-        if (this.stock < qty) {
-            throw new IllegalStateException("insufficient stock");
-        }
-        this.stock -= qty;
-        this.saleCount += qty;
-        this.updatedAt = LocalDateTime.now();
-    }
 }

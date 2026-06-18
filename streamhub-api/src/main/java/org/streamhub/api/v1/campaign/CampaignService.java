@@ -13,9 +13,19 @@ import org.streamhub.api.v1.campaign.entity.CampaignStatus;
 import org.streamhub.api.v1.campaign.repository.CampaignRepository;
 
 /**
- * Campaign/event management: admin CRUD plus status transitions. The demo dataset is small,
- * so the listing loads all campaigns and filters/sorts in memory by id (newest first) — no
+ * Campaign/event management: admin CRUD plus lifecycle status transitions. The demo dataset is
+ * small, so the listing loads all campaigns and filters/sorts in memory by id (newest first) — no
  * pagination or external index needed.
+ *
+ * <p><b>Demo scope (honesty note):</b> this service manages campaign <em>definitions</em> and their
+ * lifecycle status only. It has <b>no execution engine</b> — there is no audience send (SMS/push)
+ * and no fund-raised tracking. Activating a campaign records a status; it does not deliver anything
+ * to members or move money. Real audience delivery would require the SMS/push providers (demo-gated)
+ * and fund tracking would require the donation/payment ledger; both are intentionally out of scope.
+ *
+ * <p>{@link #changeStatus} delegates legality to the entity state machine
+ * ({@link Campaign#changeStatus}), which rejects illegal transitions with
+ * {@link ApiException} {@code INVALID_PARAMETER}. Terminal states are absorbing.
  */
 @Service
 public class CampaignService {
@@ -75,6 +85,14 @@ public class CampaignService {
         return CampaignDto.from(campaign);
     }
 
+    /**
+     * Transitions a campaign through its lifecycle state machine. Legality is enforced by the
+     * entity ({@link Campaign#changeStatus}); illegal jumps (e.g. {@code DRAFT → } an undefined
+     * target, or any transition out of the terminal {@code ENDED}) are rejected.
+     *
+     * @throws ApiException {@code NOT_FOUND} if the campaign is missing, or {@code INVALID_PARAMETER}
+     *                      for an illegal transition
+     */
     @Transactional
     public CampaignDto changeStatus(Long id, CampaignStatus status) {
         Campaign campaign = campaignRepository.findById(id)

@@ -10,6 +10,7 @@ import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.goods.category.dto.GoodsCategoryNodeDto;
 import org.streamhub.api.v1.goods.category.dto.GoodsCategorySaveRequest;
 import org.streamhub.api.v1.goods.entity.GoodsCategory;
+import org.streamhub.api.v1.goods.repository.GoodsItemRepository;
 
 /**
  * Admin management of the goods category tree. Returns a flat, ordered node list (parent
@@ -20,11 +21,14 @@ import org.streamhub.api.v1.goods.entity.GoodsCategory;
 public class GoodsCategoryAdminService {
 
     private final GoodsCategoryAdminRepository goodsCategoryAdminRepository;
+    private final GoodsItemRepository goodsItemRepository;
     private final ActionLogPublisher actionLogPublisher;
 
     public GoodsCategoryAdminService(GoodsCategoryAdminRepository goodsCategoryAdminRepository,
+                                     GoodsItemRepository goodsItemRepository,
                                      ActionLogPublisher actionLogPublisher) {
         this.goodsCategoryAdminRepository = goodsCategoryAdminRepository;
+        this.goodsItemRepository = goodsItemRepository;
         this.actionLogPublisher = actionLogPublisher;
     }
 
@@ -85,10 +89,25 @@ public class GoodsCategoryAdminService {
         return GoodsCategoryNodeDto.from(category);
     }
 
+    /**
+     * Deletes a category after a referential-integrity guard. Deletion is refused when the
+     * category still has child categories (which would be orphaned) or is referenced by any
+     * goods item (which would vanish from the list/detail inner join). The caller must move
+     * or remove those dependents first.
+     *
+     * @throws ApiException {@code NOT_FOUND} when the category does not exist;
+     *                      {@code INVALID_PARAMETER} when it has children or is in use by goods
+     */
     @Transactional
     public void delete(Long id) {
         GoodsCategory category = goodsCategoryAdminRepository.findById(id)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        if (goodsCategoryAdminRepository.countByParentId(id) > 0) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "하위 카테고리가 있어 삭제할 수 없습니다");
+        }
+        if (goodsItemRepository.countByCategoryId(id) > 0) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "해당 카테고리를 사용하는 상품이 있어 삭제할 수 없습니다");
+        }
         goodsCategoryAdminRepository.delete(category);
         actionLogPublisher.publish(
                 "GOODS_CATEGORY_DELETE", "GOODS_CATEGORY", String.valueOf(id), category.getName());

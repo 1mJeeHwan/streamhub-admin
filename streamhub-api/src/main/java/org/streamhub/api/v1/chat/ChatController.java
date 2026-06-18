@@ -16,15 +16,19 @@ import org.streamhub.api.v1.chat.dto.ChatReplyDto;
 import org.streamhub.api.v1.chat.dto.ChatSendRequest;
 
 /**
- * Public chatbot widget endpoints (C5). Demo/rule-based — no LLM call, {@code testMode=true}.
+ * Public chatbot widget endpoints (C5). Rule-based FAQ + DB-lookup provider — there is <b>no LLM
+ * call and no "auto-response" model</b>; {@code testMode=true} so the widget labels it as a demo.
+ * Replies are <b>stateless</b>: each turn classifies only the latest message — the persisted
+ * per-session history is for reload/console review, not fed back as conversation context.
  *
- * <p><b>Security note:</b> per spec §3.2 these endpoints are {@code permitAll} (public widget),
- * so {@code /v1/chat/**} must be added to {@code SecurityConfig.PUBLIC_PATHS}. No class-level
- * {@code @PreAuthorize} is declared here on purpose. Order lookup itself is protected by
- * requiring both order number and orderer name (spec §3.5), so no anonymous enumeration is
- * possible even though the endpoint is open.
+ * <p><b>Security note:</b> these endpoints are public, so {@code /v1/chat/send} and
+ * {@code /v1/chat/*&#47;history} are whitelisted in {@code SecurityConfig.PUBLIC_PATHS}. No
+ * class-level {@code @PreAuthorize} is declared here on purpose; the admin console
+ * ({@code /v1/chat-admin}) stays authenticated. Order lookup itself requires both the order
+ * number and the orderer name, so no anonymous enumeration is possible even though the endpoint
+ * is open.
  */
-@Tag(name = "Chat", description = "공개 챗봇 위젯 (데모/룰베이스, 인증 불필요)")
+@Tag(name = "Chat", description = "공개 챗봇 위젯 (룰베이스 FAQ/DB조회, 인증 불필요)")
 @RestController
 @RequestMapping("/v1/chat")
 public class ChatController {
@@ -35,7 +39,8 @@ public class ChatController {
         this.chatService = chatService;
     }
 
-    @Operation(summary = "챗봇 메시지 전송", description = "사용자 메시지를 분류해 룰베이스 응답을 반환한다(데모).")
+    @Operation(summary = "챗봇 메시지 전송",
+            description = "최신 메시지 한 건만 룰 기반으로 분류해 응답한다(이전 대화 맥락 미반영). USER/BOT 턴은 세션에 저장된다.")
     @PostMapping("/send")
     public ResultDTO<ChatReplyDto> send(@Valid @RequestBody ChatSendRequest request) {
         return ResultDTO.ok(chatService.send(request));

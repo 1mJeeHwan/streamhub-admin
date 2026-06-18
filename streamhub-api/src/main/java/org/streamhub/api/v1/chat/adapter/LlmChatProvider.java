@@ -5,8 +5,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * LLM chatbot adapter — <b>실키 주입 지점(스텁)</b>. Registered only when {@code app.chat.provider=llm}.
- * The default demo deployment uses {@link RuleChatProvider}.
+ * LLM chatbot adapter — <b>config-gated stub, not a working provider</b>. Registered only when
+ * {@code app.chat.provider=llm}; its {@link #reply(String)} throws, so no LLM auto-response exists.
+ * It only marks the seam (and the API-key injection point) where a real LLM integration would
+ * slot in. The default demo deployment uses {@link RuleChatProvider}.
  */
 @Component
 @ConditionalOnProperty(name = "app.chat.provider", havingValue = "llm")

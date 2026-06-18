@@ -68,13 +68,22 @@ public class Coupon {
     @Column(name = "use_yn", nullable = false, length = 1)
     private String useYn;
 
+    /** 총 사용 가능 횟수. {@code null}이면 무제한. */
+    @Column(name = "usage_limit")
+    private Integer usageLimit;
+
+    /** 지금까지 주문에 적용된(소진된) 횟수. */
+    @Column(name = "used_count", nullable = false)
+    private int usedCount;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @Builder
     private Coupon(String code, String name, DiscountType discountType, int discountValue,
                    int minOrderAmount, Integer maxDiscountAmount, int roundUnit,
-                   LocalDateTime startAt, LocalDateTime endAt, String useYn, LocalDateTime createdAt) {
+                   LocalDateTime startAt, LocalDateTime endAt, String useYn,
+                   Integer usageLimit, Integer usedCount, LocalDateTime createdAt) {
         this.code = code;
         this.name = name;
         this.discountType = discountType;
@@ -85,13 +94,15 @@ public class Coupon {
         this.startAt = startAt;
         this.endAt = endAt;
         this.useYn = useYn != null ? useYn : "Y";
+        this.usageLimit = usageLimit;
+        this.usedCount = usedCount != null ? usedCount : 0;
         this.createdAt = createdAt != null ? createdAt : LocalDateTime.now();
     }
 
-    /** Updates editable fields. */
+    /** Updates editable fields (used-count is not editable — it is driven by redemption). */
     public void update(String code, String name, DiscountType discountType, int discountValue,
                        int minOrderAmount, Integer maxDiscountAmount, int roundUnit,
-                       LocalDateTime startAt, LocalDateTime endAt, String useYn) {
+                       LocalDateTime startAt, LocalDateTime endAt, String useYn, Integer usageLimit) {
         this.code = code;
         this.name = name;
         this.discountType = discountType;
@@ -102,5 +113,48 @@ public class Coupon {
         this.startAt = startAt;
         this.endAt = endAt;
         this.useYn = useYn;
+        this.usageLimit = usageLimit;
+    }
+
+    /**
+     * Whether this coupon may be redeemed at {@code now}: enabled, within its valid window, and
+     * not exhausted.
+     */
+    public boolean isRedeemableAt(LocalDateTime now) {
+        return "Y".equals(useYn)
+                && !now.isBefore(startAt) && !now.isAfter(endAt)
+                && (usageLimit == null || usedCount < usageLimit);
+    }
+
+    /**
+     * Discount (won) this coupon yields for {@code orderAmount}, applying min-order threshold,
+     * percent cap, truncation unit, and a floor so the discount can never exceed the order.
+     * Returns 0 if the order does not meet {@code minOrderAmount}.
+     */
+    public long computeDiscount(long orderAmount) {
+        if (orderAmount < minOrderAmount) {
+            return 0L;
+        }
+        long raw;
+        if (discountType == DiscountType.AMOUNT) {
+            raw = discountValue;
+        } else {
+            raw = orderAmount * discountValue / 100;
+            if (maxDiscountAmount != null) {
+                raw = Math.min(raw, maxDiscountAmount);
+            }
+        }
+        if (roundUnit > 0) {
+            raw = (raw / roundUnit) * roundUnit;
+        }
+        return Math.max(0L, Math.min(raw, orderAmount));
+    }
+
+    /** Consumes one use. Throws if the usage limit is already reached. */
+    public void redeem() {
+        if (usageLimit != null && usedCount >= usageLimit) {
+            throw new IllegalStateException("coupon usage limit reached");
+        }
+        this.usedCount++;
     }
 }

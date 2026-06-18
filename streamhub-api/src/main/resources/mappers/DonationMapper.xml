@@ -20,6 +20,10 @@
             <if test="to != null">
                 AND d.paid_at &lt;= #{to}
             </if>
+            <!-- DONATION has no church column; scope via the MEMBER join. -->
+            <if test="churchId != null">
+                AND m.church_id = #{churchId}
+            </if>
         </where>
     </sql>
 
@@ -81,8 +85,13 @@
             COALESCE(SUM(p.price), 0)                  AS amount
         FROM SUBSCRIPTION s
             JOIN SUBSCRIPTION_PLAN p ON s.plan_id = p.id
+            JOIN MEMBER mb           ON s.member_id = mb.id
         WHERE s.status = 'ACTIVE'
           AND s.next_billing_at BETWEEN #{from} AND #{to}
+          <!-- SUBSCRIPTION has no church column; scope via the MEMBER join. -->
+          <if test="churchId != null">
+              AND mb.church_id = #{churchId}
+          </if>
         GROUP BY DATE_FORMAT(s.next_billing_at, '%Y-%m-%d')
         ORDER BY date
     </select>

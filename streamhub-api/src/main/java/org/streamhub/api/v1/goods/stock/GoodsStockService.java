@@ -2,6 +2,7 @@ package org.streamhub.api.v1.goods.stock;
 
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
@@ -56,7 +57,14 @@ public class GoodsStockService {
                 .toList();
     }
 
-    /** Updates an item's stock (and optionally its low-stock notify threshold). */
+    /**
+     * Updates an item's stock (and optionally its low-stock notify threshold). This is an
+     * absolute set (admin override), so it relies on {@link GoodsItem}'s {@code @Version}
+     * optimistic lock: a concurrent edit fails fast rather than silently clobbering the other
+     * admin's value.
+     *
+     * @throws ApiException {@code INVALID_PARAMETER} if a concurrent edit won the race
+     */
     @Transactional
     public GoodsStockDto updateStock(Long id, GoodsStockUpdateRequest request) {
         if (request == null || request.getStock() == null) {
@@ -65,22 +73,41 @@ public class GoodsStockService {
         GoodsItem item = goodsStockRepository.findById(id)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
         item.applyInlineEdit(request.getStock(), request.getNotiQty(), null, null, null);
-        goodsStockRepository.saveAndFlush(item);
+        flushWithLockCheck(item);
         actionLogPublisher.publish(
                 "GOODS_STOCK_UPDATE", "GOODS_ITEM", String.valueOf(id), item.getName());
         return GoodsStockDto.from(item);
     }
 
-    /** Toggles the item's sold-out flag ("Y" ↔ "N"). */
+    /**
+     * Toggles the item's sold-out flag ("Y" ↔ "N"). Guarded by the same {@code @Version}
+     * optimistic lock as {@link #updateStock}.
+     *
+     * @throws ApiException {@code INVALID_PARAMETER} if a concurrent edit won the race
+     */
     @Transactional
     public GoodsStockDto toggleSoldOut(Long id) {
         GoodsItem item = goodsStockRepository.findById(id)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
         String next = "Y".equals(item.getSoldOut()) ? "N" : "Y";
         item.applyInlineEdit(null, null, null, next, null);
-        goodsStockRepository.saveAndFlush(item);
+        flushWithLockCheck(item);
         actionLogPublisher.publish(
                 "GOODS_SOLDOUT_TOGGLE", "GOODS_ITEM", String.valueOf(id), next);
         return GoodsStockDto.from(item);
+    }
+
+    /**
+     * Persists a stock edit, translating an optimistic-lock failure into a clean
+     * {@link ApiException} ({@code INVALID_PARAMETER}) instead of a raw 500 from the
+     * global handler.
+     */
+    private void flushWithLockCheck(GoodsItem item) {
+        try {
+            goodsStockRepository.saveAndFlush(item);
+        } catch (OptimisticLockingFailureException e) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER,
+                    "다른 사용자가 먼저 재고를 수정했습니다. 새로고침 후 다시 시도해 주세요");
+        }
     }
 }

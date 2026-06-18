@@ -35,4 +35,23 @@ public interface PaymentProvider {
      */
     PaymentResult approve(
             PaymentRequest request, String requestTxnId, String clientToken, String maskedCard);
+
+    /**
+     * Cancels/refunds a previously approved payment at the PG — the call that actually returns the
+     * money once a live PG is enabled. Must run <b>before</b> the internal ledger/stock reversal so
+     * a PG failure aborts the refund instead of leaving the books reversed but the charge standing.
+     *
+     * <p>The default {@link MockPaymentProvider} is a no-op that returns a {@code CANCELED} result
+     * (demo path unchanged). Toss calls the real cancel API; Kakao/PayPal are key-gated stubs that
+     * throw {@link UnsupportedOperationException} until a full implementation is wired in (matching
+     * how those adapters stub their unimplemented bits).
+     *
+     * @param request the original request (amount is the server total to refund)
+     * @param txnId   the approved transaction id stored on the order — Toss {@code paymentKey},
+     *                Kakao {@code tid}, PayPal capture/order id; {@code MOCK-...} for mock
+     * @param reason  human-readable cancel reason (취소 사유) recorded with the PG; may be null
+     * @return a {@code CANCELED} result
+     * @throws UnsupportedOperationException if the provider has no cancel implementation yet
+     */
+    PaymentResult cancel(PaymentRequest request, String txnId, String reason);
 }

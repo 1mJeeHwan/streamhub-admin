@@ -11,6 +11,7 @@ import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.v1.album.entity.Album;
 import org.streamhub.api.v1.album.entity.AlbumStatus;
 import org.streamhub.api.v1.album.repository.AlbumRepository;
+import org.streamhub.api.v1.coupon.CouponService;
 import org.streamhub.api.v1.goods.entity.GoodsItem;
 import org.streamhub.api.v1.goods.repository.GoodsItemRepository;
 import org.streamhub.api.v1.member.entity.Member;
@@ -65,6 +66,7 @@ public class MemberOrderService {
     private final OrderReceiptRepository orderReceiptRepository;
     private final PaymentService paymentService;
     private final org.streamhub.api.v1.delivery.DeliveryService deliveryService;
+    private final CouponService couponService;
     private final String tossClientKey;
     private final SecureRandom random = new SecureRandom();
 
@@ -77,6 +79,7 @@ public class MemberOrderService {
             OrderReceiptRepository orderReceiptRepository,
             PaymentService paymentService,
             org.streamhub.api.v1.delivery.DeliveryService deliveryService,
+            CouponService couponService,
             @org.springframework.beans.factory.annotation.Value("${app.payment.toss.client-key:}")
             String tossClientKey) {
         this.albumRepository = albumRepository;
@@ -87,6 +90,7 @@ public class MemberOrderService {
         this.orderReceiptRepository = orderReceiptRepository;
         this.paymentService = paymentService;
         this.deliveryService = deliveryService;
+        this.couponService = couponService;
         this.tossClientKey = tossClientKey;
     }
 
@@ -118,7 +122,7 @@ public class MemberOrderService {
     @Transactional
     public MemberOrderResult purchase(Long memberId, MemberOrderCreateRequest request) {
         Member member = requireMember(memberId);
-        Order order = createAlbumOrder(member, request.albumId());
+        Order order = createAlbumOrder(member, request.albumId(), request.couponCode());
 
         // One-shot path is the demo mock: it approves server-side with no payment window, so it can
         // never carry a real PG transaction key. Force MOCK regardless of the requested method —
@@ -141,7 +145,7 @@ public class MemberOrderService {
     public MemberPaymentPrepareResult prepare(Long memberId, MemberPaymentPrepareRequest request) {
         Member member = requireMember(memberId);
         String provider = resolveProvider(request.provider());
-        Order order = createAlbumOrder(member, request.albumId());
+        Order order = createAlbumOrder(member, request.albumId(), request.couponCode());
 
         PaymentResultDto requested = paymentService.request(new PayRequestCommand(order.getId(), provider));
 
@@ -183,8 +187,12 @@ public class MemberOrderService {
                 paidAt(order.getId()), true);
     }
 
-    /** Validates an on-sale album and creates the order + single line item (PLACED). */
-    private Order createAlbumOrder(Member member, Long albumId) {
+    /**
+     * Validates an on-sale album and creates the order + single line item (PLACED). When a
+     * {@code couponCode} is supplied it is redeemed against the goods price (server-validated and
+     * consumed in this same transaction), and the resulting discount is applied to the order total.
+     */
+    private Order createAlbumOrder(Member member, Long albumId, String couponCode) {
         Album album = albumRepository.findById(albumId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
         if (album.getStatus() != AlbumStatus.ON_SALE) {
@@ -197,7 +205,11 @@ public class MemberOrderService {
                 .orElseThrow(() -> new ApiException(ResultCode.INVALID_PARAMETER, "구매할 수 없는 앨범입니다"));
         long price = goods.getPrice();
 
-        Order order = createOrder(member, price);
+        long couponDiscount = couponCode != null && !couponCode.isBlank()
+                ? couponService.redeem(couponCode.trim(), price).discount()
+                : 0L;
+
+        Order order = createOrder(member, price, couponDiscount);
         orderItemRepository.save(OrderItem.builder()
                 .orderId(order.getId())
                 .goodsId(goods.getId())
@@ -230,7 +242,8 @@ public class MemberOrderService {
 
     // --- helpers -----------------------------------------------------------
 
-    private Order createOrder(Member member, long price) {
+    private Order createOrder(Member member, long price, long couponDiscount) {
+        long total = Math.max(0L, price - couponDiscount);
         Order order = Order.builder()
                 .orderNo(nextOrderNo())
                 .memberId(member.getId())
@@ -241,9 +254,9 @@ public class MemberOrderService {
                 .receiverPhone(member.getPhone())
                 .goodsTotal(price)
                 .shipFee(0L)
-                .couponDiscount(0L)
+                .couponDiscount(couponDiscount)
                 .pointUsed(0L)
-                .total(price)
+                .total(total)
                 .payMethod(PAY_METHOD)
                 .orderedAt(LocalDateTime.now())
                 .build();

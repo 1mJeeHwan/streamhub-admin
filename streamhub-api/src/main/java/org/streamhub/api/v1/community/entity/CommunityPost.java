@@ -71,4 +71,25 @@ public class CommunityPost {
         this.viewCount = viewCount;
         this.createdAt = createdAt != null ? createdAt : LocalDateTime.now();
     }
+
+    /**
+     * Applies an editorial update to the mutable fields. Counters and {@code createdAt} are left
+     * untouched — those are not author-editable.
+     *
+     * @param boardId    target board
+     * @param category   category label (nullable)
+     * @param title      post title
+     * @param content    post body (nullable)
+     * @param writerName display author name (nullable)
+     * @param secretYn   {@code "Y"} to hide the body from other members; defaults to {@code "N"}
+     */
+    public void update(Long boardId, String category, String title, String content, String writerName,
+                       String secretYn) {
+        this.boardId = boardId;
+        this.category = category;
+        this.title = title;
+        this.content = content;
+        this.writerName = writerName;
+        this.secretYn = secretYn != null ? secretYn : "N";
+    }
 }

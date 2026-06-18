@@ -109,6 +109,16 @@ public class PayPalPaymentProvider implements PaymentProvider {
         return PaymentResult.approved(code(), orderId, request.amount(), "PayPal 승인(샌드박스)");
     }
 
+    @Override
+    public PaymentResult cancel(PaymentRequest request, String txnId, String reason) {
+        // PayPal refunds a captured payment via POST /v2/payments/captures/{captureId}/refund, which
+        // needs the capture id (not the order id) — captured at approve time. Left as a key-gated
+        // stub (no committed key to verify the live call), consistent with this adapter's other
+        // not-live-verified bits.
+        throw new UnsupportedOperationException(
+                "PayPal 결제취소(refund)는 아직 구현되지 않았습니다 (실 키 미연동)");
+    }
+
     // --- helpers -----------------------------------------------------------
 
     /** Fetches an OAuth2 client-credentials access token (Basic clientId:secret). */

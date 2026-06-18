@@ -3,37 +3,60 @@
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="org.streamhub.api.v1.dashboard.mapper.DashboardMapper">
 
-    <!-- Settled order revenue in a window. Excludes CANCEL / RETURN. -->
+    <!--
+        Settled order revenue in a window. Excludes CANCEL / RETURN.
+        ORDERS has no church column; scope via the MEMBER join when churchId is given.
+    -->
     <select id="sumOrderRevenue" resultType="long">
-        SELECT COALESCE(SUM(total), 0)
-        FROM ORDERS
-        WHERE ordered_at BETWEEN #{from} AND #{to}
-          AND status IN ('PAID', 'READY', 'SHIPPING', 'DONE')
+        SELECT COALESCE(SUM(o.total), 0)
+        FROM ORDERS o
+            JOIN MEMBER m ON o.member_id = m.id
+        WHERE o.ordered_at BETWEEN #{from} AND #{to}
+          AND o.status IN ('PAID', 'READY', 'SHIPPING', 'DONE')
+          <if test="churchId != null">
+              AND m.church_id = #{churchId}
+          </if>
     </select>
 
-    <!-- Successfully paid donations in a window. -->
+    <!-- Successfully paid donations in a window. Church scope via the MEMBER join. -->
     <select id="sumDonationAmount" resultType="long">
-        SELECT COALESCE(SUM(amount), 0)
-        FROM DONATION
-        WHERE paid_at BETWEEN #{from} AND #{to}
-          AND status = 'PAID'
+        SELECT COALESCE(SUM(d.amount), 0)
+        FROM DONATION d
+            JOIN MEMBER m ON d.member_id = m.id
+        WHERE d.paid_at BETWEEN #{from} AND #{to}
+          AND d.status = 'PAID'
+          <if test="churchId != null">
+              AND m.church_id = #{churchId}
+          </if>
     </select>
 
-    <!-- Subscriptions started in a window. -->
+    <!-- Subscriptions started in a window. Church scope via the MEMBER join. -->
     <select id="countNewSubscriptions" resultType="long">
         SELECT COUNT(*)
-        FROM SUBSCRIPTION
-        WHERE started_at BETWEEN #{from} AND #{to}
+        FROM SUBSCRIPTION s
+            JOIN MEMBER m ON s.member_id = m.id
+        WHERE s.started_at BETWEEN #{from} AND #{to}
+          <if test="churchId != null">
+              AND m.church_id = #{churchId}
+          </if>
     </select>
 
-    <!-- Orders still in flight (non-terminal). -->
+    <!-- Orders still in flight (non-terminal). Church scope via the MEMBER join. -->
     <select id="countOpenOrders" resultType="long">
         SELECT COUNT(*)
-        FROM ORDERS
-        WHERE status IN ('PLACED', 'PAID', 'READY', 'SHIPPING')
+        FROM ORDERS o
+            JOIN MEMBER m ON o.member_id = m.id
+        WHERE o.status IN ('PLACED', 'PAID', 'READY', 'SHIPPING')
+          <if test="churchId != null">
+              AND m.church_id = #{churchId}
+          </if>
     </select>
 
-    <!-- Goods at or below the low-stock threshold and still on sale. -->
+    <!--
+        Goods at or below the low-stock threshold and still on sale. GOODS_ITEM is global
+        inventory with no church linkage, so this count is intentionally NOT church-scoped —
+        the same low-stock figure is shown to every operator.
+    -->
     <select id="countLowStock" resultType="long">
         SELECT COUNT(*)
         FROM GOODS_ITEM
@@ -41,11 +64,15 @@
           AND stock &lt;= noti_qty
     </select>
 
-    <!-- Currently active recurring-donation subscriptions. -->
+    <!-- Currently active recurring-donation subscriptions. Church scope via the MEMBER join. -->
     <select id="countActiveSubscribers" resultType="long">
         SELECT COUNT(*)
-        FROM SUBSCRIPTION
-        WHERE status = 'ACTIVE'
+        FROM SUBSCRIPTION s
+            JOIN MEMBER m ON s.member_id = m.id
+        WHERE s.status = 'ACTIVE'
+          <if test="churchId != null">
+              AND m.church_id = #{churchId}
+          </if>
     </select>
 
     <!--
@@ -60,21 +87,29 @@
             COALESCE(SUM(t.recurring_donation), 0) AS recurring_donation,
             COALESCE(SUM(t.once_donation), 0)      AS once_donation
         FROM (
-            SELECT DATE_FORMAT(ordered_at, '%Y-%m-%d') AS day,
-                   total                               AS goods_revenue,
-                   0                                   AS recurring_donation,
-                   0                                   AS once_donation
-            FROM ORDERS
-            WHERE ordered_at BETWEEN #{from} AND #{to}
-              AND status IN ('PAID', 'READY', 'SHIPPING', 'DONE')
+            SELECT DATE_FORMAT(o.ordered_at, '%Y-%m-%d') AS day,
+                   o.total                               AS goods_revenue,
+                   0                                     AS recurring_donation,
+                   0                                     AS once_donation
+            FROM ORDERS o
+                JOIN MEMBER m ON o.member_id = m.id
+            WHERE o.ordered_at BETWEEN #{from} AND #{to}
+              AND o.status IN ('PAID', 'READY', 'SHIPPING', 'DONE')
+              <if test="churchId != null">
+                  AND m.church_id = #{churchId}
+              </if>
             UNION ALL
-            SELECT DATE_FORMAT(paid_at, '%Y-%m-%d') AS day,
-                   0                                AS goods_revenue,
-                   CASE WHEN type = 'SUBSCRIPTION' THEN amount ELSE 0 END AS recurring_donation,
-                   CASE WHEN type = 'ONCE'         THEN amount ELSE 0 END AS once_donation
-            FROM DONATION
-            WHERE paid_at BETWEEN #{from} AND #{to}
-              AND status = 'PAID'
+            SELECT DATE_FORMAT(d.paid_at, '%Y-%m-%d') AS day,
+                   0                                  AS goods_revenue,
+                   CASE WHEN d.type = 'SUBSCRIPTION' THEN d.amount ELSE 0 END AS recurring_donation,
+                   CASE WHEN d.type = 'ONCE'         THEN d.amount ELSE 0 END AS once_donation
+            FROM DONATION d
+                JOIN MEMBER m ON d.member_id = m.id
+            WHERE d.paid_at BETWEEN #{from} AND #{to}
+              AND d.status = 'PAID'
+              <if test="churchId != null">
+                  AND m.church_id = #{churchId}
+              </if>
         ) t
         GROUP BY t.day
         ORDER BY t.day
@@ -118,7 +153,12 @@
             FROM DONATION d
             WHERE d.status = 'PAID'
         ) u
-        LEFT JOIN MEMBER m ON u.member_id = m.id
+        JOIN MEMBER m ON u.member_id = m.id
+        <!-- All three sources carry a NOT NULL member_id, so the MEMBER join never drops rows;
+             it also provides the church column used to scope CHURCH_MANAGER operators. -->
+        <if test="churchId != null">
+            WHERE m.church_id = #{churchId}
+        </if>
         ORDER BY u.occurred_at DESC, u.source_id DESC
         LIMIT #{limit}
     </select>

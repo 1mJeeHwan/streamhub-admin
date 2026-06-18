@@ -6,7 +6,16 @@
     <sql id="searchWhere">
         <where>
             <if test="keyword != null and keyword != ''">
-                AND c.title LIKE CONCAT('%', #{keyword}, '%')
+                AND (
+                    c.title LIKE CONCAT('%', #{keyword}, '%')
+                    OR EXISTS (
+                        SELECT 1
+                          FROM CONTENT_HASHTAG cht
+                          JOIN HASHTAG h ON h.id = cht.hashtag_id
+                         WHERE cht.content_id = c.id
+                           AND h.name LIKE CONCAT('%', #{keyword}, '%')
+                    )
+                )
             </if>
             <if test="type != null and type != ''">
                 AND c.type = #{type}

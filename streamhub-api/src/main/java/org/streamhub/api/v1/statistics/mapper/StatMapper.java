@@ -22,5 +22,5 @@ public interface StatMapper {
 
     List<TopContentItem> topContents(@Param("limit") int limit);
 
-    List<ChannelWatchItem> watchByChannel();
+    List<ChannelWatchItem> watchByChannel(@Param("since") LocalDateTime since);
 }

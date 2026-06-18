@@ -20,6 +20,7 @@ public interface DonationMapper {
             @Param("status") String status,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,
+            @Param("churchId") Long churchId,
             @Param("offset") int offset,
             @Param("size") int size);
 
@@ -28,12 +29,14 @@ public interface DonationMapper {
             @Param("type") String type,
             @Param("status") String status,
             @Param("from") LocalDateTime from,
-            @Param("to") LocalDateTime to);
+            @Param("to") LocalDateTime to,
+            @Param("churchId") Long churchId);
 
     DonationListItem selectDetail(@Param("id") Long id);
 
     /** Active subscriptions' next-billing forecast, grouped by day within the month range. */
     List<BillingCalendarItem> billingCalendar(
             @Param("from") LocalDateTime from,
-            @Param("to") LocalDateTime to);
+            @Param("to") LocalDateTime to,
+            @Param("churchId") Long churchId);
 }

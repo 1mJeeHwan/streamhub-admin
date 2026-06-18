@@ -5,14 +5,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
-import org.streamhub.api.v1.goods.entity.GoodsItem;
-import org.streamhub.api.v1.goods.entity.GoodsOption;
 import org.streamhub.api.v1.goods.repository.GoodsItemRepository;
 import org.streamhub.api.v1.goods.repository.GoodsOptionRepository;
 import org.streamhub.api.v1.order.dto.OrderDetail;
@@ -128,6 +127,7 @@ public class OrderService {
      *                      {@code INVALID_PARAMETER} for an illegal transition or insufficient stock
      */
     @Transactional
+    @CacheEvict(cacheNames = {"dashboardSummary", "dashboardTimeseries"}, allEntries = true)
     public OrderDetail changeStatus(Long orderId, OrderStatusChangeRequest request) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
@@ -259,31 +259,32 @@ public class OrderService {
 
     // --- helpers -----------------------------------------------------------
 
-    /** Deducts stock for a line (option stock first, else item stock) and bumps sale count. */
+    /**
+     * Deducts stock for a line (option stock first, else item stock) via a single atomic,
+     * stock-guarded UPDATE. The {@code stock >= qty} guard runs in the database, so two
+     * concurrent checkouts cannot both pass — the loser affects 0 rows and is rejected as
+     * out-of-stock, eliminating oversell without any read-modify-write window.
+     *
+     * @throws ApiException {@code INVALID_PARAMETER} if stock is insufficient (0 rows updated)
+     */
     private void decrementStock(OrderItem item) {
-        try {
-            if (item.getOptionId() != null) {
-                GoodsOption option = goodsOptionRepository.findById(item.getOptionId())
-                        .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
-                option.subtractStock(item.getQty());
-            } else {
-                GoodsItem goods = goodsItemRepository.findById(item.getGoodsId())
-                        .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
-                goods.subtractStock(item.getQty());
-            }
-        } catch (IllegalStateException e) {
-            throw new ApiException(ResultCode.INVALID_PARAMETER, "재고 부족");
+        int affected = item.getOptionId() != null
+                ? goodsOptionRepository.decrementStock(item.getOptionId(), item.getQty())
+                : goodsItemRepository.decrementStock(item.getGoodsId(), item.getQty());
+        if (affected == 0) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "재고가 부족합니다");
         }
     }
 
-    /** Restores stock for a line (option stock first, else item stock); missing goods are skipped. */
+    /**
+     * Restores stock for a line (option stock first, else item stock) via an atomic increment;
+     * a missing goods/option row simply affects 0 rows and is skipped.
+     */
     private void restoreStock(OrderItem item) {
         if (item.getOptionId() != null) {
-            goodsOptionRepository.findById(item.getOptionId())
-                    .ifPresent(option -> option.addStock(item.getQty()));
+            goodsOptionRepository.restoreStock(item.getOptionId(), item.getQty());
         } else {
-            goodsItemRepository.findById(item.getGoodsId())
-                    .ifPresent(goods -> goods.addStock(item.getQty()));
+            goodsItemRepository.restoreStock(item.getGoodsId(), item.getQty());
         }
     }
 

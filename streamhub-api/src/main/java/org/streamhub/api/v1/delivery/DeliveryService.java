@@ -10,6 +10,7 @@ import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.v1.delivery.adapter.Carrier;
 import org.streamhub.api.v1.delivery.adapter.DeliveryTrackingProvider;
 import org.streamhub.api.v1.delivery.adapter.Tracking;
+import org.streamhub.api.v1.delivery.adapter.TrackingEvent;
 import org.streamhub.api.v1.order.entity.Order;
 import org.streamhub.api.v1.order.repository.OrderRepository;
 
@@ -21,6 +22,9 @@ import org.streamhub.api.v1.order.repository.OrderRepository;
  */
 @Service
 public class DeliveryService {
+
+    /** Shown when an order has no invoice yet (배송 준비/송장 미등록) — a graceful, non-error state. */
+    private static final String PENDING_DESCRIPTION = "아직 송장 미등록";
 
     private final DeliveryTrackingProvider provider;
     private final OrderRepository orderRepository;
@@ -36,10 +40,12 @@ public class DeliveryService {
     }
 
     /**
-     * Live shipment status for an order, using its stored carrier + invoice number.
+     * Live shipment status for an order, using its stored carrier + invoice number. When the order
+     * has no invoice yet (e.g. just purchased, not yet shipped) a graceful <i>pending</i>
+     * {@link Tracking} is returned rather than an error — see {@link #trackOrder(Order)}.
      *
      * @throws ApiException {@code NOT_FOUND} if the order is missing, {@code INVALID_PARAMETER} if
-     *                      it has no invoice number or the carrier cannot be determined
+     *                      the carrier cannot be determined for an existing invoice
      */
     @Transactional(readOnly = true)
     public Tracking trackOrder(Long orderId) {
@@ -48,11 +54,16 @@ public class DeliveryService {
         return trackOrder(order);
     }
 
-    /** Live shipment status for an already-loaded order (used by the member-facing flow). */
+    /**
+     * Live shipment status for an already-loaded order (used by the member-facing flow). An order
+     * with no invoice number yet degrades gracefully to a <i>pending</i> {@link Tracking} (empty
+     * timeline, {@code level=0}, {@code completed=false}, a clear "아직 송장 미등록" note) so the
+     * buy→track demo never 500s before an admin attaches the invoice.
+     */
     public Tracking trackOrder(Order order) {
         String invoice = order.getTrackingNo();
         if (invoice == null || invoice.isBlank()) {
-            throw new ApiException(ResultCode.INVALID_PARAMETER, "운송장번호가 없습니다");
+            return pendingTracking();
         }
         // Fetch the carrier list once: used to resolve the code and to backfill the display name.
         List<Carrier> carriers = carriers();
@@ -62,6 +73,17 @@ public class DeliveryService {
         return new Tracking(
                 tracking.carrierCode(), name, tracking.invoiceNo(), tracking.level(),
                 tracking.completed(), tracking.senderName(), tracking.receiverName(), tracking.events());
+    }
+
+    /**
+     * A non-error placeholder shipment status for an order that has no invoice registered yet:
+     * {@code level=0}, not completed, with a single self-describing "아직 송장 미등록" event so the
+     * client can render a clear pending state instead of failing.
+     */
+    private Tracking pendingTracking() {
+        return new Tracking(
+                null, null, null, 0, false, "", "",
+                List.of(new TrackingEvent(null, null, PENDING_DESCRIPTION)));
     }
 
     // --- helpers -----------------------------------------------------------

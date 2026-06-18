@@ -17,13 +17,15 @@ public interface SubscriptionMapper {
             @Param("keyword") String keyword,
             @Param("status") String status,
             @Param("planId") Long planId,
+            @Param("churchId") Long churchId,
             @Param("offset") int offset,
             @Param("size") int size);
 
     long countList(
             @Param("keyword") String keyword,
             @Param("status") String status,
-            @Param("planId") Long planId);
+            @Param("planId") Long planId,
+            @Param("churchId") Long churchId);
 
     SubscriptionDetail selectDetail(@Param("id") Long id);
 }

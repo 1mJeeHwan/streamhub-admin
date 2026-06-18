@@ -22,6 +22,7 @@ import org.streamhub.api.v1.payment.adapter.PaymentProviderRouter;
 import org.streamhub.api.v1.payment.adapter.PaymentRequest;
 import org.streamhub.api.v1.payment.adapter.PaymentResult;
 import org.streamhub.api.v1.payment.dto.PayApproveCommand;
+import org.streamhub.api.v1.payment.dto.PayCancelCommand;
 import org.streamhub.api.v1.payment.dto.PayRequestCommand;
 import org.streamhub.api.v1.payment.dto.PaymentListItem;
 import org.streamhub.api.v1.payment.dto.PaymentReceiptDto;
@@ -167,6 +168,52 @@ public class PaymentService {
         return PaymentResultDto.of(order.getId(), result, testMode);
     }
 
+    /**
+     * Cancels/refunds an approved payment: calls the PG's cancel/refund API <b>first</b> (the call
+     * that actually returns the money once a live PG is enabled), and only on PG success reverses
+     * the internal side: the order is transitioned to {@code CANCEL}/{@code RETURN} via the order
+     * state machine (stock restore + REFUND receipt), payment is marked {@link PayStatus#CANCELED},
+     * and the REFUND receipt is backfilled with the PG provider/txnId.
+     *
+     * <p>Ordering is load-bearing: doing the PG cancel before the ledger reversal means a PG error
+     * propagates and aborts the whole transaction (rolled back), so the books are never reversed
+     * while the charge still stands. For the mock provider the PG cancel is a no-op, so the demo
+     * refund path is unchanged.
+     *
+     * @throws ApiException {@code NOT_FOUND} if the order is missing, or {@code INVALID_PARAMETER}
+     *                      if the payment was not approved or the status transition is illegal; any
+     *                      PG decline surfaces as the provider's {@code INVALID_PARAMETER} message
+     */
+    @Transactional
+    public PaymentResultDto refund(PayCancelCommand command) {
+        Order order = orderRepository.findById(command.orderId())
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        if (order.getPayStatus() != PayStatus.APPROVED) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "승인된 결제가 아닙니다");
+        }
+
+        // 1) PG cancel/refund FIRST — money back. A PG failure throws here and rolls the tx back,
+        //    so the internal ledger is never reversed against a still-standing charge.
+        PaymentProvider adapter = providerRouter.resolve(order.getPayProvider());
+        PaymentResult result = adapter.cancel(
+                new PaymentRequest(order.getOrderNo(), order.getTotal(), adapter.code()),
+                order.getPayTxnId(), command.reason());
+
+        // 2) Reverse the internal side: stock restore + REFUND receipt via the order state machine.
+        OrderStatus to = command.resolvedStatus();
+        orderService.changeStatus(order.getId(), new OrderStatusChangeRequest(to, command.reason()));
+
+        // 3) Mark the payment canceled and backfill the REFUND receipt with the PG provider/txnId.
+        order.applyPayCancel();
+        orderRepository.saveAndFlush(order);
+        latestRefundReceipt(order.getId())
+                .ifPresent(receipt -> receipt.setProviderTxn(adapter.code(), result.txnId()));
+
+        actionLogPublisher.publish("PAYMENT_REFUND", "ORDER",
+                String.valueOf(order.getId()), adapter.code());
+        return PaymentResultDto.of(order.getId(), result, testMode);
+    }
+
     /** Returns the latest PAY receipt for an order (the payment receipt). */
     @Transactional(readOnly = true)
     public PaymentReceiptDto receipt(Long orderId) {
@@ -181,10 +228,18 @@ public class PaymentService {
     // --- helpers -----------------------------------------------------------
 
     private java.util.Optional<OrderReceipt> latestPayReceipt(Long orderId) {
+        return latestReceiptOfKind(orderId, ReceiptKind.PAY);
+    }
+
+    private java.util.Optional<OrderReceipt> latestRefundReceipt(Long orderId) {
+        return latestReceiptOfKind(orderId, ReceiptKind.REFUND);
+    }
+
+    private java.util.Optional<OrderReceipt> latestReceiptOfKind(Long orderId, ReceiptKind kind) {
         List<OrderReceipt> receipts = orderReceiptRepository.findByOrderIdOrderByCreatedAtAscIdAsc(orderId);
         OrderReceipt latest = null;
         for (OrderReceipt receipt : receipts) {
-            if (receipt.getKind() == ReceiptKind.PAY) {
+            if (receipt.getKind() == kind) {
                 latest = receipt;
             }
         }

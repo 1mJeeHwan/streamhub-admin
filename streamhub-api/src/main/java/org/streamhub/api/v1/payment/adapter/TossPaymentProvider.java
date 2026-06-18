@@ -31,6 +31,7 @@ import org.streamhub.api.base.response.ResultCode;
 public class TossPaymentProvider implements PaymentProvider {
 
     private static final String CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
+    private static final String CANCEL_URL = "https://api.tosspayments.com/v1/payments/%s/cancel";
 
     private final String secretKey;
     private final RestClient restClient;
@@ -96,11 +97,52 @@ public class TossPaymentProvider implements PaymentProvider {
             return PaymentResult.approved(code(), paymentKey, approved, memo);
         }
 
+        throw tossError(node, "토스 결제 승인에 실패했습니다");
+    }
+
+    @Override
+    public PaymentResult cancel(PaymentRequest request, String txnId, String reason) {
+        // The approved Toss paymentKey is the stored txnId; cancel is keyed on it in the URL path.
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER,
+                    "토스 시크릿 키 미설정 (PAYMENT_TOSS_SECRET_KEY)");
+        }
+        if (txnId == null || txnId.isBlank()) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "paymentKey가 없습니다");
+        }
+
+        String basic = Base64.getEncoder()
+                .encodeToString((secretKey + ":").getBytes(StandardCharsets.UTF_8));
+        // cancelReason is required by Toss; default to a generic refund reason when none supplied.
+        Map<String, Object> body = Map.of(
+                "cancelReason", reason == null || reason.isBlank() ? "주문 취소" : reason);
+
+        ResponseEntity<JsonNode> response = restClient.post()
+                .uri(String.format(CANCEL_URL, txnId))
+                .header(HttpHeaders.AUTHORIZATION, "Basic " + basic)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .exchange((req, res) -> ResponseEntity
+                        .status(res.getStatusCode())
+                        .body(res.bodyTo(JsonNode.class)));
+
+        JsonNode node = response.getBody();
+        if (response.getStatusCode().is2xxSuccessful()) {
+            long canceled = node != null && node.hasNonNull("totalAmount")
+                    ? node.get("totalAmount").asLong() : request.amount();
+            return PaymentResult.canceled(code(), txnId, canceled, "토스 취소(테스트)");
+        }
+
+        throw tossError(node, "토스 결제 취소에 실패했습니다");
+    }
+
+    /** Builds an {@link ApiException} from Toss's structured {@code {code,message}} error body. */
+    private ApiException tossError(JsonNode node, String fallbackMsg) {
         String tossCode = node != null && node.hasNonNull("code")
                 ? node.get("code").asText() : "TOSS_ERROR";
         String tossMsg = node != null && node.hasNonNull("message")
-                ? node.get("message").asText() : "토스 결제 승인에 실패했습니다";
-        throw new ApiException(ResultCode.INVALID_PARAMETER,
+                ? node.get("message").asText() : fallbackMsg;
+        return new ApiException(ResultCode.INVALID_PARAMETER,
                 "토스 결제 실패(" + tossCode + "): " + tossMsg);
     }
 }

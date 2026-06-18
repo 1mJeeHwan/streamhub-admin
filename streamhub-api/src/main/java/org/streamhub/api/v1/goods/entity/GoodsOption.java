@@ -63,20 +63,4 @@ public class GoodsOption {
         this.sort = sort != null ? sort : 0;
     }
 
-    /** Restores option stock (used on cancel/return). */
-    public void addStock(int qty) {
-        this.stock += qty;
-    }
-
-    /**
-     * Deducts option stock (used on payment confirmation).
-     *
-     * @throws IllegalStateException if there is insufficient stock
-     */
-    public void subtractStock(int qty) {
-        if (this.stock < qty) {
-            throw new IllegalStateException("insufficient option stock");
-        }
-        this.stock -= qty;
-    }
 }

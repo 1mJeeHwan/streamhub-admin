@@ -10,15 +10,32 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.streamhub.api.base.exception.ApiException;
+import org.streamhub.api.base.response.ResultCode;
 
 /**
  * A campaign/event (C-campaign): special donations, new-release pre-orders, events and
  * seasonal promotions. Optionally links to goods and carries a fundraising target. All
  * values are demo/fictional (no real business data — PII guard).
+ *
+ * <p><b>Demo scope (honesty note):</b> this is a campaign-<em>definition</em> and lifecycle
+ * catalog only. There is <b>no execution engine</b> — defining or activating a campaign does
+ * not deliver anything to an audience and does not track funds raised. Real audience delivery
+ * would require the SMS/push providers (which are demo-gated), and fund tracking would require
+ * the donation/payment ledger; neither is wired here on purpose. {@link #targetAmount} is a
+ * descriptive goal, not a live tally.
+ *
+ * <p>The lifecycle is a strict state machine owned by this entity: {@code DRAFT → ACTIVE → ENDED}
+ * (a draft may also be abandoned directly to {@code ENDED}). {@code ENDED} is terminal
+ * (absorbing). {@link #changeStatus(CampaignStatus)} enforces the legal transitions and rejects
+ * illegal jumps with {@link ApiException}; the client {@code NEXT_STATUS} map is only a UX mirror.
  */
 @Entity
 @Table(name = "CAMPAIGN", indexes = {
@@ -28,6 +45,13 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Campaign {
+
+    /**
+     * Authoritative campaign-status transition map. This is the single source of truth for
+     * lifecycle legality; the frontend keeps a UX mirror only. Terminal states map to an empty
+     * set (absorbing): once {@code ENDED}, no further transition is allowed.
+     */
+    private static final Map<CampaignStatus, Set<CampaignStatus>> TRANSITIONS = buildTransitions();
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -99,8 +123,41 @@ public class Campaign {
         this.status = status;
     }
 
-    /** Transitions the campaign to a new lifecycle state. */
-    public void changeStatus(CampaignStatus status) {
-        this.status = status;
+    /**
+     * Transitions the campaign to a new lifecycle state, enforcing the legal state machine.
+     * Terminal states are absorbing, so any transition out of {@code ENDED} is rejected.
+     *
+     * @param to the target status
+     * @throws ApiException {@code INVALID_PARAMETER} if the {@code from → to} transition is illegal
+     */
+    public void changeStatus(CampaignStatus to) {
+        if (to == null || !isLegalTransition(this.status, to)) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER,
+                    "허용되지 않는 캠페인 상태 전이입니다: " + this.status + " → " + to);
+        }
+        this.status = to;
+    }
+
+    /**
+     * Whether {@code from → to} is a legal campaign transition. Pure and static so the policy is
+     * unit-testable without constructing or persisting an entity. A null {@code from} (never
+     * persisted) permits only the initial {@code DRAFT}.
+     */
+    public static boolean isLegalTransition(CampaignStatus from, CampaignStatus to) {
+        if (to == null) {
+            return false;
+        }
+        if (from == null) {
+            return to == CampaignStatus.DRAFT;
+        }
+        return TRANSITIONS.getOrDefault(from, Set.of()).contains(to);
+    }
+
+    private static Map<CampaignStatus, Set<CampaignStatus>> buildTransitions() {
+        Map<CampaignStatus, Set<CampaignStatus>> map = new EnumMap<>(CampaignStatus.class);
+        map.put(CampaignStatus.DRAFT, Set.of(CampaignStatus.ACTIVE, CampaignStatus.ENDED));
+        map.put(CampaignStatus.ACTIVE, Set.of(CampaignStatus.ENDED));
+        map.put(CampaignStatus.ENDED, Set.of());
+        return map;
     }
 }

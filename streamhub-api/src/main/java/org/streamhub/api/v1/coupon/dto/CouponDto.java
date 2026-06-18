@@ -26,6 +26,10 @@ public class CouponDto {
     private LocalDateTime startAt;
     private LocalDateTime endAt;
     private String useYn;
+    /** 총 사용 가능 횟수 (null = 무제한). */
+    private Integer usageLimit;
+    /** 지금까지 적용된 횟수 (read-only; 주문 적용 시 증가). */
+    private int usedCount;
     private LocalDateTime createdAt;
 
     /** Builds a DTO from a persisted coupon. */
@@ -42,6 +46,8 @@ public class CouponDto {
         dto.startAt = coupon.getStartAt();
         dto.endAt = coupon.getEndAt();
         dto.useYn = coupon.getUseYn();
+        dto.usageLimit = coupon.getUsageLimit();
+        dto.usedCount = coupon.getUsedCount();
         dto.createdAt = coupon.getCreatedAt();
         return dto;
     }

@@ -44,12 +44,13 @@ class MemberOrderServiceTest {
     @Mock private OrderReceiptRepository orderReceiptRepository;
     @Mock private PaymentService paymentService;
     @Mock private org.streamhub.api.v1.delivery.DeliveryService deliveryService;
+    @Mock private org.streamhub.api.v1.coupon.CouponService couponService;
 
     private MemberOrderService service() {
         return new MemberOrderService(
                 albumRepository, goodsItemRepository, memberRepository, orderRepository,
                 orderItemRepository, orderReceiptRepository, paymentService, deliveryService,
-                "demo-client-key");
+                couponService, "demo-client-key");
     }
 
     private Order order(long memberId, long total) {

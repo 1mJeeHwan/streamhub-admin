@@ -33,14 +33,31 @@
         LIMIT #{limit}
     </select>
 
+    <!--
+      Channel watch time, computed from the LIVE analytics pipeline (ANALYTICS_EVENT) rather than
+      the dead WATCH_HISTORY table, which has no production writer. We aggregate real dwell time
+      from CONTENT_VIEW events fired by the user site.
+
+      ANALYTICS_EVENT has no channel column, so we bucket by the event's content_type and project a
+      stable human-readable "channel" label for the chart:
+          VIDEO -> '비디오', ALBUM -> '앨범', POST -> '게시글', (other) -> '기타'
+      dwell_ms is summed and converted to seconds (FLOOR(SUM/1000)) so the response unit matches the
+      previous watch_seconds semantics the frontend already renders.
+    -->
     <select id="watchByChannel" resultType="org.streamhub.api.v1.statistics.dto.ChannelWatchItem">
         SELECT
-            ch.name                          AS channel_name,
-            COALESCE(SUM(w.watch_seconds), 0) AS total_seconds
-        FROM WATCH_HISTORY w
-            JOIN CONTENT c  ON w.content_id = c.id
-            JOIN CHANNEL ch ON c.channel_id = ch.id
-        GROUP BY ch.id, ch.name
+            CASE e.content_type
+                WHEN 'VIDEO' THEN '비디오'
+                WHEN 'ALBUM' THEN '앨범'
+                WHEN 'POST'  THEN '게시글'
+                ELSE '기타'
+            END                                              AS channel_name,
+            COALESCE(FLOOR(SUM(e.dwell_ms) / 1000), 0)       AS total_seconds
+        FROM ANALYTICS_EVENT e
+        WHERE e.type = 'CONTENT_VIEW'
+          AND e.dwell_ms IS NOT NULL
+          AND e.occurred_at &gt;= #{since}
+        GROUP BY channel_name
         ORDER BY total_seconds DESC
     </select>
 

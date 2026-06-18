@@ -36,4 +36,10 @@ public class MockPaymentProvider implements PaymentProvider {
                 : "MOCK 승인(실거래 아님) " + maskedCard;
         return PaymentResult.approved(CODE, txnId, request.amount(), memo);
     }
+
+    @Override
+    public PaymentResult cancel(PaymentRequest request, String txnId, String reason) {
+        // No external call — the demo refund path always succeeds at the PG layer.
+        return PaymentResult.canceled(CODE, txnId, request.amount(), "MOCK 취소(실거래 아님)");
+    }
 }

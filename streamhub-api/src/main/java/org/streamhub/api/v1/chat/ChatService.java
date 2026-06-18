@@ -21,6 +21,11 @@ import org.streamhub.api.v1.chat.repository.ChatSessionRepository;
  * Chatbot orchestration (C5): resolves/creates the session, persists the USER turn, delegates to
  * the configured {@link ChatProvider} (rule-based by default — <b>no LLM call</b>), persists the
  * BOT turn with its intent, and returns the reply. {@code testMode} is always true (데모 챗봇).
+ *
+ * <p>The reply is <b>stateless</b>: only the current message text is passed to the provider. The
+ * stored history is for reload/admin review — it is <i>not</i> read back as conversation context,
+ * and there is no escalation/hand-off flow. ({@code ChatSessionRow.unanswered} in the admin
+ * console is merely "the last stored turn is from the USER", a derived display flag.)
  */
 @Service
 public class ChatService {

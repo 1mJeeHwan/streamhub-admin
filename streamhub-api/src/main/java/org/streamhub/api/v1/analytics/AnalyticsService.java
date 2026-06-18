@@ -3,12 +3,12 @@ package org.streamhub.api.v1.analytics;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.v1.analytics.dto.AnalyticsBreakdownDto;
@@ -26,14 +26,20 @@ import org.streamhub.api.v1.analytics.repository.AnalyticsEventRepository;
 /**
  * Web-analytics pipeline (Firebase-style). The public side persists one cheap row per ingested
  * event, parsing the client-supplied enums defensively so malformed browser input never 500s. The
- * admin side computes every aggregate in memory from a single scan over the demo dataset — no
- * grouped SQL, window functions or analytics store needed.
+ * admin side computes every aggregate with grouped JPQL bounded by a look-back window, so a
+ * dashboard hit never loads the whole {@code ANALYTICS_EVENT} table into memory.
  */
 @Service
 public class AnalyticsService {
 
     /** Look-back window for the timeseries trend. */
     private static final int TIMESERIES_DAYS = 30;
+
+    /**
+     * Look-back window (days) for the overview / content-performance / breakdown aggregates. Bounds
+     * every grouped query so the dashboard cost is proportional to recent traffic, not table size.
+     */
+    private static final int AGGREGATE_DAYS = 90;
 
     /** Number of top referrers returned in the breakdown. */
     private static final int TOP_REFERRERS = 6;
@@ -79,32 +85,23 @@ public class AnalyticsService {
         }
     }
 
-    /** All-time overview: totals, distinct sessions/visitors, view split and average dwell. */
+    /**
+     * Overview over the last {@value #AGGREGATE_DAYS} days: totals, distinct sessions/visitors, view
+     * split and average dwell. Computed entirely with grouped SQL — no table scan into memory.
+     */
     @Transactional(readOnly = true)
     public AnalyticsOverviewDto overview() {
-        List<AnalyticsEvent> events = analyticsEventRepository.findAll();
+        LocalDateTime since = aggregateSince();
 
-        long totalSessions = events.stream()
-                .map(AnalyticsEvent::getSessionId)
-                .filter(id -> id != null)
-                .distinct()
-                .count();
-        long uniqueVisitors = events.stream()
-                .map(AnalyticsEvent::getMemberId)
-                .filter(id -> id != null)
-                .distinct()
-                .count();
-        long pageViews = events.stream().filter(e -> e.getType() == EventType.PAGE_VIEW).count();
-        long contentViews = events.stream().filter(e -> e.getType() == EventType.CONTENT_VIEW).count();
-        long avgDwellMs = Math.round(events.stream()
-                .map(AnalyticsEvent::getDwellMs)
-                .filter(d -> d != null)
-                .mapToLong(Long::longValue)
-                .average()
-                .orElse(0.0));
+        long totalEvents = analyticsEventRepository.countSince(since);
+        long totalSessions = analyticsEventRepository.countDistinctSessionsSince(since);
+        long uniqueVisitors = analyticsEventRepository.countDistinctVisitorsSince(since);
+        long pageViews = analyticsEventRepository.countByTypeSince(since, EventType.PAGE_VIEW);
+        long contentViews = analyticsEventRepository.countByTypeSince(since, EventType.CONTENT_VIEW);
+        long avgDwellMs = roundAvg(analyticsEventRepository.avgDwellMsSince(since));
 
         return new AnalyticsOverviewDto(
-                events.size(), totalSessions, uniqueVisitors, pageViews, contentViews, avgDwellMs);
+                totalEvents, totalSessions, uniqueVisitors, pageViews, contentViews, avgDwellMs);
     }
 
     /**
@@ -114,13 +111,10 @@ public class AnalyticsService {
      */
     @Transactional(readOnly = true)
     public List<ContentStatDto> contentPerformance() {
-        Map<String, List<AnalyticsEvent>> grouped = analyticsEventRepository.findAll().stream()
-                .filter(e -> e.getType() == EventType.CONTENT_VIEW && e.getTargetId() != null)
-                .collect(Collectors.groupingBy(e -> e.getContentType() + "#" + e.getTargetId()));
-
-        return grouped.values().stream()
-                .map(this::toContentStat)
-                .sorted(Comparator.comparingLong(ContentStatDto::views).reversed())
+        return analyticsEventRepository.contentPerformanceSince(aggregateSince()).stream()
+                .map(row -> new ContentStatDto(
+                        row.getContentType(), row.getTargetId(), row.getTitle(),
+                        row.getViews(), roundAvg(row.getAvgDwellMs()), row.getLastViewedAt()))
                 .toList();
     }
 
@@ -151,58 +145,44 @@ public class AnalyticsService {
         return List.copyOf(filled.values());
     }
 
-    /** Categorical breakdown: device mix plus top referrers and paths. */
+    /**
+     * Categorical breakdown over the last {@value #AGGREGATE_DAYS} days: device mix plus top
+     * referrers and paths. Each facet is a grouped query; the top-N lists are limited in SQL.
+     */
     @Transactional(readOnly = true)
     public AnalyticsBreakdownDto breakdown() {
-        List<AnalyticsEvent> events = analyticsEventRepository.findAll();
+        LocalDateTime since = aggregateSince();
 
         Map<DeviceKind, Long> byDevice = new EnumMap<>(DeviceKind.class);
         for (DeviceKind kind : DeviceKind.values()) {
             byDevice.put(kind, 0L);
         }
-        for (AnalyticsEvent event : events) {
-            if (event.getDeviceType() != null) {
-                byDevice.merge(event.getDeviceType(), 1L, Long::sum);
-            }
+        for (AnalyticsEventRepository.DeviceCountRow row : analyticsEventRepository.deviceCountsSince(since)) {
+            byDevice.put(row.getDeviceType(), row.getCount());
         }
 
-        List<CountItemDto> topReferrers = topCounts(
-                events, AnalyticsEvent::getReferrer, TOP_REFERRERS);
-        List<CountItemDto> topPaths = topCounts(events, AnalyticsEvent::getPath, TOP_PATHS);
+        List<CountItemDto> topReferrers = analyticsEventRepository
+                .topReferrersSince(since, PageRequest.of(0, TOP_REFERRERS)).stream()
+                .map(row -> new CountItemDto(row.getLabel(), row.getCount()))
+                .toList();
+        List<CountItemDto> topPaths = analyticsEventRepository
+                .topPathsSince(since, PageRequest.of(0, TOP_PATHS)).stream()
+                .map(row -> new CountItemDto(row.getLabel(), row.getCount()))
+                .toList();
 
         return new AnalyticsBreakdownDto(byDevice, topReferrers, topPaths);
     }
 
     // --- helpers -----------------------------------------------------------
 
-    private ContentStatDto toContentStat(List<AnalyticsEvent> group) {
-        AnalyticsEvent any = group.get(0);
-        long avgDwellMs = Math.round(group.stream()
-                .map(AnalyticsEvent::getDwellMs)
-                .filter(d -> d != null)
-                .mapToLong(Long::longValue)
-                .average()
-                .orElse(0.0));
-        LocalDateTime lastViewedAt = group.stream()
-                .map(AnalyticsEvent::getOccurredAt)
-                .max(Comparator.naturalOrder())
-                .orElse(any.getOccurredAt());
-        return new ContentStatDto(any.getContentType(), any.getTargetId(), any.getTitle(),
-                group.size(), avgDwellMs, lastViewedAt);
+    /** Start of the aggregate look-back window. */
+    private LocalDateTime aggregateSince() {
+        return LocalDate.now().minusDays(AGGREGATE_DAYS - 1L).atStartOfDay();
     }
 
-    private List<CountItemDto> topCounts(List<AnalyticsEvent> events,
-                                         java.util.function.Function<AnalyticsEvent, String> field,
-                                         int limit) {
-        return events.stream()
-                .map(field)
-                .filter(value -> value != null && !value.isBlank())
-                .collect(Collectors.groupingBy(value -> value, Collectors.counting()))
-                .entrySet().stream()
-                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                .limit(limit)
-                .map(entry -> new CountItemDto(entry.getKey(), entry.getValue()))
-                .toList();
+    /** Rounds a nullable JPA average (ms) to the nearest long, treating {@code null} as 0. */
+    private long roundAvg(Double avg) {
+        return avg == null ? 0L : Math.round(avg);
     }
 
     /** Inclusive end-of-day bound for a date (23:59:59.999999999). */

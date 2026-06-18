@@ -101,6 +101,15 @@ public class KakaoPaymentProvider implements PaymentProvider {
         return PaymentResult.approved(code(), requestTxnId, approved, "카카오페이 승인(테스트)");
     }
 
+    @Override
+    public PaymentResult cancel(PaymentRequest request, String txnId, String reason) {
+        // Kakao cancel is /online/v1/payment/cancel with the stored tid + cancel_amount, mirroring
+        // the /ready+/approve auth above. Left as a key-gated stub (no committed key to verify the
+        // live call), consistent with how this adapter ships its other not-live-verified bits.
+        throw new UnsupportedOperationException(
+                "카카오페이 결제취소(cancel)는 아직 구현되지 않았습니다 (실 키 미연동)");
+    }
+
     // --- helpers -----------------------------------------------------------
 
     /** Deterministic, order-scoped user id so /ready and /approve agree (Kakao requires a match). */

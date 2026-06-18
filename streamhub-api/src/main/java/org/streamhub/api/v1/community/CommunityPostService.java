@@ -6,22 +6,30 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResultCode;
+import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.community.dto.CommunityPostDto;
+import org.streamhub.api.v1.community.dto.CommunityPostSaveRequest;
 import org.streamhub.api.v1.community.dto.CommunityPostSearchRequest;
 import org.streamhub.api.v1.community.entity.CommunityPost;
 import org.streamhub.api.v1.community.repository.CommunityPostRepository;
 
 /**
- * Community post management: filtered listing plus detail/delete. The demo dataset is small, so
- * the listing loads all posts and filters/sorts in memory (newest first) — no pagination needed.
+ * Community post management: filtered listing plus create/update/detail/delete. The demo dataset
+ * is small, so the listing loads all posts and filters/sorts in memory (newest first) — no
+ * pagination needed. Write operations publish an action log (best-effort) like other admin paths.
  */
 @Service
 public class CommunityPostService {
 
-    private final CommunityPostRepository postRepository;
+    private static final String TARGET_TYPE = "COMMUNITY_POST";
 
-    public CommunityPostService(CommunityPostRepository postRepository) {
+    private final CommunityPostRepository postRepository;
+    private final ActionLogPublisher actionLogPublisher;
+
+    public CommunityPostService(CommunityPostRepository postRepository,
+                                ActionLogPublisher actionLogPublisher) {
         this.postRepository = postRepository;
+        this.actionLogPublisher = actionLogPublisher;
     }
 
     /**
@@ -53,10 +61,41 @@ public class CommunityPostService {
         return CommunityPostDto.from(post);
     }
 
+    /** Creates a new post from the authoring screen; counters start at zero. */
+    @Transactional
+    public CommunityPostDto create(CommunityPostSaveRequest request) {
+        CommunityPost post = postRepository.save(CommunityPost.builder()
+                .boardId(request.boardId())
+                .category(request.category())
+                .title(request.title())
+                .content(request.content())
+                .writerName(request.writerName())
+                .secretYn(request.secretYn())
+                .build());
+        actionLogPublisher.publish("COMMUNITY_POST_CREATE", TARGET_TYPE,
+                String.valueOf(post.getId()), post.getTitle());
+        return CommunityPostDto.from(post);
+    }
+
+    /** Updates an existing post's editorial fields; counters and {@code createdAt} are preserved. */
+    @Transactional
+    public CommunityPostDto update(Long id, CommunityPostSaveRequest request) {
+        CommunityPost post = postRepository.findById(id)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        post.update(request.boardId(), request.category(), request.title(),
+                request.content(), request.writerName(), request.secretYn());
+        postRepository.saveAndFlush(post);
+        actionLogPublisher.publish("COMMUNITY_POST_UPDATE", TARGET_TYPE,
+                String.valueOf(id), post.getTitle());
+        return CommunityPostDto.from(post);
+    }
+
     @Transactional
     public void delete(Long id) {
         CommunityPost post = postRepository.findById(id)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
         postRepository.delete(post);
+        actionLogPublisher.publish("COMMUNITY_POST_DELETE", TARGET_TYPE,
+                String.valueOf(id), post.getTitle());
     }
 }

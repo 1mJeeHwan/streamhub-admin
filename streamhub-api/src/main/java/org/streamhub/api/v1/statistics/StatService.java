@@ -19,6 +19,9 @@ import org.streamhub.api.v1.statistics.mapper.StatMapper;
 @Service
 public class StatService {
 
+    /** Look-back window (days) for the channel watch-time aggregation. */
+    private static final int WATCH_WINDOW_DAYS = 90;
+
     private final StatMapper statMapper;
 
     public StatService(StatMapper statMapper) {
@@ -42,7 +45,14 @@ public class StatService {
         return statMapper.topContents(limit <= 0 ? 5 : limit);
     }
 
+    /**
+     * Watch time per channel bucket, aggregated from the live analytics pipeline
+     * (CONTENT_VIEW dwell time in {@code ANALYTICS_EVENT}) rather than the dead
+     * {@code WATCH_HISTORY} table. Returns the same {@link ChannelWatchItem} shape
+     * ({@code channelName}, {@code totalSeconds}) the dashboard chart already consumes,
+     * so the frontend is unchanged. Looks back {@value #WATCH_WINDOW_DAYS} days.
+     */
     public List<ChannelWatchItem> getWatchByChannel() {
-        return statMapper.watchByChannel();
+        return statMapper.watchByChannel(LocalDateTime.now().minusDays(WATCH_WINDOW_DAYS));
     }
 }
