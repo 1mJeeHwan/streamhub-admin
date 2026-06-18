@@ -2068,6 +2068,29 @@ export interface OrderStatusChangeRequest {
   memo?: string;
 }
 
+export interface ResultDTOTracking {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: Tracking;
+}
+
+export interface Tracking {
+  carrierCode?: string;
+  carrierName?: string;
+  invoiceNo?: string;
+  level?: number;
+  completed?: boolean;
+  senderName?: string;
+  receiverName?: string;
+  events?: TrackingEvent[];
+}
+
+export interface TrackingEvent {
+  time?: string;
+  location?: string;
+  description?: string;
+}
+
 export interface ResultDTOListPlanResponse {
   resultCode?: string;
   resultMessage?: string;
@@ -2147,29 +2170,6 @@ export interface ResultDTOPaymentReceiptDto {
   resultCode?: string;
   resultMessage?: string;
   resultObject?: PaymentReceiptDto;
-}
-
-export interface ResultDTOTracking {
-  resultCode?: string;
-  resultMessage?: string;
-  resultObject?: Tracking;
-}
-
-export interface Tracking {
-  carrierCode?: string;
-  carrierName?: string;
-  invoiceNo?: string;
-  level?: number;
-  completed?: boolean;
-  senderName?: string;
-  receiverName?: string;
-  events?: TrackingEvent[];
-}
-
-export interface TrackingEvent {
-  time?: string;
-  location?: string;
-  description?: string;
 }
 
 export interface Carrier {

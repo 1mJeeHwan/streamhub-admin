@@ -88,6 +88,8 @@ app:
   # out of the box (override via DELIVERY_SWEETTRACKER_API_KEY). mock = offline fake timeline.
   delivery:
     provider: ${DELIVERY_PROVIDER:sweettracker}
+    # Scheduler that polls SHIPPING orders and auto-advances 배달완료 → DONE (default every 30m).
+    sync-cron: ${DELIVERY_SYNC_CRON:0 */30 * * * *}
     sweettracker:
       api-key: ${DELIVERY_SWEETTRACKER_API_KEY:eq04nwS5eQul42h6BZig3Q}
   # SMS/LMS (C6) sender seam. mock = log-only, no external send; aligo/solapi = real key

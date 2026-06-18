@@ -65,6 +65,7 @@ public class OrderService {
     private final GoodsOptionRepository goodsOptionRepository;
     private final ActionLogPublisher actionLogPublisher;
     private final SmsService smsService;
+    private final org.streamhub.api.v1.delivery.DeliveryService deliveryService;
 
     public OrderService(
             OrderMapper orderMapper,
@@ -74,7 +75,8 @@ public class OrderService {
             GoodsItemRepository goodsItemRepository,
             GoodsOptionRepository goodsOptionRepository,
             ActionLogPublisher actionLogPublisher,
-            SmsService smsService) {
+            SmsService smsService,
+            org.streamhub.api.v1.delivery.DeliveryService deliveryService) {
         this.orderMapper = orderMapper;
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -83,6 +85,7 @@ public class OrderService {
         this.goodsOptionRepository = goodsOptionRepository;
         this.actionLogPublisher = actionLogPublisher;
         this.smsService = smsService;
+        this.deliveryService = deliveryService;
     }
 
     @Transactional(readOnly = true)
@@ -208,6 +211,50 @@ public class OrderService {
             notifyStatus(order, OrderStatus.SHIPPING);
         }
         return getDetail(orderId);
+    }
+
+    /**
+     * Syncs an order's status from the live courier tracking (C8): fetches the shipment status and
+     * advances the order through the state machine when the carrier reports progress —
+     * {@code 배달완료 → DONE} (from SHIPPING), {@code 이동중 → SHIPPING} (from READY). No-op if the
+     * carrier status doesn't warrant a transition. Returns the tracking it fetched.
+     *
+     * @throws ApiException {@code NOT_FOUND} if the order is missing, {@code INVALID_PARAMETER} if it
+     *                      has no invoice / the carrier cannot be determined
+     */
+    @Transactional
+    public org.streamhub.api.v1.delivery.adapter.Tracking syncDelivery(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        org.streamhub.api.v1.delivery.adapter.Tracking tracking = deliveryService.trackOrder(order);
+        deliveryDrivenTransition(order.getStatus(), tracking).ifPresent(next ->
+                changeStatus(orderId, new OrderStatusChangeRequest(next, "배송상태 자동연동(" + next + ")")));
+        return tracking;
+    }
+
+    /**
+     * Pure mapping from a courier tracking result to the order transition it should trigger (if any).
+     * Kept side-effect-free so the policy is unit-testable without the order/state-machine wiring.
+     *
+     * <ul>
+     *   <li>{@code SHIPPING} + 배달완료 → {@code DONE}</li>
+     *   <li>{@code READY} + 이동중(스캔 이벤트 존재, 미완료) → {@code SHIPPING}</li>
+     *   <li>otherwise → empty (no transition)</li>
+     * </ul>
+     */
+    static java.util.Optional<OrderStatus> deliveryDrivenTransition(
+            OrderStatus current, org.streamhub.api.v1.delivery.adapter.Tracking tracking) {
+        if (tracking == null) {
+            return java.util.Optional.empty();
+        }
+        if (tracking.completed() && current == OrderStatus.SHIPPING) {
+            return java.util.Optional.of(OrderStatus.DONE);
+        }
+        boolean inTransit = tracking.events() != null && !tracking.events().isEmpty();
+        if (!tracking.completed() && inTransit && current == OrderStatus.READY) {
+            return java.util.Optional.of(OrderStatus.SHIPPING);
+        }
+        return java.util.Optional.empty();
     }
 
     // --- helpers -----------------------------------------------------------

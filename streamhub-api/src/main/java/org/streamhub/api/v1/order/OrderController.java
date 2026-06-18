@@ -75,9 +75,16 @@ public class OrderController {
     }
 
     @Operation(summary = "배송 조회",
-            description = "주문의 택배사+운송장번호로 택배사 API를 호출해 실시간 배송 진행상황을 반환한다.")
+            description = "주문의 택배사+운송장번호로 택배사 API를 호출해 실시간 배송 진행상황을 반환한다(상태 변경 없음).")
     @GetMapping("/{id}/tracking-info")
     public ResultDTO<Tracking> trackingInfo(@PathVariable Long id) {
         return ResultDTO.ok(deliveryService.trackOrder(id));
+    }
+
+    @Operation(summary = "배송 조회·상태 동기화",
+            description = "택배사 배송상태를 조회하고, 배달완료면 주문을 DONE으로(이동중이면 SHIPPING으로) 자동 전이한다.")
+    @PatchMapping("/{id}/delivery-sync")
+    public ResultDTO<Tracking> deliverySync(@PathVariable Long id) {
+        return ResultDTO.ok(orderService.syncDelivery(id));
     }
 }

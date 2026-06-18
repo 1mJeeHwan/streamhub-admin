@@ -10,7 +10,7 @@ import {
   useOrderTracking,
   useOrderDetail,
   useOrderCarriers,
-  orderTrackingInfo,
+  orderDeliverySyncUpdate,
 } from "@/apis/query/order/order";
 import {
   OrderReceiptDtoKind,
@@ -165,9 +165,12 @@ export default function OrderDetailPage() {
     setTrackingError(null);
     setTrackingLoading(true);
     try {
-      const response = await orderTrackingInfo(orderId);
+      // delivery-sync both fetches the courier status AND advances the order state machine when the
+      // carrier reports 배달완료/이동중 — so refetch the detail to reflect any auto-transition.
+      const response = await orderDeliverySyncUpdate(orderId);
       if (response.resultCode === SUCCESS_CODE && response.resultObject) {
         setTracking(response.resultObject);
+        detailQuery.refetch();
       } else {
         setTrackingError(response.resultMessage ?? "배송 조회에 실패했습니다.");
       }

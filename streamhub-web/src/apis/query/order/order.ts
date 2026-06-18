@@ -281,6 +281,86 @@ export const useOrderStatus = <TError = unknown, TContext = unknown>(
   return useMutation(mutationOptions, queryClient);
 };
 /**
+ * 택배사 배송상태를 조회하고, 배달완료면 주문을 DONE으로(이동중이면 SHIPPING으로) 자동 전이한다.
+ * @summary 배송 조회·상태 동기화
+ */
+export const orderDeliverySyncUpdate = (id: number) => {
+  return customInstance<ResultDTOTracking>({
+    url: `/v1/order/${id}/delivery-sync`,
+    method: "PATCH",
+  });
+};
+
+export const getOrderDeliverySyncUpdateMutationOptions = <
+  TError = unknown,
+  TContext = unknown
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof orderDeliverySyncUpdate>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof orderDeliverySyncUpdate>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["orderDeliverySyncUpdate"];
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof orderDeliverySyncUpdate>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return orderDeliverySyncUpdate(id);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type OrderDeliverySyncUpdateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof orderDeliverySyncUpdate>>
+>;
+
+export type OrderDeliverySyncUpdateMutationError = unknown;
+
+/**
+ * @summary 배송 조회·상태 동기화
+ */
+export const useOrderDeliverySyncUpdate = <
+  TError = unknown,
+  TContext = unknown
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof orderDeliverySyncUpdate>>,
+      TError,
+      { id: number },
+      TContext
+    >;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof orderDeliverySyncUpdate>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationOptions = getOrderDeliverySyncUpdateMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
  * 주문 + 주문상품 + 입금/환불 영수증.
  * @summary 주문 상세
  */
@@ -421,7 +501,7 @@ export function useOrderDetail<
 }
 
 /**
- * 주문의 택배사+운송장번호로 택배사 API를 호출해 실시간 배송 진행상황을 반환한다.
+ * 주문의 택배사+운송장번호로 택배사 API를 호출해 실시간 배송 진행상황을 반환한다(상태 변경 없음).
  * @summary 배송 조회
  */
 export const orderTrackingInfo = (id: number, signal?: AbortSignal) => {

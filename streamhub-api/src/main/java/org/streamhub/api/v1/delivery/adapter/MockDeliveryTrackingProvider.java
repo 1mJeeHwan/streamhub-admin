@@ -37,10 +37,12 @@ public class MockDeliveryTrackingProvider implements DeliveryTrackingProvider {
 
     @Override
     public Tracking track(String carrierCode, String invoice) {
+        // A fully-delivered sample timeline (offline demo) — exercises the 배달완료 → DONE auto-sync.
         List<TrackingEvent> events = List.of(
                 new TrackingEvent("2026-06-17 10:12", "서울강남", "집화처리"),
                 new TrackingEvent("2026-06-17 21:40", "옥천HUB", "간선상차"),
-                new TrackingEvent("2026-06-18 09:05", "수취인지역", "배달출발"));
-        return new Tracking(carrierCode, null, invoice, 4, false, "", "", events);
+                new TrackingEvent("2026-06-18 09:05", "수취인지역", "배달출발"),
+                new TrackingEvent("2026-06-18 13:22", "수취인지역", "배달완료"));
+        return new Tracking(carrierCode, null, invoice, 6, true, "", "", events);
     }
 }
