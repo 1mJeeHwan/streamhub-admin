@@ -24,17 +24,17 @@
 ### 사용자 사이트 (모바일 · 다크)
 <p>
   <img src="docs/screenshots/user-home.png" width="200" alt="홈" />
-  <img src="docs/screenshots/user-video.png" width="200" alt="영상 상세" />
-  <img src="docs/screenshots/user-search.png" width="200" alt="통합 검색" />
-  <img src="docs/screenshots/user-mypage.png" width="200" alt="마이페이지" />
+  <img src="docs/screenshots/user-albums.png" width="200" alt="CCM 음반 · 30초 미리듣기" />
+  <img src="docs/screenshots/user-churches.png" width="200" alt="교회찾기 (Leaflet 지도)" />
+  <img src="docs/screenshots/user-video.png" width="200" alt="예배 영상" />
 </p>
 
 ### 관리자 콘솔 (데스크탑)
-<img src="docs/screenshots/admin-dashboard.png" width="860" alt="통계 대시보드" />
+<img src="docs/screenshots/admin-dashboard.png" width="860" alt="통합 운영 대시보드 — KPI + 차트(채널별 시청시간은 실 트래킹 이벤트 집계)" />
 
-| 회원관리 (AG Grid) | 콘텐츠관리 |
+| 기능 카탈로그 (실동작/데모/외부연동 정직 배지) | 주문관리 (AG Grid · 상태머신) |
 |---|---|
-| <img src="docs/screenshots/admin-members.png" width="420" alt="회원관리" /> | <img src="docs/screenshots/admin-content.png" width="420" alt="콘텐츠관리" /> |
+| <img src="docs/screenshots/admin-catalog.png" width="420" alt="기능 카탈로그" /> | <img src="docs/screenshots/admin-orders.png" width="420" alt="주문관리" /> |
 
 ---
 

@@ -25,17 +25,17 @@ with an AWS deployment pipeline on top.
 ### User site (mobile · dark)
 <p>
   <img src="docs/screenshots/user-home.png" width="200" alt="Home" />
-  <img src="docs/screenshots/user-video.png" width="200" alt="Video detail" />
-  <img src="docs/screenshots/user-search.png" width="200" alt="Search" />
-  <img src="docs/screenshots/user-mypage.png" width="200" alt="My page" />
+  <img src="docs/screenshots/user-albums.png" width="200" alt="CCM albums · 30s preview" />
+  <img src="docs/screenshots/user-churches.png" width="200" alt="Church finder (Leaflet map)" />
+  <img src="docs/screenshots/user-video.png" width="200" alt="Worship video" />
 </p>
 
 ### Admin console (desktop)
-<img src="docs/screenshots/admin-dashboard.png" width="860" alt="Dashboard" />
+<img src="docs/screenshots/admin-dashboard.png" width="860" alt="Ops dashboard — KPIs + charts (watch-time by channel is aggregated from real tracking events)" />
 
-| Members (AG Grid) | Content |
+| Feature catalog (honest live/demo/external badges) | Orders (AG Grid · state machine) |
 |---|---|
-| <img src="docs/screenshots/admin-members.png" width="420" alt="Members" /> | <img src="docs/screenshots/admin-content.png" width="420" alt="Content" /> |
+| <img src="docs/screenshots/admin-catalog.png" width="420" alt="Feature catalog" /> | <img src="docs/screenshots/admin-orders.png" width="420" alt="Orders" /> |
 
 ---
 
