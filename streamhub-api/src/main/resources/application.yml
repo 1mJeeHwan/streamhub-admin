@@ -42,7 +42,10 @@ jwt:
   access-exp-seconds: 3600       # 1h
   refresh-exp-seconds: 28800     # 8h
 
-# Audit-log SQS queue name (created on startup locally; by Terraform in prod).
+# 외부 연동 seam(실키 활성화) + 배치(스케줄러) 전체 요약은 패키지 주석 참고:
+#   streamhub-api/src/main/java/org/streamhub/api/package-info.java
+# 아래 각 블록은 해당 seam의 env 자리. 기본값은 mock/seed/공개 데모키라 키 없이도 동작하고,
+# 실키는 환경변수로만 주입하면 코드 변경 없이 실연동으로 전환된다.
 app:
   sqs:
     action-log-queue: ${SQS_ACTION_LOG_QUEUE:streamhub-action-log}
