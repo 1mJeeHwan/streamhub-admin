@@ -12,7 +12,9 @@ with an AWS deployment pipeline on top.
 > **🔗 Live**
 > - Roadmap (showcase) — https://streamhub-user.vercel.app/roadmap
 > - User site — https://streamhub-user.vercel.app
-> - Admin console — https://streamhub-admin.vercel.app · `admin` / `admin1234`
+> - Admin console — https://streamhub-admin.vercel.app
+>     - `admin` / `admin1234` (system — all data)
+>     - `manager` / `manager1234` (church manager — scoped to its own church's data; demonstrates RBAC multi-tenancy)
 > - API (Swagger) — https://dpdtwguq8ke3x.cloudfront.net/swagger-ui/index.html
 > - User demo account — `member01@streamhub.test` / `member1234`
 
