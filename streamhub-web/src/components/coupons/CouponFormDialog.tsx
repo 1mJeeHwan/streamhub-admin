@@ -30,6 +30,7 @@ interface CouponFormValues {
   minOrderAmount: string;
   maxDiscountAmount: string;
   roundUnit: string;
+  usageLimit: string;
   startAt: string;
   endAt: string;
   useYn: string;
@@ -54,6 +55,7 @@ const buildDefaults = (coupon?: CouponDto | null): CouponFormValues => ({
   maxDiscountAmount:
     coupon?.maxDiscountAmount != null ? String(coupon.maxDiscountAmount) : "",
   roundUnit: coupon?.roundUnit != null ? String(coupon.roundUnit) : "",
+  usageLimit: coupon?.usageLimit != null ? String(coupon.usageLimit) : "",
   startAt: toLocalInput(coupon?.startAt),
   endAt: toLocalInput(coupon?.endAt),
   useYn: coupon?.useYn ?? "Y",
@@ -76,6 +78,7 @@ const buildPayload = (values: CouponFormValues): CouponDto => ({
   minOrderAmount: toNumber(values.minOrderAmount),
   maxDiscountAmount: toNumber(values.maxDiscountAmount),
   roundUnit: toNumber(values.roundUnit),
+  usageLimit: toNumber(values.usageLimit),
   startAt: values.startAt ? values.startAt : undefined,
   endAt: values.endAt ? values.endAt : undefined,
   useYn: values.useYn,
@@ -301,6 +304,24 @@ export default function CouponFormDialog({
                 placeholder="예: 100"
                 className={FIELD_CLASS}
                 {...register("roundUnit")}
+              />
+            </div>
+
+            {/* Usage limit */}
+            <div>
+              <label
+                htmlFor="coupon-usage-limit"
+                className="mb-1 block text-xs font-medium text-slate-500"
+              >
+                사용 가능 횟수
+              </label>
+              <input
+                id="coupon-usage-limit"
+                type="number"
+                min={0}
+                placeholder="비워두면 무제한"
+                className={FIELD_CLASS}
+                {...register("usageLimit")}
               />
             </div>
 

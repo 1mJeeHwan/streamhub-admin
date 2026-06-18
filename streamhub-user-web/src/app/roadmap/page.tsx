@@ -40,7 +40,7 @@ const PHASES = [
   {
     icon: LayoutDashboard,
     title: "관리자 콘솔",
-    desc: "기능 카탈로그 31개 화면을 전부 실동작으로. 대시보드·커머스·후원·통계까지.",
+    desc: "기능 카탈로그 31개 화면 — 대부분 실동작, 일부는 데모·외부연동 대기로 정직하게 표기. 대시보드·커머스·후원·통계까지.",
     tags: ["Next.js 14", "AG Grid", "ApexCharts", "Orval"],
   },
   {

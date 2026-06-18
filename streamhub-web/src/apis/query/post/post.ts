@@ -22,6 +22,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  CommunityPostSaveRequest,
   CommunityPostSearchRequest,
   ResultDTOCommunityPostDto,
   ResultDTOListCommunityPostDto,
@@ -30,89 +31,6 @@ import type {
 
 import { customInstance } from "../../custom-instance";
 
-/**
- * 게시판/카테고리/검색어 필터, 최신순 전체 목록.
- * @summary 게시글 목록
- */
-export const postCommunityPostList = (
-  communityPostSearchRequest: CommunityPostSearchRequest,
-  signal?: AbortSignal
-) => {
-  return customInstance<ResultDTOListCommunityPostDto>({
-    url: `/v1/community-post/list`,
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    data: communityPostSearchRequest,
-    signal,
-  });
-};
-
-export const getPostCommunityPostListMutationOptions = <
-  TError = unknown,
-  TContext = unknown
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof postCommunityPostList>>,
-    TError,
-    { data: CommunityPostSearchRequest },
-    TContext
-  >;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof postCommunityPostList>>,
-  TError,
-  { data: CommunityPostSearchRequest },
-  TContext
-> => {
-  const mutationKey = ["postCommunityPostList"];
-  const { mutation: mutationOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof postCommunityPostList>>,
-    { data: CommunityPostSearchRequest }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return postCommunityPostList(data);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type PostCommunityPostListMutationResult = NonNullable<
-  Awaited<ReturnType<typeof postCommunityPostList>>
->;
-export type PostCommunityPostListMutationBody = CommunityPostSearchRequest;
-export type PostCommunityPostListMutationError = unknown;
-
-/**
- * @summary 게시글 목록
- */
-export const usePostCommunityPostList = <TError = unknown, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof postCommunityPostList>>,
-      TError,
-      { data: CommunityPostSearchRequest },
-      TContext
-    >;
-  },
-  queryClient?: QueryClient
-): UseMutationResult<
-  Awaited<ReturnType<typeof postCommunityPostList>>,
-  TError,
-  { data: CommunityPostSearchRequest },
-  TContext
-> => {
-  const mutationOptions = getPostCommunityPostListMutationOptions(options);
-
-  return useMutation(mutationOptions, queryClient);
-};
 /**
  * @summary 게시글 상세
  */
@@ -274,6 +192,91 @@ export function usePostCommunityPostDetail<
 }
 
 /**
+ * 기존 게시글의 작성 항목을 수정한다(조회수/추천수 유지).
+ * @summary 게시글 수정
+ */
+export const postCommunityPostUpdate = (
+  id: number,
+  communityPostSaveRequest: CommunityPostSaveRequest
+) => {
+  return customInstance<ResultDTOCommunityPostDto>({
+    url: `/v1/community-post/${id}`,
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    data: communityPostSaveRequest,
+  });
+};
+
+export const getPostCommunityPostUpdateMutationOptions = <
+  TError = unknown,
+  TContext = unknown
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postCommunityPostUpdate>>,
+    TError,
+    { id: number; data: CommunityPostSaveRequest },
+    TContext
+  >;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postCommunityPostUpdate>>,
+  TError,
+  { id: number; data: CommunityPostSaveRequest },
+  TContext
+> => {
+  const mutationKey = ["postCommunityPostUpdate"];
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postCommunityPostUpdate>>,
+    { id: number; data: CommunityPostSaveRequest }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return postCommunityPostUpdate(id, data);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostCommunityPostUpdateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postCommunityPostUpdate>>
+>;
+export type PostCommunityPostUpdateMutationBody = CommunityPostSaveRequest;
+export type PostCommunityPostUpdateMutationError = unknown;
+
+/**
+ * @summary 게시글 수정
+ */
+export const usePostCommunityPostUpdate = <
+  TError = unknown,
+  TContext = unknown
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof postCommunityPostUpdate>>,
+      TError,
+      { id: number; data: CommunityPostSaveRequest },
+      TContext
+    >;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof postCommunityPostUpdate>>,
+  TError,
+  { id: number; data: CommunityPostSaveRequest },
+  TContext
+> => {
+  const mutationOptions = getPostCommunityPostUpdateMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
  * @summary 게시글 삭제
  */
 export const postCommunityPostDelete = (id: number) => {
@@ -349,6 +352,175 @@ export const usePostCommunityPostDelete = <
   TContext
 > => {
   const mutationOptions = getPostCommunityPostDeleteMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * 글 관리 작성 화면에서 새 게시글을 등록한다.
+ * @summary 게시글 등록
+ */
+export const postCommunityPostCreate = (
+  communityPostSaveRequest: CommunityPostSaveRequest,
+  signal?: AbortSignal
+) => {
+  return customInstance<ResultDTOCommunityPostDto>({
+    url: `/v1/community-post`,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    data: communityPostSaveRequest,
+    signal,
+  });
+};
+
+export const getPostCommunityPostCreateMutationOptions = <
+  TError = unknown,
+  TContext = unknown
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postCommunityPostCreate>>,
+    TError,
+    { data: CommunityPostSaveRequest },
+    TContext
+  >;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postCommunityPostCreate>>,
+  TError,
+  { data: CommunityPostSaveRequest },
+  TContext
+> => {
+  const mutationKey = ["postCommunityPostCreate"];
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postCommunityPostCreate>>,
+    { data: CommunityPostSaveRequest }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postCommunityPostCreate(data);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostCommunityPostCreateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postCommunityPostCreate>>
+>;
+export type PostCommunityPostCreateMutationBody = CommunityPostSaveRequest;
+export type PostCommunityPostCreateMutationError = unknown;
+
+/**
+ * @summary 게시글 등록
+ */
+export const usePostCommunityPostCreate = <
+  TError = unknown,
+  TContext = unknown
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof postCommunityPostCreate>>,
+      TError,
+      { data: CommunityPostSaveRequest },
+      TContext
+    >;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof postCommunityPostCreate>>,
+  TError,
+  { data: CommunityPostSaveRequest },
+  TContext
+> => {
+  const mutationOptions = getPostCommunityPostCreateMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * 게시판/카테고리/검색어 필터, 최신순 전체 목록.
+ * @summary 게시글 목록
+ */
+export const postCommunityPostList = (
+  communityPostSearchRequest: CommunityPostSearchRequest,
+  signal?: AbortSignal
+) => {
+  return customInstance<ResultDTOListCommunityPostDto>({
+    url: `/v1/community-post/list`,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    data: communityPostSearchRequest,
+    signal,
+  });
+};
+
+export const getPostCommunityPostListMutationOptions = <
+  TError = unknown,
+  TContext = unknown
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postCommunityPostList>>,
+    TError,
+    { data: CommunityPostSearchRequest },
+    TContext
+  >;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postCommunityPostList>>,
+  TError,
+  { data: CommunityPostSearchRequest },
+  TContext
+> => {
+  const mutationKey = ["postCommunityPostList"];
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postCommunityPostList>>,
+    { data: CommunityPostSearchRequest }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postCommunityPostList(data);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostCommunityPostListMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postCommunityPostList>>
+>;
+export type PostCommunityPostListMutationBody = CommunityPostSearchRequest;
+export type PostCommunityPostListMutationError = unknown;
+
+/**
+ * @summary 게시글 목록
+ */
+export const usePostCommunityPostList = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof postCommunityPostList>>,
+      TError,
+      { data: CommunityPostSearchRequest },
+      TContext
+    >;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof postCommunityPostList>>,
+  TError,
+  { data: CommunityPostSearchRequest },
+  TContext
+> => {
+  const mutationOptions = getPostCommunityPostListMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

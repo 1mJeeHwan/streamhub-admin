@@ -23,6 +23,7 @@ import type {
 
 import type {
   PayApproveCommand,
+  PayCancelCommand,
   PayRequestCommand,
   PaymentSearchRequest,
   ResultDTOPaymentReceiptDto,
@@ -112,6 +113,89 @@ export const usePaymentRequestCreate = <TError = unknown, TContext = unknown>(
   TContext
 > => {
   const mutationOptions = getPaymentRequestCreateMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * 승인된 결제를 PG에 취소 요청한 뒤(실 PG 연동 시 실제 환불), 주문을 CANCEL/RETURN으로 전이하고 재고 복원 + 환불(REFUND) 영수증을 발급한다. PG 취소를 먼저 호출해 실패 시 내부 원장 반전이 일어나지 않는다.
+ * @summary 결제 취소/환불
+ */
+export const paymentRefundCreate = (
+  payCancelCommand: PayCancelCommand,
+  signal?: AbortSignal
+) => {
+  return customInstance<ResultDTOPaymentResultDto>({
+    url: `/v1/payment/refund`,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    data: payCancelCommand,
+    signal,
+  });
+};
+
+export const getPaymentRefundCreateMutationOptions = <
+  TError = unknown,
+  TContext = unknown
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof paymentRefundCreate>>,
+    TError,
+    { data: PayCancelCommand },
+    TContext
+  >;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof paymentRefundCreate>>,
+  TError,
+  { data: PayCancelCommand },
+  TContext
+> => {
+  const mutationKey = ["paymentRefundCreate"];
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof paymentRefundCreate>>,
+    { data: PayCancelCommand }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return paymentRefundCreate(data);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PaymentRefundCreateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof paymentRefundCreate>>
+>;
+export type PaymentRefundCreateMutationBody = PayCancelCommand;
+export type PaymentRefundCreateMutationError = unknown;
+
+/**
+ * @summary 결제 취소/환불
+ */
+export const usePaymentRefundCreate = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof paymentRefundCreate>>,
+      TError,
+      { data: PayCancelCommand },
+      TContext
+    >;
+  },
+  queryClient?: QueryClient
+): UseMutationResult<
+  Awaited<ReturnType<typeof paymentRefundCreate>>,
+  TError,
+  { data: PayCancelCommand },
+  TContext
+> => {
+  const mutationOptions = getPaymentRefundCreateMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

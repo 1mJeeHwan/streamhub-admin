@@ -1,10 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Image as ImageIcon, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Image as ImageIcon,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
-import { bannerList, useBannerDelete } from "@/apis/query/banner/banner";
+import {
+  bannerList,
+  useBannerDelete,
+  useBannerSortUpdate,
+} from "@/apis/query/banner/banner";
 import {
   BannerDtoDevice,
   BannerDtoPosition,
@@ -80,6 +92,7 @@ export default function BannersPage() {
   });
 
   const deleteMutation = useBannerDelete();
+  const sortMutation = useBannerSortUpdate();
 
   const banners: BannerDto[] = listQuery.data?.resultObject ?? [];
 
@@ -124,6 +137,44 @@ export default function BannersPage() {
         onError: () => setMessage("삭제 중 오류가 발생했습니다."),
       },
     );
+  };
+
+  const handleReorder = async (index: number, direction: "up" | "down") => {
+    const target = banners[index];
+    const swapWith = banners[direction === "up" ? index - 1 : index + 1];
+    if (
+      !target ||
+      !swapWith ||
+      target.id == null ||
+      swapWith.id == null ||
+      target.sortOrder == null ||
+      swapWith.sortOrder == null
+    ) {
+      return;
+    }
+    setMessage(null);
+    try {
+      const targetResult = await sortMutation.mutateAsync({
+        id: target.id,
+        data: { sortOrder: swapWith.sortOrder },
+      });
+      if (targetResult.resultCode !== SUCCESS_CODE) {
+        setMessage(targetResult.resultMessage ?? "정렬 변경에 실패했습니다.");
+        return;
+      }
+      const swapResult = await sortMutation.mutateAsync({
+        id: swapWith.id,
+        data: { sortOrder: target.sortOrder },
+      });
+      if (swapResult.resultCode !== SUCCESS_CODE) {
+        setMessage(swapResult.resultMessage ?? "정렬 변경에 실패했습니다.");
+        return;
+      }
+      setMessage("정렬 순서가 변경되었습니다.");
+      listQuery.refetch();
+    } catch {
+      setMessage("정렬 변경 중 오류가 발생했습니다.");
+    }
   };
 
   return (
@@ -262,8 +313,10 @@ export default function BannersPage() {
                   </td>
                 </tr>
               ) : (
-                banners.map((banner) => {
+                banners.map((banner, index) => {
                   const expired = isExpired(banner.endAt);
+                  const isFirst = index === 0;
+                  const isLast = index === banners.length - 1;
                   return (
                     <tr key={banner.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3">
@@ -313,7 +366,31 @@ export default function BannersPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-slate-700">
-                        {banner.sortOrder ?? "-"}
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 text-center tabular-nums">
+                            {banner.sortOrder ?? "-"}
+                          </span>
+                          <div className="flex flex-col">
+                            <button
+                              type="button"
+                              onClick={() => handleReorder(index, "up")}
+                              disabled={isFirst || sortMutation.isPending}
+                              className="rounded p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-brand disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                              aria-label="위로"
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleReorder(index, "down")}
+                              disabled={isLast || sortMutation.isPending}
+                              className="rounded p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-brand disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                              aria-label="아래로"
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span

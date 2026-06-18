@@ -89,6 +89,7 @@ export function CheckoutModal({
   const queryClient = useQueryClient();
   const [method, setMethod] = useState<PayProvider>("KAKAO");
   const [cardNo, setCardNo] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [stage, setStage] = useState<Stage>("select");
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +107,7 @@ export function CheckoutModal({
       setStage("select");
       setMethod("KAKAO");
       setCardNo("");
+      setCouponCode("");
       setOrder(null);
       setError(null);
       setAuthRequired(false);
@@ -142,7 +144,10 @@ export function CheckoutModal({
     if (REAL_PG_PROVIDERS.has(method)) {
       setStage("processing");
       try {
-        const prep = await orderApi.prepare({ albumId: item.albumId, provider: method }, token);
+        const prep = await orderApi.prepare(
+          { albumId: item.albumId, provider: method, couponCode: couponCode.trim() || undefined },
+          token,
+        );
         if (prep.redirectUrl) {
           // Server-initiated redirect PG (Kakao/PayPal).
           window.location.href = prep.redirectUrl;
@@ -181,7 +186,10 @@ export function CheckoutModal({
     // Other methods = mock one-shot order (no PG window).
     setStage("processing");
     try {
-      const result = await orderApi.create({ albumId: item.albumId, payProvider: method }, token);
+      const result = await orderApi.create(
+        { albumId: item.albumId, payProvider: method, couponCode: couponCode.trim() || undefined },
+        token,
+      );
       setOrder(result);
       setStage("done");
       // Refresh the My-page order history so the new order shows up immediately.
@@ -257,6 +265,21 @@ export function CheckoutModal({
                   <span className="text-sm font-medium text-inactive">결제 금액</span>
                   <span className="text-lg font-bold text-primary">{formatKRW(total)}</span>
                 </div>
+              </div>
+
+              {/* Coupon code — redeemed and validated server-side; final amount is confirmed at payment. */}
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-inactive">쿠폰 코드 (선택)</label>
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="예: YEAREND15"
+                  className="h-11 w-full rounded-xl border border-border bg-surface px-3.5 text-sm text-active outline-none placeholder:text-inactive/60 focus:border-primary"
+                />
+                <p className="mt-1 text-[11px] leading-relaxed text-inactive">
+                  쿠폰은 서버에서 유효성·사용한도·기간을 검증해 적용되며, 최종 결제 금액은 결제 단계에서 확정됩니다.
+                </p>
               </div>
 
               {/* Method select */}

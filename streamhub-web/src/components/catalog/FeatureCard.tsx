@@ -18,13 +18,13 @@ const GITHUB_REPO_BASE =
 /**
  * FeatureCard renders one admin screen as a gallery tile: thumbnail with a
  * hover zoom, domain icon + title + honesty badge, summary, highlight chips,
- * and an action row. Only `live` cards navigate; `mock`/`wip` show a disabled
- * 열기 button (tooltip) so viewers never hit a 404.
+ * and an action row. Every card has a real route (live/demo/external), so all
+ * navigate; the honesty badge conveys how operationally complete each one is.
  */
 export default function FeatureCard({ feature }: FeatureCardProps) {
   const meta = domainMeta(feature.domain);
   const DomainIcon = meta.icon;
-  const isLive = feature.status === "live";
+  const isNavigable = Boolean(feature.href);
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-md border border-slate-200 bg-white transition hover:border-brand hover:shadow-md">
@@ -72,7 +72,7 @@ export default function FeatureCard({ feature }: FeatureCardProps) {
 
         {/* Actions */}
         <div className="mt-auto flex items-center gap-2 pt-2">
-          {isLive ? (
+          {isNavigable && (
             <Link
               href={feature.href}
               className="inline-flex items-center gap-1 rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-white transition hover:bg-brand-dark"
@@ -80,15 +80,6 @@ export default function FeatureCard({ feature }: FeatureCardProps) {
               열기
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
-          ) : (
-            <button
-              type="button"
-              disabled
-              title="목업 — 준비 중인 화면"
-              className="inline-flex cursor-not-allowed items-center gap-1 rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400 opacity-60"
-            >
-              열기
-            </button>
           )}
 
           {feature.repoPath && (

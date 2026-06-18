@@ -21,7 +21,7 @@ import type {
 import { customInstance } from "../../custom-instance";
 
 /**
- * 페이지뷰/콘텐츠뷰/세션시작 이벤트 1건을 적재한다. 잘못된 입력은 기본값으로 보정.
+ * 페이지뷰/콘텐츠뷰/세션시작 이벤트 1건을 적재한다. 잘못된 입력은 기본값으로 보정. 과도한 요청은 무시(200).
  * @summary 분석 이벤트 수집
  */
 export const analyticsPublicEventsCreate = (
@@ -108,7 +108,7 @@ export const useAnalyticsPublicEventsCreate = <
   return useMutation(mutationOptions, queryClient);
 };
 /**
- * 여러 이벤트를 한 번에 적재한다. 잘못된 입력은 기본값으로 보정.
+ * 여러 이벤트를 한 번에 적재한다. 잘못된 입력은 기본값으로 보정. 과도한 요청은 무시(200).
  * @summary 분석 이벤트 일괄 수집
  */
 export const analyticsPublicEventsBatchCreate = (

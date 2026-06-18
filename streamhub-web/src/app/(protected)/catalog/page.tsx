@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import {
   FEATURES,
   LIVE_COUNT,
+  DEMO_COUNT,
+  EXTERNAL_COUNT,
   type Domain,
   type FeatureStatus,
 } from "@/lib/features.catalog";
@@ -72,7 +74,9 @@ export default function CatalogPage() {
 
       {/* Count */}
       <p className="mb-3 text-sm text-slate-600">
-        총 {visible.length}개 · 실동작 {LIVE_COUNT}
+        총 {FEATURES.length}개 · ✅ 실동작 {LIVE_COUNT} · 🟡 데모 {DEMO_COUNT} · 🔌 외부연동 대기{" "}
+        {EXTERNAL_COUNT}
+        {visible.length !== FEATURES.length && ` · 현재 필터 ${visible.length}개`}
       </p>
 
       {/* Grid */}

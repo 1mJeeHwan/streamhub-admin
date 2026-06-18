@@ -123,13 +123,41 @@ export interface ResultDTOPlanResponse {
 
 export interface StoreDto {
   id?: number;
-  regionId?: number;
-  name?: string;
+  regionId: number;
+  /**
+   * @minLength 0
+   * @maxLength 120
+   */
+  name: string;
+  /**
+   * @minLength 0
+   * @maxLength 300
+   */
   address?: string;
+  /**
+   * @minLength 0
+   * @maxLength 30
+   */
   phone?: string;
-  lat?: number;
-  lng?: number;
-  openHours?: string;
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
+  lat: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
+  lng: number;
+  /**
+   * @minLength 0
+   * @maxLength 120
+   */
+  openHours: string;
+  /**
+   * @minLength 0
+   * @maxLength 1
+   */
   useYn?: string;
   distanceKm?: number;
   createdAt?: string;
@@ -249,12 +277,24 @@ export const GoodsCreateRequestStatus = {
 
 export interface GoodsCreateRequest {
   categoryId: number;
+  /**
+   * @minLength 0
+   * @maxLength 200
+   */
   name: string;
+  /**
+   * @minLength 0
+   * @maxLength 100
+   */
   code: string;
   description?: string;
+  /** @minimum 0 */
   price: number;
+  /** @minimum 0 */
   listPrice?: number;
+  /** @minimum 0 */
   stock?: number;
+  /** @minimum 0 */
   notiQty?: number;
   soldOut?: string;
   useYn?: string;
@@ -436,8 +476,16 @@ export interface ResultDTOGoodsInquiryDto {
 
 export interface GoodsCategorySaveRequest {
   parentId?: number;
-  name?: string;
+  /**
+   * @minLength 0
+   * @maxLength 100
+   */
+  name: string;
   sortOrder?: number;
+  /**
+   * @minLength 0
+   * @maxLength 1
+   */
   useYn?: string;
 }
 
@@ -477,6 +525,8 @@ export interface CouponDto {
   startAt?: string;
   endAt?: string;
   useYn?: string;
+  usageLimit?: number;
+  usedCount?: number;
   createdAt?: string;
 }
 
@@ -566,6 +616,51 @@ export interface ResultDTOContentDetail {
   resultCode?: string;
   resultMessage?: string;
   resultObject?: ContentDetail;
+}
+
+export interface CommunityPostSaveRequest {
+  boardId: number;
+  /**
+   * @minLength 0
+   * @maxLength 40
+   */
+  category?: string;
+  /**
+   * @minLength 0
+   * @maxLength 200
+   */
+  title: string;
+  /**
+   * @minLength 0
+   * @maxLength 2000
+   */
+  content?: string;
+  /**
+   * @minLength 0
+   * @maxLength 60
+   */
+  writerName?: string;
+  /** @pattern [YN] */
+  secretYn?: string;
+}
+
+export interface CommunityPostDto {
+  id?: number;
+  boardId?: number;
+  category?: string;
+  title?: string;
+  content?: string;
+  writerName?: string;
+  secretYn?: string;
+  recommendCount?: number;
+  viewCount?: number;
+  createdAt?: string;
+}
+
+export interface ResultDTOCommunityPostDto {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: CommunityPostDto;
 }
 
 export type ChurchUpsertRequestDenomination =
@@ -702,14 +797,30 @@ export const CampaignDtoStatus = {
 
 export interface CampaignDto {
   id?: number;
-  title?: string;
-  type?: CampaignDtoType;
+  /**
+   * @minLength 0
+   * @maxLength 150
+   */
+  title: string;
+  type: CampaignDtoType;
+  /**
+   * @minLength 0
+   * @maxLength 1000
+   */
   description?: string;
+  /**
+   * @minLength 0
+   * @maxLength 300
+   */
   bannerImageUrl?: string;
+  /**
+   * @minLength 0
+   * @maxLength 300
+   */
   linkedGoodsIds?: string;
   targetAmount?: number;
-  startAt?: string;
-  endAt?: string;
+  startAt: string;
+  endAt: string;
   status?: CampaignDtoStatus;
   createdAt?: string;
 }
@@ -775,14 +886,30 @@ export const BannerDtoDevice = {
 
 export interface BannerDto {
   id?: number;
-  title?: string;
-  position?: BannerDtoPosition;
-  device?: BannerDtoDevice;
-  imageUrl?: string;
+  /**
+   * @minLength 0
+   * @maxLength 200
+   */
+  title: string;
+  position: BannerDtoPosition;
+  device: BannerDtoDevice;
+  /**
+   * @minLength 0
+   * @maxLength 500
+   */
+  imageUrl: string;
+  /**
+   * @minLength 0
+   * @maxLength 500
+   */
   linkUrl?: string;
   startAt?: string;
   endAt?: string;
   sortOrder?: number;
+  /**
+   * @minLength 0
+   * @maxLength 1
+   */
   useYn?: string;
   createdAt?: string;
 }
@@ -1058,6 +1185,7 @@ export interface SubscriptionSearchRequest {
   keyword?: string;
   status?: SubscriptionSearchRequestStatus;
   planId?: number;
+  churchId?: number;
 }
 
 export interface ResInfinityListSubscriptionListItem {
@@ -1307,6 +1435,26 @@ export interface ResultDTOPaymentResultDto {
   resultCode?: string;
   resultMessage?: string;
   resultObject?: PaymentResultDto;
+}
+
+export type PayCancelCommandToStatus =
+  (typeof PayCancelCommandToStatus)[keyof typeof PayCancelCommandToStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const PayCancelCommandToStatus = {
+  PLACED: "PLACED",
+  PAID: "PAID",
+  READY: "READY",
+  SHIPPING: "SHIPPING",
+  DONE: "DONE",
+  CANCEL: "CANCEL",
+  RETURN: "RETURN",
+} as const;
+
+export interface PayCancelCommand {
+  orderId: number;
+  toStatus?: PayCancelCommandToStatus;
+  reason?: string;
 }
 
 export type PaymentSearchRequestKind =
@@ -1813,6 +1961,7 @@ export interface DonationSearchRequest {
   status?: DonationSearchRequestStatus;
   from?: string;
   to?: string;
+  churchId?: number;
 }
 
 export interface ResInfinityListDonationListItem {
@@ -1932,19 +2081,6 @@ export interface CommunityPostSearchRequest {
   boardId?: number;
   category?: string;
   keyword?: string;
-}
-
-export interface CommunityPostDto {
-  id?: number;
-  boardId?: number;
-  category?: string;
-  title?: string;
-  content?: string;
-  writerName?: string;
-  secretYn?: string;
-  recommendCount?: number;
-  viewCount?: number;
-  createdAt?: string;
 }
 
 export interface ResultDTOListCommunityPostDto {
@@ -2434,6 +2570,7 @@ export interface WorshipRegisterResponse {
 export interface MemberOrderCreateRequest {
   albumId: number;
   payProvider?: string;
+  couponCode?: string;
 }
 
 export type MemberOrderResultStatus =
@@ -2467,6 +2604,7 @@ export interface ResultDTOMemberOrderResult {
 export interface MemberPaymentPrepareRequest {
   albumId: number;
   provider?: string;
+  couponCode?: string;
 }
 
 export interface MemberPaymentPrepareResult {
@@ -3000,12 +3138,6 @@ export interface ResultDTOListChannelDto {
   resultCode?: string;
   resultMessage?: string;
   resultObject?: ChannelDto[];
-}
-
-export interface ResultDTOCommunityPostDto {
-  resultCode?: string;
-  resultMessage?: string;
-  resultObject?: CommunityPostDto;
 }
 
 export interface CodeLabel {

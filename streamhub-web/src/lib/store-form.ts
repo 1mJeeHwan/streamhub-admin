@@ -8,40 +8,32 @@ import type { StoreDto } from "@/apis/query/streamHubAdminAPI.schemas";
 export const FIELD_CLASS =
   "w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand";
 
-/** Optional latitude/longitude validator: blank passes, otherwise must be numeric. */
+/** Required latitude/longitude validator: must be present and numeric (mirrors the server @NotNull). */
 const coordSchema = z
   .string()
-  .optional()
-  .refine(
-    (value) => value == null || value.trim() === "" || Number.isFinite(Number(value)),
-    "숫자를 입력하세요.",
-  );
+  .min(1, "좌표를 입력하세요.")
+  .refine((value) => Number.isFinite(Number(value)), "숫자를 입력하세요.");
 
 /**
  * storeFormSchema validates the store create/edit form. Numeric fields are kept
  * as strings (native input values) and coerced at submit time via buildPayload.
+ * regionId/lat/lng/openHours are required to match the server-side DTO validation.
  */
 export const storeFormSchema = z.object({
   name: z.string().min(1, "매장명을 입력하세요."),
-  regionId: z.string().optional(),
+  regionId: z
+    .string()
+    .min(1, "지역을 선택하세요.")
+    .refine((value) => Number.isFinite(Number(value)), "지역이 올바르지 않습니다."),
   address: z.string().optional(),
   phone: z.string().optional(),
   lat: coordSchema,
   lng: coordSchema,
-  openHours: z.string().optional(),
+  openHours: z.string().min(1, "운영시간을 입력하세요."),
   useYn: z.enum(["Y", "N"]),
 });
 
 export type StoreFormValues = z.infer<typeof storeFormSchema>;
-
-/** Converts an optional string input to a finite number, or undefined when blank. */
-function toNumber(value?: string): number | undefined {
-  if (value == null || value.trim() === "") {
-    return undefined;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
 
 /** Builds default form values from an existing store (or an empty form). */
 export function buildStoreDefaults(store?: StoreDto): StoreFormValues {
@@ -61,12 +53,12 @@ export function buildStoreDefaults(store?: StoreDto): StoreFormValues {
 export function buildStorePayload(values: StoreFormValues): StoreDto {
   return {
     name: values.name.trim(),
-    regionId: toNumber(values.regionId),
+    regionId: Number(values.regionId),
     address: values.address?.trim() || undefined,
     phone: values.phone?.trim() || undefined,
-    lat: toNumber(values.lat),
-    lng: toNumber(values.lng),
-    openHours: values.openHours?.trim() || undefined,
+    lat: Number(values.lat),
+    lng: Number(values.lng),
+    openHours: values.openHours.trim(),
     useYn: values.useYn,
   };
 }

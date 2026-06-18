@@ -5,12 +5,13 @@ import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { paymentList } from "@/apis/query/payment/payment";
+import { paymentList, usePaymentRefundCreate } from "@/apis/query/payment/payment";
 import {
   PaymentSearchRequestKind,
   type PaymentListItem,
   type PaymentSearchRequest,
 } from "@/apis/query/streamHubAdminAPI.schemas";
+import { SUCCESS_CODE } from "@/types/api";
 
 const PaymentGrid = dynamic(() => import("@/components/payment/PaymentGrid"), {
   ssr: false,
@@ -66,6 +67,13 @@ export default function PaymentPage() {
   const [fromDateDraft, setFromDateDraft] = useState("");
   const [toDateDraft, setToDateDraft] = useState("");
 
+  // Admin refund (destructive) — confirm dialog state.
+  const [refundTarget, setRefundTarget] = useState<PaymentListItem | null>(null);
+  const [refundReason, setRefundReason] = useState("");
+  const [refundError, setRefundError] = useState<string | null>(null);
+  const [refundMessage, setRefundMessage] = useState<string | null>(null);
+  const refundMutation = usePaymentRefundCreate();
+
   const searchRequest = useMemo<PaymentSearchRequest>(
     () => ({
       // UI pageNumber is 1-based (for display); the backend expects 0-based.
@@ -109,6 +117,54 @@ export default function PaymentPage() {
       return;
     }
     setPageNumber(next);
+  };
+
+  const openRefund = (row: PaymentListItem) => {
+    setRefundError(null);
+    setRefundReason("");
+    setRefundTarget(row);
+  };
+
+  const closeRefund = () => {
+    if (refundMutation.isPending) {
+      return;
+    }
+    setRefundTarget(null);
+    setRefundReason("");
+    setRefundError(null);
+  };
+
+  const confirmRefund = () => {
+    if (refundTarget?.orderId == null) {
+      return;
+    }
+    setRefundError(null);
+    setRefundMessage(null);
+    refundMutation.mutate(
+      {
+        // toStatus defaults to CANCEL on the backend; reason is optional.
+        data: {
+          orderId: refundTarget.orderId,
+          reason: refundReason.trim() || undefined,
+        },
+      },
+      {
+        onSuccess: (response) => {
+          if (response.resultCode === SUCCESS_CODE) {
+            setRefundMessage(
+              `${refundTarget.orderNo ?? "주문"} 환불이 처리되었습니다.`,
+            );
+            setRefundTarget(null);
+            setRefundReason("");
+            // Refund issues a REFUND receipt — refetch so the new row appears.
+            listQuery.refetch();
+          } else {
+            setRefundError(response.resultMessage ?? "환불 처리에 실패했습니다.");
+          }
+        },
+        onError: () => setRefundError("환불 처리 중 오류가 발생했습니다."),
+      },
+    );
   };
 
   return (
@@ -262,6 +318,12 @@ export default function PaymentPage() {
         </span>
       </div>
 
+      {refundMessage && (
+        <p className="mb-3 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-700">
+          {refundMessage}
+        </p>
+      )}
+
       {/* Results */}
       {listQuery.isLoading ? (
         <div className="flex h-[560px] items-center justify-center rounded-md border border-slate-200 bg-white">
@@ -272,7 +334,7 @@ export default function PaymentPage() {
           <p className="text-sm text-red-600">목록을 불러오지 못했습니다.</p>
         </div>
       ) : (
-        <PaymentGrid rows={rows} />
+        <PaymentGrid rows={rows} onRefund={openRefund} />
       )}
 
       {/* Pagination */}
@@ -297,6 +359,74 @@ export default function PaymentPage() {
           >
             다음
           </button>
+        </div>
+      )}
+
+      {/* Destructive refund confirmation modal */}
+      {refundTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md rounded-md bg-white p-6 shadow-lg">
+            <h3 className="text-base font-semibold text-slate-900">환불 처리 확인</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              주문 <strong>{refundTarget.orderNo ?? "-"}</strong>
+              {refundTarget.amount != null && (
+                <>
+                  {" "}(<strong>{Number(refundTarget.amount).toLocaleString()}원</strong>)
+                </>
+              )}
+              을(를) 환불하면 주문이 취소(CANCEL)로 전이되고 재고 복원과 함께
+              환불(REFUND) 영수증이 발급됩니다. 계속하시겠습니까?
+            </p>
+
+            <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              Mock PG에서는 실제 환불 호출 없이 내부 원장만 되돌립니다.
+            </p>
+
+            <div className="mt-4">
+              <label
+                htmlFor="refundReason"
+                className="mb-1 block text-xs font-medium text-slate-500"
+              >
+                환불 사유 (선택)
+              </label>
+              <input
+                id="refundReason"
+                type="text"
+                value={refundReason}
+                onChange={(event) => setRefundReason(event.target.value)}
+                placeholder="예: 고객 요청 환불"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+              />
+            </div>
+
+            {refundError && (
+              <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+                {refundError}
+              </p>
+            )}
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeRefund}
+                disabled={refundMutation.isPending}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={confirmRefund}
+                disabled={refundMutation.isPending}
+                className="flex items-center gap-1.5 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {refundMutation.isPending && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                환불 처리
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

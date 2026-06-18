@@ -20,12 +20,15 @@ export type Domain =
   | "settings";
 
 /**
- * Honesty status for a catalog card.
- * - `live`: backed by a real route + API in this codebase.
- * - `mock`: designed and seeded, route not yet wired (button disabled).
- * - `wip`: in progress, not navigable.
+ * Honesty status for a catalog card. Every card has a real route + admin API; the
+ * status describes how *complete for real operations* the feature is:
+ * - `live`: genuinely production-shaped — real business logic, persistence, validation.
+ * - `demo`: the screen + API work, but a headline capability is intentionally not built
+ *   out (e.g. campaign has no audience-send engine; the chatbot is rule-based, not LLM).
+ * - `external`: code-complete behind an adapter seam, but real operation needs a paid
+ *   external service key that is not provisioned (e.g. SMS gateway, push delivery).
  */
-export type FeatureStatus = "live" | "mock" | "wip";
+export type FeatureStatus = "live" | "demo" | "external";
 
 /** A single admin screen entry rendered as a catalog card. */
 export interface FeatureCard {
@@ -86,25 +89,27 @@ export const STATUS_META: Record<FeatureStatus, StatusMeta> = {
     emoji: "✅",
     className: "bg-emerald-100 text-emerald-700",
   },
-  mock: {
-    key: "mock",
-    label: "목업",
+  demo: {
+    key: "demo",
+    label: "데모",
     emoji: "🟡",
     className: "bg-amber-100 text-amber-700",
   },
-  wip: {
-    key: "wip",
-    label: "진행중",
-    emoji: "🔧",
-    className: "bg-slate-200 text-slate-600",
+  external: {
+    key: "external",
+    label: "외부연동 대기",
+    emoji: "🔌",
+    className: "bg-sky-100 text-sky-700",
   },
 };
 
 /**
- * Full catalog. Every card is `live` — backed by a real route + admin API in this
- * repo (verified by a captured screenshot in /public/catalog). The `mock`/`wip`
- * statuses remain in the type/badge system for future additions, but no card
- * currently ships in those states. Each card's repoPath points at its page source.
+ * Full catalog. Every card has a real route + admin API in this repo. The `status`
+ * is honest about operational completeness: most are `live` (real logic + persistence
+ * + validation); a few are `demo` (screen works, a headline capability is intentionally
+ * not built — e.g. campaign audience-send, LLM chat) or `external` (code-complete behind
+ * an adapter seam, awaiting a paid external key — e.g. SMS gateway, push delivery).
+ * Each card's repoPath points at its page source.
  */
 export const FEATURES: FeatureCard[] = [
   // ---- live — verified routes in this repo ----
@@ -210,13 +215,13 @@ export const FEATURES: FeatureCard[] = [
     id: "sms",
     domain: "marketing",
     title: "문자 발송·이력",
-    summary: "SMS/LMS 자동 분기 발송과 큐·성공/실패 이력",
-    status: "live",
+    summary: "SMS/LMS 자동 분기와 발송 이력 (게이트웨이 키 대기 — 데모 발송)",
+    status: "external",
     href: "/sms",
     gnuboard: "SMS §7.x history_list.php",
     repoPath: "streamhub-web/src/app/(protected)/sms/page.tsx",
     thumb: "/catalog/sms.png",
-    highlights: ["SMS/LMS 자동 분기", "발송 큐", "성공/실패 이력", "테스트 모드"],
+    highlights: ["SMS/LMS 자동 분기", "Aligo/Solapi 어댑터 seam", "발송 이력", "실 게이트웨이 키 대기"],
   },
   {
     id: "payment-seam",
@@ -234,13 +239,13 @@ export const FEATURES: FeatureCard[] = [
     id: "chat-bot",
     domain: "community",
     title: "챗봇 상담",
-    summary: "FAQ 기반 자동 응답 챗봇 메시지 처리부",
-    status: "live",
+    summary: "룰베이스 FAQ + 주문/상품 DB 조회 챗봇 (실 LLM 미연동)",
+    status: "demo",
     href: "/chat",
     gnuboard: "(레퍼런스 서비스 고유)",
     repoPath: "streamhub-web/src/app/(protected)/chat/page.tsx",
     thumb: "/catalog/chat-bot.png",
-    highlights: ["FAQ 자동응답", "세션 컨텍스트", "에스컬레이션"],
+    highlights: ["룰베이스 FAQ", "주문/상품 DB 조회", "세션 이력 저장", "LLM 어댑터 seam(키 대기)"],
   },
 
   // ---- support (후원·구독) ----
@@ -370,13 +375,13 @@ export const FEATURES: FeatureCard[] = [
     id: "coupons",
     domain: "shop",
     title: "쿠폰 관리",
-    summary: "정액·정률 할인과 최소주문·최대할인 정책",
+    summary: "주문에 실제 적용되는 정액·정률 할인 — 사용한도·기간·최소주문 검증",
     status: "live",
     href: "/coupons",
     gnuboard: "영카트 §4.12 couponlist.php",
     repoPath: "streamhub-web/src/app/(protected)/coupons/page.tsx",
     thumb: "/catalog/coupons.png",
-    highlights: ["정액/정률", "최소주문·최대할인", "절사단위"],
+    highlights: ["주문 결제 시 적용", "사용한도/기간 검증", "최소주문·최대할인", "절사단위"],
   },
 
   // ---- member (회원) ----
@@ -410,13 +415,13 @@ export const FEATURES: FeatureCard[] = [
     id: "content-stats",
     domain: "content",
     title: "콘텐츠 통계",
-    summary: "조회수 Top N과 채널별 시청시간 집계",
+    summary: "조회수 Top N과 실 트래킹 이벤트 기반 채널별 시청시간 집계",
     status: "live",
     href: "/content/stats",
     gnuboard: "§3.8 write_count.php",
     repoPath: "streamhub-web/src/app/(protected)/content/stats/page.tsx",
     thumb: "/catalog/content-stats.png",
-    highlights: ["조회수 Top N", "채널별 시청시간 집계"],
+    highlights: ["조회수 Top N", "실 이벤트(ANALYTICS_EVENT) 시청시간"],
   },
 
   // ---- community (소통) ----
@@ -474,25 +479,25 @@ export const FEATURES: FeatureCard[] = [
     id: "campaigns",
     domain: "marketing",
     title: "캠페인·이벤트",
-    summary: "특별헌금·신간 등 연결상품 일괄 캠페인",
-    status: "live",
+    summary: "캠페인 정의·상태머신 관리 (대상 발송 실행엔진 없음 — 정의 카탈로그)",
+    status: "demo",
     href: "/campaigns",
     gnuboard: "영카트 §5.5 itemevent.php",
     repoPath: "streamhub-web/src/app/(protected)/campaigns/page.tsx",
     thumb: "/catalog/campaigns.png",
-    highlights: ["특별헌금/신간", "연결상품 일괄", "스파이크 연동"],
+    highlights: ["상태머신(DRAFT→ACTIVE→ENDED)", "연결상품/기간", "실행엔진 없음"],
   },
   {
     id: "notifications",
     domain: "marketing",
     title: "알림센터(발송 로그)",
-    summary: "채널별 발송 로그와 성공/실패 추적 (실발송 X)",
-    status: "live",
+    summary: "채널별 발송 로그 조회 (FCM/SMTP 미연동 — 실발송 없음)",
+    status: "external",
     href: "/notifications",
     gnuboard: "SMS §7.3 history_list.php",
     repoPath: "streamhub-web/src/app/(protected)/notifications/page.tsx",
     thumb: "/catalog/notifications.png",
-    highlights: ["SMS/PUSH/EMAIL", "성공/실패", "실발송 없음"],
+    highlights: ["SMS/PUSH/EMAIL 로그", "발송 채널 키 대기", "실발송 없음"],
   },
 ];
 
@@ -513,5 +518,7 @@ export function assertUniqueIds(cards: FeatureCard[]): void {
 
 assertUniqueIds(FEATURES);
 
-/** Count of genuinely live (route-backed) cards, for the honesty subhead. */
+/** Counts per honesty status, for the catalog subhead. */
 export const LIVE_COUNT = FEATURES.filter((card) => card.status === "live").length;
+export const DEMO_COUNT = FEATURES.filter((card) => card.status === "demo").length;
+export const EXTERNAL_COUNT = FEATURES.filter((card) => card.status === "external").length;

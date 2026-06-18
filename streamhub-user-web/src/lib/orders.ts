@@ -17,6 +17,8 @@ export type OrderStatus = "PAID" | "PENDING" | "CANCELLED" | "FAILED";
 export interface CreateOrderInput {
   albumId: number;
   payProvider: PayProvider;
+  /** Optional discount-coupon code redeemed server-side against this order. */
+  couponCode?: string;
 }
 
 /** Result of POST /pub/v1/orders — a freshly created order. */
@@ -31,6 +33,8 @@ export interface OrderResult {
 export interface PreparePaymentInput {
   albumId: number;
   provider: PayProvider;
+  /** Optional discount-coupon code redeemed server-side; the returned amount is post-discount. */
+  couponCode?: string;
 }
 
 /** Result of /prepare — everything the browser needs to open the PG payment window. */

@@ -12,7 +12,7 @@ interface FilterChipsProps {
   onStatusChange: (status: FeatureStatus | "ALL") => void;
 }
 
-const STATUS_ORDER: FeatureStatus[] = ["live", "mock", "wip"];
+const STATUS_ORDER: FeatureStatus[] = ["live", "demo", "external"];
 
 function chipClass(active: boolean): string {
   return `inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${

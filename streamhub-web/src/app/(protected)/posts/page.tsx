@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Eye, Loader2, Lock, Trash2, X } from "lucide-react";
+import { Eye, Loader2, Lock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { boardList } from "@/apis/query/board/board";
@@ -15,6 +15,7 @@ import {
   type CommunityPostDto,
   type CommunityPostSearchRequest,
 } from "@/apis/query/streamHubAdminAPI.schemas";
+import CommunityPostFormDialog from "@/components/posts/CommunityPostFormDialog";
 import { SUCCESS_CODE } from "@/types/api";
 
 const ALL_BOARDS = "";
@@ -26,6 +27,10 @@ export default function PostsPage() {
   const [search, setSearch] = useState<CommunityPostSearchRequest>({});
   const [detailId, setDetailId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // null = closed; { post: null } = create; { post } = edit a specific post
+  const [formState, setFormState] = useState<{
+    post: CommunityPostDto | null;
+  } | null>(null);
 
   const boardsQuery = useQuery({
     queryKey: ["board-list"],
@@ -65,6 +70,12 @@ export default function PostsPage() {
     setSearch(next);
   };
 
+  const handleSaved = () => {
+    setMessage("저장되었습니다.");
+    setFormState(null);
+    listQuery.refetch();
+  };
+
   const handleDelete = (post: CommunityPostDto) => {
     if (post.id == null) {
       return;
@@ -93,13 +104,26 @@ export default function PostsPage() {
 
   return (
     <div>
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold text-slate-900">
-          공지·나눔·기도제목
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          커뮤니티 게시글을 게시판/키워드로 검색하고 상세 확인 및 삭제합니다.
-        </p>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">
+            공지·나눔·기도제목
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            커뮤니티 게시글을 게시판/키워드로 검색하고 작성·수정·삭제합니다.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setMessage(null);
+            setFormState({ post: null });
+          }}
+          className="flex shrink-0 items-center gap-1.5 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark"
+        >
+          <Plus className="h-4 w-4" />
+          글 작성
+        </button>
       </div>
 
       {/* Search bar */}
@@ -244,6 +268,17 @@ export default function PostsPage() {
                         </button>
                         <button
                           type="button"
+                          onClick={() => {
+                            setMessage(null);
+                            setFormState({ post });
+                          }}
+                          className="rounded p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-brand"
+                          aria-label="수정"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleDelete(post)}
                           disabled={deleteMutation.isPending}
                           className="rounded p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
@@ -266,6 +301,15 @@ export default function PostsPage() {
           id={detailId}
           boardNameById={boardNameById}
           onClose={() => setDetailId(null)}
+        />
+      )}
+
+      {formState != null && (
+        <CommunityPostFormDialog
+          post={formState.post}
+          boards={boards}
+          onClose={() => setFormState(null)}
+          onSaved={handleSaved}
         />
       )}
     </div>

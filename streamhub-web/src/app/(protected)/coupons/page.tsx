@@ -28,6 +28,13 @@ const formatDiscount = (coupon: CouponDto): string => {
   return formatWon(coupon.discountValue);
 };
 
+/** Renders usage as "used/limit" with an infinity symbol when there is no limit. */
+const formatUsage = (coupon: CouponDto): string => {
+  const used = coupon.usedCount ?? 0;
+  const limit = coupon.usageLimit != null ? coupon.usageLimit.toLocaleString() : "∞";
+  return `${used.toLocaleString()}/${limit}`;
+};
+
 /** Returns a short date label ("YYYY-MM-DD") from an ISO/datetime string. */
 const formatDate = (value?: string): string =>
   value ? value.slice(0, 10) : "-";
@@ -212,6 +219,7 @@ export default function CouponsPage() {
                 <th className="px-4 py-3">쿠폰명</th>
                 <th className="px-4 py-3">할인</th>
                 <th className="px-4 py-3">최소주문금액</th>
+                <th className="px-4 py-3">사용횟수</th>
                 <th className="px-4 py-3">기간</th>
                 <th className="px-4 py-3">사용</th>
                 <th className="px-4 py-3 text-right">관리</th>
@@ -221,7 +229,7 @@ export default function CouponsPage() {
               {coupons.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-10 text-center text-slate-400"
                   >
                     조회된 쿠폰이 없습니다.
@@ -243,6 +251,9 @@ export default function CouponsPage() {
                       </td>
                       <td className="px-4 py-3 text-slate-700">
                         {formatWon(coupon.minOrderAmount)}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-700">
+                        {formatUsage(coupon)}
                       </td>
                       <td className="px-4 py-3 text-slate-700">
                         <span className={expired ? "text-red-600" : ""}>

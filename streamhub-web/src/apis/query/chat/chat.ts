@@ -30,7 +30,7 @@ import type {
 import { customInstance } from "../../custom-instance";
 
 /**
- * 사용자 메시지를 분류해 룰베이스 응답을 반환한다(데모).
+ * 최신 메시지 한 건만 룰 기반으로 분류해 응답한다(이전 대화 맥락 미반영). USER/BOT 턴은 세션에 저장된다.
  * @summary 챗봇 메시지 전송
  */
 export const chatSendCreate = (

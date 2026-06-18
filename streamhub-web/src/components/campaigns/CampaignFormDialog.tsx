@@ -108,6 +108,11 @@ export default function CampaignFormDialog({
       return;
     }
 
+    if (!form.startAt || !form.endAt) {
+      setMessage("시작일과 종료일을 입력해 주세요.");
+      return;
+    }
+
     const payload: CampaignDto = {
       title: form.title.trim(),
       type: form.type,
@@ -117,8 +122,8 @@ export default function CampaignFormDialog({
       targetAmount: form.targetAmount.trim()
         ? Number(form.targetAmount)
         : undefined,
-      startAt: form.startAt || undefined,
-      endAt: form.endAt || undefined,
+      startAt: form.startAt,
+      endAt: form.endAt,
     };
 
     if (isEdit && campaign?.id != null) {
