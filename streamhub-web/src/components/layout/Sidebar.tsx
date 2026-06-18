@@ -35,7 +35,6 @@ import {
   Image as ImageIcon,
   Megaphone,
   Bell,
-  Palette,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -61,7 +60,6 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "대시보드", href: "/dashboard", icon: LayoutDashboard },
       { label: "기능 카탈로그", href: "/catalog", icon: LayoutGrid },
       { label: "접속 통계", href: "/visits", icon: Activity },
-      { label: "운영 UI 설정", href: "/site-config", icon: Palette, systemOnly: true },
     ],
   },
   {

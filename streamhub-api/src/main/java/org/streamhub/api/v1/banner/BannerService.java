@@ -1,6 +1,5 @@
 package org.streamhub.api.v1.banner;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,7 +9,6 @@ import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.banner.dto.BannerDto;
 import org.streamhub.api.v1.banner.dto.BannerSearchRequest;
 import org.streamhub.api.v1.banner.entity.Banner;
-import org.streamhub.api.v1.banner.entity.BannerPosition;
 import org.streamhub.api.v1.banner.repository.BannerRepository;
 
 /**
@@ -39,23 +37,6 @@ public class BannerService {
                         || request.device() == banner.getDevice())
                 .filter(banner -> request == null || request.useYn() == null
                         || request.useYn().isBlank() || request.useYn().equals(banner.getUseYn()))
-                .map(BannerDto::from)
-                .toList();
-    }
-
-    /**
-     * Public listing for the user site: only currently-active banners (useYn='Y' and the
-     * current time within [startAt, endAt] when set), ordered by sortOrder then id, optionally
-     * filtered by position. Mock device targeting is left to the client (small dataset).
-     */
-    @Transactional(readOnly = true)
-    public List<BannerDto> listPublic(BannerPosition position) {
-        LocalDateTime now = LocalDateTime.now();
-        return bannerRepository.findAllByOrderBySortOrderAscIdAsc().stream()
-                .filter(banner -> "Y".equals(banner.getUseYn()))
-                .filter(banner -> banner.getStartAt() == null || !banner.getStartAt().isAfter(now))
-                .filter(banner -> banner.getEndAt() == null || !banner.getEndAt().isBefore(now))
-                .filter(banner -> position == null || banner.getPosition() == position)
                 .map(BannerDto::from)
                 .toList();
     }

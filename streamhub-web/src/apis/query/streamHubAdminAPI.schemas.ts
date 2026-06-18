@@ -141,31 +141,6 @@ export interface ResultDTOStoreDto {
   resultObject?: StoreDto;
 }
 
-export interface Announcement {
-  enabled?: boolean;
-  text?: string;
-  link?: string;
-}
-
-export interface HomeSection {
-  key?: string;
-  enabled?: boolean;
-}
-
-export interface SiteConfigData {
-  defaultTheme?: string;
-  accentColor?: string;
-  announcement?: Announcement;
-  homeSections?: HomeSection[];
-  featuredAlbumIds?: number[];
-}
-
-export interface ResultDTOSiteConfigData {
-  resultCode?: string;
-  resultMessage?: string;
-  resultObject?: SiteConfigData;
-}
-
 export interface MemberUpdateRequest {
   name: string;
   phone?: string;
@@ -3323,22 +3298,6 @@ export const PublicChurchesDenomination = {
   GOSPEL: "GOSPEL",
   BAPTIST: "BAPTIST",
   ETC: "ETC",
-} as const;
-
-export type BannerPublicBannersParams = {
-  position?: BannerPublicBannersPosition;
-};
-
-export type BannerPublicBannersPosition =
-  (typeof BannerPublicBannersPosition)[keyof typeof BannerPublicBannersPosition];
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const BannerPublicBannersPosition = {
-  MAIN_TOP: "MAIN_TOP",
-  MAIN_MIDDLE: "MAIN_MIDDLE",
-  MAIN_BOTTOM: "MAIN_BOTTOM",
-  SIDE: "SIDE",
-  POPUP: "POPUP",
 } as const;
 
 export type PublicAlbumsParams = {

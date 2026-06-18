@@ -6,7 +6,6 @@ import { TabBar } from "@/components/TabBar";
 import { MiniPreviewPlayer } from "@/components/preview/MiniPreviewPlayer";
 import { ChatbotWidget } from "@/components/ChatbotWidget";
 import { AnnouncementModal } from "@/components/AnnouncementModal";
-import { fetchSiteConfig, hexToRgbChannels } from "@/lib/siteConfig";
 
 export const metadata: Metadata = {
   title: "StreamHub — 함께 드리는 예배",
@@ -20,26 +19,22 @@ export const viewport = {
   userScalable: false,
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Admin-controlled UI settings (theme/accent/announcement). Server-fetched so the theme +
-  // accent apply before paint with no flash; never throws (falls back to defaults).
-  const config = await fetchSiteConfig();
-  const accentChannels = hexToRgbChannels(config.accentColor);
-  // No-flash theme: the user's own toggle (localStorage) wins; otherwise the admin default.
-  const themeScript =
-    "(function(){try{var t=localStorage.getItem('streamhub.theme');if(!t)t='" +
-    config.defaultTheme +
-    "';if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();";
+/** First-visit announcement (shown once as a modal). Edit here to change; empty text hides it. */
+const ANNOUNCEMENT = {
+  enabled: true,
+  text: "성탄 특별예배 안내 — 자세히 보기",
+  link: "/churches",
+};
 
+// No-flash theme: apply the visitor's stored light/dark choice before first paint (default dark).
+const THEME_SCRIPT =
+  "(function(){try{var t=localStorage.getItem('streamhub.theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="ko"
-      // Admin accent overrides the --primary token in both themes (inline > stylesheet).
-      style={accentChannels ? ({ "--primary": accentChannels } as React.CSSProperties) : undefined}
-    >
+    <html lang="ko">
       <head>
-        {/* No-flash theme: apply the stored choice (or admin default) before first paint. */}
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap"
@@ -54,9 +49,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <TabBar />
             <ChatbotWidget />
             <AnnouncementModal
-              enabled={config.announcement.enabled}
-              text={config.announcement.text}
-              link={config.announcement.link || undefined}
+              enabled={ANNOUNCEMENT.enabled}
+              text={ANNOUNCEMENT.text}
+              link={ANNOUNCEMENT.link || undefined}
             />
           </div>
         </Providers>
