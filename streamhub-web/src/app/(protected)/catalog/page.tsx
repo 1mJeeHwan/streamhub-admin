@@ -41,8 +41,8 @@ export default function CatalogPage() {
         <p className="mt-1 text-sm text-slate-500">
           7개 운영 도메인에 걸친 관리 화면을 한 곳에서 둘러봅니다.
         </p>
-        <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-          🟡 데모 데이터 · 일부 화면은 목업입니다 (✅ 표시만 실제 동작)
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+          ✅ 실동작 · 🟡 데모(간판 기능 일부 미구현) · 🔌 외부연동 대기(키 주입 시 작동) — 상태별로 정직하게 표기했습니다
         </p>
       </div>
 
