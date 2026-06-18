@@ -5,7 +5,7 @@ import { AppBar } from "@/components/AppBar";
 import { TabBar } from "@/components/TabBar";
 import { MiniPreviewPlayer } from "@/components/preview/MiniPreviewPlayer";
 import { ChatbotWidget } from "@/components/ChatbotWidget";
-import { AnnouncementBar } from "@/components/AnnouncementBar";
+import { AnnouncementModal } from "@/components/AnnouncementModal";
 import { fetchSiteConfig, hexToRgbChannels } from "@/lib/siteConfig";
 
 export const metadata: Metadata = {
@@ -49,16 +49,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Providers>
           <div className="app-frame">
             <AppBar />
-            {config.announcement.enabled && (
-              <AnnouncementBar
-                text={config.announcement.text}
-                link={config.announcement.link || undefined}
-              />
-            )}
             <main className="min-h-[60vh] pb-[88px]">{children}</main>
             <MiniPreviewPlayer />
             <TabBar />
             <ChatbotWidget />
+            <AnnouncementModal
+              enabled={config.announcement.enabled}
+              text={config.announcement.text}
+              link={config.announcement.link || undefined}
+            />
           </div>
         </Providers>
       </body>
