@@ -1,6 +1,11 @@
 name: Deploy API
 
-# Manual trigger. Builds the API image, pushes to ECR, and rolls the EC2 container.
+# Triggers:
+#   - push to main touching the API (or this workflow) -> auto deploy
+#   - manual run (workflow_dispatch) for ad-hoc redeploys
+# Builds the API image, pushes to ECR, and rolls the EC2 container.
+# Note: a backend roll causes ~1 min API downtime. Frontend-only pushes skip
+# this job via the paths filter (Vercel handles the frontends).
 # Required repo secrets:
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY  (a deploy IAM user with ECR push + SSM SendCommand)
 #   AWS_REGION            e.g. ap-northeast-2
@@ -8,6 +13,11 @@ name: Deploy API
 #   EC2_INSTANCE_ID       the target instance id (terraform output)
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'streamhub-api/**'
+      - '.github/workflows/deploy.yml'
 
 jobs:
   deploy:
