@@ -61,7 +61,7 @@ public class ChatController {
     @PostMapping("/send")
     public ResponseEntity<ResultDTO<ChatReplyDto>> send(@Valid @RequestBody ChatSendRequest request,
                                                         HttpServletRequest httpRequest) {
-        if (!rateLimiter.tryAcquire(clientIpResolver.resolve(httpRequest))) {
+        if (!rateLimiter.tryAcquire("chat:" + clientIpResolver.resolve(httpRequest))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(ResultDTO.error(ResultCode.INVALID_PARAMETER, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."));
         }

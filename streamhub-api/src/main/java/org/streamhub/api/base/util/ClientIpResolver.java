@@ -17,12 +17,14 @@ import org.springframework.stereotype.Component;
  *
  * <p><b>Topology:</b> {@code client → CloudFront → Caddy → app}. By the time the request reaches
  * the app, the header reads {@code <real-client>, <cloudfront-edge>} (Caddy's {@code remote_addr}
- * is CloudFront, which CloudFront has already prepended the real client to). The two rightmost
- * hops (CloudFront edge, then Caddy's view) are added by trusted infrastructure, so the real
- * client is the entry <i>{@code trustedProxyHops}</i> positions from the right. Anything further
- * left was supplied by the client and is ignored. With the header shorter than expected (direct
- * hit, misconfiguration), we fall back to {@link HttpServletRequest#getRemoteAddr()} rather than
- * trusting a client-controlled value.
+ * is CloudFront, which CloudFront has already prepended the real client to). Only the single
+ * rightmost entry (the CloudFront edge that Caddy appended) is added by trusted infrastructure;
+ * the real client is the entry <i>{@code trustedProxyHops}</i> positions from the right (default
+ * {@code 1}). Anything further left was supplied by the client and is ignored — even if an abuser
+ * spoofs {@code X-Forwarded-For: evil}, CloudFront appends the real viewer after it, so the
+ * 1-from-the-right entry is still the genuine client. With the header shorter than expected
+ * (direct hit, misconfiguration), we fall back to {@link HttpServletRequest#getRemoteAddr()}
+ * rather than trusting a client-controlled value.
  */
 @Component
 public class ClientIpResolver {
@@ -30,14 +32,16 @@ public class ClientIpResolver {
     private static final String FORWARDED_FOR_HEADER = "X-Forwarded-For";
 
     /**
-     * Number of trusted reverse-proxy hops in front of the app. The client IP is taken this many
-     * positions from the right of {@code X-Forwarded-For}. Default {@code 2} matches the
-     * CloudFront→Caddy→app topology; set {@code app.security.trusted-proxy-hops=0} for a direct
-     * (no-proxy) deployment so {@code getRemoteAddr()} is always used.
+     * Number of trusted reverse-proxy entries appended to {@code X-Forwarded-For} in front of the
+     * app. The client IP is taken this many positions from the right. Default {@code 1} matches the
+     * CloudFront→Caddy→app topology: at the app the header is {@code <real-client>, <cloudfront>},
+     * so the genuine client sits exactly one hop from the right. Set
+     * {@code app.security.trusted-proxy-hops=0} for a direct (no-proxy) deployment so
+     * {@code getRemoteAddr()} is always used.
      */
     private final int trustedProxyHops;
 
-    public ClientIpResolver(@Value("${app.security.trusted-proxy-hops:2}") int trustedProxyHops) {
+    public ClientIpResolver(@Value("${app.security.trusted-proxy-hops:1}") int trustedProxyHops) {
         this.trustedProxyHops = Math.max(0, trustedProxyHops);
     }
 

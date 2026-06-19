@@ -47,6 +47,7 @@ public class ContentService {
     private final ContentRepository contentRepository;
     private final ChannelRepository channelRepository;
     private final HashtagRepository hashtagRepository;
+    private final HashtagWriter hashtagWriter;
     private final ContentHashtagRepository contentHashtagRepository;
     private final ContentFileRepository contentFileRepository;
     private final StorageService storageService;
@@ -57,6 +58,7 @@ public class ContentService {
             ContentRepository contentRepository,
             ChannelRepository channelRepository,
             HashtagRepository hashtagRepository,
+            HashtagWriter hashtagWriter,
             ContentHashtagRepository contentHashtagRepository,
             ContentFileRepository contentFileRepository,
             StorageService storageService,
@@ -65,6 +67,7 @@ public class ContentService {
         this.contentRepository = contentRepository;
         this.channelRepository = channelRepository;
         this.hashtagRepository = hashtagRepository;
+        this.hashtagWriter = hashtagWriter;
         this.contentHashtagRepository = contentHashtagRepository;
         this.contentFileRepository = contentFileRepository;
         this.storageService = storageService;
@@ -101,7 +104,15 @@ public class ContentService {
         String type = request.type() == null ? null : request.type().name();
         String status = request.status() == null ? null : request.status().name();
         String keyword = blankToNull(request.keyword());
-        Long churchId = principal.isSystem() ? null : principal.churchId();
+        // A non-SYSTEM operator must carry a church scope; a null churchId here would degrade the
+        // mapper filter to "IS NULL" and leak every church's content, so fail closed instead.
+        Long churchId = null;
+        if (!principal.isSystem()) {
+            churchId = principal.churchId();
+            if (churchId == null) {
+                throw new ApiException(ResultCode.FORBIDDEN);
+            }
+        }
         int size = request.pageSizeOrDefault();
 
         List<ContentListItem> contents = contentMapper.selectList(
@@ -277,7 +288,9 @@ public class ContentService {
     private Hashtag getOrCreateHashtag(String name) {
         return hashtagRepository.findByName(name).orElseGet(() -> {
             try {
-                return hashtagRepository.save(Hashtag.builder().name(name).build());
+                // Isolated insert (REQUIRES_NEW): a collision rolls back only this insert, not the
+                // caller's content transaction, so we can absorb it and re-read the committed row.
+                return hashtagWriter.insert(name);
             } catch (DataIntegrityViolationException collision) {
                 // A parallel request inserted the same tag first — re-read the now-present row.
                 return hashtagRepository.findByName(name)

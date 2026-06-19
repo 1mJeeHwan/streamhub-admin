@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResultCode;
@@ -152,6 +153,17 @@ public class CouponService {
             throw new ApiException(ResultCode.INVALID_PARAMETER, "쿠폰을 모두 소진했습니다");
         }
         return new RedeemResult(coupon.getId(), discount);
+    }
+
+    /**
+     * Redeems in a <b>separate</b> transaction so a failure (expired/exhausted/duplicate between
+     * prepare and confirm) rolls back only the redemption — never the caller's transaction. The
+     * real-PG {@code confirm} flow uses this so a coupon problem can't undo an already-captured
+     * payment: the caller catches the failure and keeps the order PAID with the coupon unconsumed.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public RedeemResult redeemInNewTransaction(String code, long orderAmount, Long memberId) {
+        return redeem(code, orderAmount, memberId);
     }
 
     /** Computed discount for a successfully redeemed coupon. */

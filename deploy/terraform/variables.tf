@@ -70,3 +70,9 @@ variable "ssh_ingress_cidr" {
   type        = string
   default     = "127.0.0.1/32"
 }
+
+variable "protect_database" {
+  description = "Production DB teardown protection. true = deletion_protection + final snapshot (hard to destroy); false (default) = demo-friendly teardown. Encryption and automated backups apply regardless."
+  type        = bool
+  default     = false
+}

@@ -226,12 +226,14 @@ resource "aws_db_instance" "mysql" {
   # NOTE: in-place 전환 불가 — 기존 미암호화 인스턴스는 암호화 스냅샷 복원(snapshot → copy with KMS key → restore)으로만 전환 가능. 이 속성을 켜면 새 인스턴스 재생성이 강제된다.
   storage_encrypted = true
 
-  # Automated backups + safe teardown.
+  # Automated backups always on. Teardown protection is opt-in via protect_database so a cost-
+  # sensitive demo can `terraform destroy` freely (default false: no deletion_protection, no final
+  # snapshot → no snapshot-name collision on repeat teardown). Set protect_database=true for prod.
   backup_retention_period   = 7
   copy_tags_to_snapshot     = true
-  skip_final_snapshot       = false
-  final_snapshot_identifier = "${var.project}-mysql-final"
-  deletion_protection       = true
+  skip_final_snapshot       = !var.protect_database
+  final_snapshot_identifier = "${var.project}-mysql-final" # only used when protect_database=true
+  deletion_protection       = var.protect_database
 }
 
 # ---------------------------------------------------------------------------

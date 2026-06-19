@@ -3,6 +3,7 @@ package org.streamhub.api.v1.community.dto;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import lombok.Getter;
@@ -36,6 +37,7 @@ public class BoardDto {
     @Max(value = 10, message = "쓰기 권한 레벨은 10 이하여야 합니다")
     private int writeLevel;
 
+    @Pattern(regexp = "^[YN]?$", message = "사용여부는 Y 또는 N입니다")
     private String useYn;
     private int sortOrder;
     private LocalDateTime createdAt;

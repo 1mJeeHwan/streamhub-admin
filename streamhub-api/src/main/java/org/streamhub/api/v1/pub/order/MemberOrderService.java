@@ -4,6 +4,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
@@ -50,6 +51,7 @@ import org.streamhub.api.v1.pub.order.dto.MemberPaymentPrepareResult;
  * </ul>
  * The mock path is a demo no-op; the Toss path calls the real Toss sandbox confirm API.
  */
+@Slf4j
 @Service
 public class MemberOrderService {
 
@@ -257,10 +259,20 @@ public class MemberOrderService {
         if (pendingCode == null || pendingCode.isBlank()) {
             return;
         }
-        CouponService.RedeemResult redeemed =
-                couponService.redeem(pendingCode, order.getGoodsTotal(), order.getMemberId());
-        order.applyCoupon(redeemed.couponId());
-        orderRepository.saveAndFlush(order);
+        // The payment is already captured by the time we get here, so a coupon problem must never
+        // roll back the confirm transaction (that would leave the customer charged with no order).
+        // redeemInNewTransaction isolates the redemption in its own transaction; on failure we keep
+        // the order PAID with the coupon unconsumed (the discount was already applied to the total at
+        // prepare) and leave couponId null so a later refund won't wrongly release a redemption.
+        try {
+            CouponService.RedeemResult redeemed =
+                    couponService.redeemInNewTransaction(pendingCode, order.getGoodsTotal(), order.getMemberId());
+            order.applyCoupon(redeemed.couponId());
+            orderRepository.saveAndFlush(order);
+        } catch (RuntimeException e) {
+            log.warn("쿠폰 소진 실패 — 결제는 완료 유지, 쿠폰 미적용 (orderNo={}, code={}): {}",
+                    order.getOrderNo(), pendingCode, e.getMessage());
+        }
     }
 
     /** Resolves and validates the purchasable goods backing an on-sale album. */

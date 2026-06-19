@@ -47,19 +47,19 @@ public class AnalyticsPublicController {
     @PostMapping
     public ResultDTO<Void> ingest(@RequestBody(required = false) EventIngestRequest request,
                                   HttpServletRequest httpRequest) {
-        if (rateLimiter.tryAcquire(clientIpResolver.resolve(httpRequest))) {
+        if (rateLimiter.tryAcquire("analytics:" + clientIpResolver.resolve(httpRequest))) {
             analyticsService.ingest(request);
         }
         return ResultDTO.ok();
     }
 
     @Operation(summary = "분석 이벤트 일괄 수집",
-            description = "여러 이벤트(최대 200건)를 한 번에 적재한다. 초과 시 400. 잘못된 입력은 기본값으로 보정. 과도한 요청은 무시(200).")
+            description = "여러 이벤트(최대 60건)를 한 번에 적재한다. 초과 시 400. 잘못된 입력은 기본값으로 보정. 과도한 요청은 무시(200).")
     @PostMapping("/batch")
     public ResultDTO<Void> ingestBatch(@Valid @RequestBody EventIngestBatchRequest request,
                                        HttpServletRequest httpRequest) {
         int cost = request.events().size();
-        if (rateLimiter.tryAcquire(clientIpResolver.resolve(httpRequest), cost)) {
+        if (rateLimiter.tryAcquire("analytics:" + clientIpResolver.resolve(httpRequest), cost)) {
             analyticsService.ingestBatch(request.events());
         }
         return ResultDTO.ok();

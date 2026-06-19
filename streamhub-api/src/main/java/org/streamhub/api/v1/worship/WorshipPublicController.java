@@ -62,7 +62,7 @@ public class WorshipPublicController {
     @PostMapping
     public ResponseEntity<ResultDTO<WorshipRegisterResponse>> create(
             @Valid @RequestBody WorshipRegisterRequest request, HttpServletRequest httpRequest) {
-        if (!rateLimiter.tryAcquire(clientIpResolver.resolve(httpRequest), REGISTER_TOKEN_COST)) {
+        if (!rateLimiter.tryAcquire("worship:" + clientIpResolver.resolve(httpRequest), REGISTER_TOKEN_COST)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(ResultDTO.error(ResultCode.INVALID_PARAMETER, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."));
         }

@@ -21,6 +21,10 @@ public record EventIngestBatchRequest(
         @Size(min = 1, max = MAX_EVENTS, message = "한 번에 최대 " + MAX_EVENTS + "건까지 전송할 수 있습니다")
         @Valid List<EventIngestRequest> events) {
 
-    /** Maximum number of events accepted in one batch request. */
-    public static final int MAX_EVENTS = 200;
+    /**
+     * Maximum number of events accepted in one batch request. Kept equal to the rate limiter's
+     * per-IP bucket capacity (60) so a maxed-out batch is charged exactly its work — a larger cap
+     * would let one request do more inserts than tokens it is debited (cost is clamped to capacity).
+     */
+    public static final int MAX_EVENTS = 60;
 }
