@@ -43,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <div className="app-frame">
             <AppBar />
-            <main className="min-h-[60vh] pb-[88px]">{children}</main>
+            <main className="min-h-[60vh] pb-100px">{children}</main>
             <MiniPreviewPlayer />
             <TabBar />
             <ChatbotWidget />

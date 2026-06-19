@@ -1,14 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Play } from "lucide-react";
 import clsx from "clsx";
 import type { ContentListItem } from "@/lib/types";
 
+/** ng-front MainSlide gradient: subtle top vignette + strong bottom scrim for the title. */
+const SCRIM =
+  "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 21.82%, rgba(0,0,0,0) 68.01%, rgba(0,0,0,0.72) 100%)";
+
+const AUTOPLAY_MS = 4000;
+
 /**
- * Swipeable hero banner (scroll-snap, no carousel lib). Dots reflect/seek the active slide.
- * Thumbnails are usually absent, so each slide is a branded gradient with the title overlaid.
+ * Home hero, ported from ng-front's MainSlide: tall 8:7 banner, autoplay, bottom-scrim
+ * title (22px) + subtitle (11px), expanding dots. Scroll-snap row (no carousel lib).
  */
 export function Hero({ items }: { items: ContentListItem[] }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -29,6 +34,18 @@ export function Hero({ items }: { items: ContentListItem[] }) {
     el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
   }
 
+  // Autoplay: advance one slide every 4s, wrapping back to the first.
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const id = setInterval(() => {
+      const el = ref.current;
+      if (!el) return;
+      const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % slides.length;
+      el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+    }, AUTOPLAY_MS);
+    return () => clearInterval(id);
+  }, [slides.length]);
+
   if (slides.length === 0) return null;
 
   return (
@@ -42,12 +59,16 @@ export function Hero({ items }: { items: ContentListItem[] }) {
           <button
             key={item.id}
             onClick={() => router.push(`/video/${item.id}`)}
-            className="relative aspect-[16/10] w-full shrink-0 snap-start overflow-hidden text-left"
+            className="relative aspect-[8/7] w-full shrink-0 snap-start overflow-hidden text-left"
             aria-label={item.title}
           >
             {item.thumbnailUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+              <img
+                src={item.thumbnailUrl}
+                alt=""
+                className="h-full w-full object-cover object-top"
+              />
             ) : (
               <div
                 className={clsx(
@@ -58,32 +79,36 @@ export function Hero({ items }: { items: ContentListItem[] }) {
                 )}
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-5">
-              <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-primary/90 px-2 py-0.5 text-[11px] font-bold text-bg">
-                <Play className="h-3 w-3 fill-bg" />
-                지금 보기
-              </span>
-              <h2 className="ellipsis-2 text-xl font-bold leading-tight text-white drop-shadow">
+            <div className="absolute inset-0" style={{ background: SCRIM }} />
+            <div className="absolute inset-x-0 bottom-0 px-20px py-10px">
+              <h2
+                className="ellipsis-2 text-22px font-bold leading-30px text-white"
+                style={{ textShadow: "0px 1px 2px #000000" }}
+              >
                 {item.title}
               </h2>
               {item.channelName && (
-                <p className="mt-1 text-xs text-white/80">{item.channelName}</p>
+                <p
+                  className="ellipsis-2 mt-1 text-11px leading-[13.8px] -tracking-[0.24px] text-white/90"
+                  style={{ textShadow: "0px 1px 2px #000000" }}
+                >
+                  {item.channelName}
+                </p>
               )}
             </div>
           </button>
         ))}
       </div>
 
-      <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+      <div className="absolute inset-x-0 bottom-20px flex justify-center gap-2">
         {slides.map((_, i) => (
           <button
             key={i}
             onClick={() => seek(i)}
             aria-label={`${i + 1}번째 배너`}
             className={clsx(
-              "h-1.5 rounded-full transition-all",
-              i === active ? "w-4 bg-white" : "w-1.5 bg-white/50",
+              "h-[6px] rounded-full border border-white transition-all",
+              i === active ? "w-16px bg-white opacity-100" : "w-[6px] bg-white opacity-50",
             )}
           />
         ))}

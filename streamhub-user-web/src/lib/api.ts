@@ -1,4 +1,6 @@
 import type {
+  BannerItem,
+  BannerTarget,
   ContentDetail,
   ContentListItem,
   ContentType,
@@ -96,6 +98,8 @@ export const api = {
   posts: (p: PostListParams = {}) =>
     request<InfinityList<PostListItem>>(`/pub/v1/posts${query({ ...p })}`),
   post: (id: number) => request<PostDetail>(`/pub/v1/posts/${id}`),
+  banners: (target: BannerTarget) =>
+    request<BannerItem[]>(`/pub/v1/banners${query({ target })}`),
 
   // Member auth
   login: (email: string, password: string) =>

@@ -35,7 +35,7 @@ export function NearbyChurchesSection() {
   return (
     <section className="px-5 pt-6">
       <div className="flex items-center justify-between pb-3">
-        <h2 className="flex items-center gap-1.5 text-[22px] font-bold leading-tight text-active">
+        <h2 className="flex items-center gap-1.5 text-24px font-bold leading-30px text-active">
           <MapPin className="h-5 w-5 text-primary" />내 주변 교회
         </h2>
         <Link href="/churches" className="flex shrink-0 items-center gap-0.5 text-xs font-medium text-primary">

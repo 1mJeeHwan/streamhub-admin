@@ -30,7 +30,7 @@ import type {
 import { customInstance } from "../../custom-instance";
 
 /**
- * 최신 메시지 한 건만 룰 기반으로 분류해 응답한다(이전 대화 맥락 미반영). USER/BOT 턴은 세션에 저장된다.
+ * 최신 메시지 한 건만 룰 기반으로 분류해 응답한다(이전 대화 맥락 미반영). USER/BOT 턴은 세션에 저장된다. 과도한 요청은 429.
  * @summary 챗봇 메시지 전송
  */
 export const chatSendCreate = (

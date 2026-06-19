@@ -30,7 +30,7 @@ import type {
 import { customInstance } from "../../custom-instance";
 
 /**
- * 비회원 다단계 폼 제출 → 신청 1건 + 가족 N건(최대 5) 생성. 실제 알림 미발송.
+ * 비회원 다단계 폼 제출 → 신청 1건 + 가족 N건(최대 5) 생성. 실제 알림 미발송. 과도한 요청은 429.
  * @summary 공개 신청 생성
  */
 export const worshipPublicWorshipCreate = (

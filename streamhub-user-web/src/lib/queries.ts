@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api, type ContentListParams, type PostListParams } from "./api";
+import type { BannerTarget } from "./types";
 
 export const queryKeys = {
   home: ["home"] as const,
@@ -9,10 +10,20 @@ export const queryKeys = {
   content: (id: number) => ["content", id] as const,
   posts: (p: PostListParams) => ["posts", p] as const,
   post: (id: number) => ["post", id] as const,
+  banners: (target: BannerTarget) => ["banners", target] as const,
 };
 
 export function useHome() {
   return useQuery({ queryKey: queryKeys.home, queryFn: api.home });
+}
+
+/** Active promo banners for a content tab (admin-managed). Empty/failed → no banner shown. */
+export function useBanners(target: BannerTarget) {
+  return useQuery({
+    queryKey: queryKeys.banners(target),
+    queryFn: () => api.banners(target),
+    staleTime: 5 * 60 * 1000,
+  });
 }
 
 export function useContents(params: ContentListParams) {

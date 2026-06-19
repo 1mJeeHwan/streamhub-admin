@@ -1,5 +1,13 @@
 import type { Config } from "tailwindcss";
 
+// ng-front-style px scale: generates { "0px": "0px", ... "Npx": "Npx" }.
+// Added via theme.extend so Tailwind defaults (text-sm, w-full, p-4, ...) keep working.
+const px = (range: number): Record<string, string> =>
+  Array.from({ length: range + 1 }).reduce<Record<string, string>>((acc, _, i) => {
+    acc[`${i}px`] = `${i}px`;
+    return acc;
+  }, {});
+
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
@@ -7,6 +15,19 @@ const config: Config = {
       fontFamily: {
         sans: ['"Noto Sans KR"', "Inter", "system-ui", "sans-serif"],
       },
+      // ng-front design-system spacing/sizing tokens (additive, 0–200px / 0–100px).
+      width: px(200),
+      minWidth: px(200),
+      maxWidth: px(200),
+      height: px(200),
+      minHeight: px(200),
+      maxHeight: px(200),
+      borderWidth: px(100),
+      fontSize: px(100),
+      lineHeight: { ...px(50), "150%": "150%" },
+      padding: px(100),
+      margin: px(100),
+      letterSpacing: { "0.3": "0.3px" },
       colors: {
         // production-app dark palette (dark-only).
         bg: "rgb(var(--bg) / <alpha-value>)",
