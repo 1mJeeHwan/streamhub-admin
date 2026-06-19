@@ -4,18 +4,22 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
+import org.streamhub.api.base.security.AdminPrincipal;
+import org.streamhub.api.base.security.AuthoritiesConstants;
 import org.streamhub.api.base.storage.StorageService;
 import org.streamhub.api.v1.content.dto.ContentCreateRequest;
 import org.streamhub.api.v1.content.dto.ContentDetail;
 import org.streamhub.api.v1.content.dto.ContentFileDto;
 import org.streamhub.api.v1.content.dto.ContentListItem;
 import org.streamhub.api.v1.content.dto.ContentSearchRequest;
+import org.streamhub.api.v1.content.entity.Channel;
 import org.streamhub.api.v1.content.entity.Content;
 import org.streamhub.api.v1.content.entity.ContentFile;
 import org.streamhub.api.v1.content.entity.ContentHashtag;
@@ -34,6 +38,10 @@ import org.streamhub.api.v1.content.repository.HashtagRepository;
  */
 @Service
 public class ContentService {
+
+    /** Unscoped SYSTEM principal for public endpoints (no authenticated operator, all churches). */
+    private static final AdminPrincipal SYSTEM_PRINCIPAL =
+            new AdminPrincipal(null, AuthoritiesConstants.SYSTEM, null);
 
     private final ContentMapper contentMapper;
     private final ContentRepository contentRepository;
@@ -63,40 +71,59 @@ public class ContentService {
         this.actionLogPublisher = actionLogPublisher;
     }
 
+    /**
+     * Channel options for the content form's selector. A CHURCH_MANAGER only sees its own
+     * church's channels; SYSTEM sees all.
+     *
+     * @param principal authenticated operator providing the church scope
+     * @return channel options visible to the operator
+     */
     @Transactional(readOnly = true)
-    public List<org.streamhub.api.v1.content.dto.ChannelDto> listChannels() {
-        return channelRepository.findAll().stream()
+    public List<org.streamhub.api.v1.content.dto.ChannelDto> listChannels(AdminPrincipal principal) {
+        List<Channel> channels = principal.isSystem()
+                ? channelRepository.findAll()
+                : channelRepository.findByChurchId(principal.churchId());
+        return channels.stream()
                 .map(org.streamhub.api.v1.content.dto.ChannelDto::from)
                 .toList();
     }
 
+    /**
+     * Paginated content search. Content carries no church column, so the filter is applied through
+     * the {@code CHANNEL} join; a CHURCH_MANAGER operator is pinned to its own church's channels.
+     *
+     * @param request   search/pagination filters
+     * @param principal authenticated operator providing the church scope
+     * @return the filtered, paginated content list
+     */
     @Transactional(readOnly = true)
-    public ResInfinityList<ContentListItem> list(ContentSearchRequest request) {
+    public ResInfinityList<ContentListItem> list(ContentSearchRequest request, AdminPrincipal principal) {
         String type = request.type() == null ? null : request.type().name();
         String status = request.status() == null ? null : request.status().name();
         String keyword = blankToNull(request.keyword());
+        Long churchId = principal.isSystem() ? null : principal.churchId();
         int size = request.pageSizeOrDefault();
 
-        List<ContentListItem> contents =
-                contentMapper.selectList(keyword, type, status, request.channelId(), request.offset(), size);
+        List<ContentListItem> contents = contentMapper.selectList(
+                keyword, type, status, request.channelId(), churchId, request.offset(), size);
         contents.forEach(item -> item.setThumbnailUrl(storageService.publicUrl(item.getThumbnailKey())));
-        long total = contentMapper.countList(keyword, type, status, request.channelId());
+        long total = contentMapper.countList(keyword, type, status, request.channelId(), churchId);
         return ResInfinityList.of(contents, total, size);
     }
 
-    /** Public list: forces {@code status=PUBLISHED} and ignores any channel filter. */
+    /** Public list: forces {@code status=PUBLISHED}, ignores any channel filter, and spans all churches. */
     @Transactional(readOnly = true)
     public ResInfinityList<ContentListItem> listPublic(ContentSearchRequest request) {
         ContentSearchRequest forced = new ContentSearchRequest(
                 request.pageNumber(), request.pageSize(), request.keyword(),
                 request.type(), ContentStatus.PUBLISHED, null);
-        return list(forced);
+        return list(forced, SYSTEM_PRINCIPAL);
     }
 
     /** Public detail: 404 unless PUBLISHED, and atomically increments the view count. */
     @Transactional
     public ContentDetail getPublicDetail(Long id) {
-        ContentDetail detail = getDetail(id); // throws NOT_FOUND if missing; fills url/hashtags/files
+        ContentDetail detail = getDetail(id, SYSTEM_PRINCIPAL); // throws NOT_FOUND if missing
         if (detail.getStatus() != ContentStatus.PUBLISHED) {
             throw new ApiException(ResultCode.NOT_FOUND);
         }
@@ -105,20 +132,38 @@ public class ContentService {
         return detail;
     }
 
+    /**
+     * Content detail. Verifies the content's owning channel is in the operator's church first so a
+     * CHURCH_MANAGER cannot read another church's content.
+     *
+     * @param id        content id
+     * @param principal authenticated operator providing the church scope
+     * @return the assembled content detail (url + hashtags + files)
+     */
     @Transactional(readOnly = true)
-    public ContentDetail getDetail(Long id) {
+    public ContentDetail getDetail(Long id, AdminPrincipal principal) {
         ContentDetail detail = contentMapper.selectDetail(id);
         if (detail == null) {
             throw new ApiException(ResultCode.NOT_FOUND);
         }
+        ensureChannelInScope(detail.getChannelId(), principal);
         detail.setThumbnailUrl(storageService.publicUrl(detail.getThumbnailKey()));
         detail.setHashtags(loadHashtagNames(id));
         detail.setFiles(loadFiles(id));
         return detail;
     }
 
+    /**
+     * Creates content. The target channel must belong to the operator's church (SYSTEM bypasses),
+     * so a CHURCH_MANAGER cannot plant content under another church's channel.
+     *
+     * @param request   content fields (including {@code channelId})
+     * @param principal authenticated operator providing the church scope
+     * @return the created content's detail
+     */
     @Transactional
-    public ContentDetail create(ContentCreateRequest request) {
+    public ContentDetail create(ContentCreateRequest request, AdminPrincipal principal) {
+        ensureChannelInScope(request.channelId(), principal);
         Content content = Content.builder()
                 .channelId(request.channelId())
                 .type(request.type())
@@ -133,13 +178,25 @@ public class ContentService {
         applyHashtags(saved.getId(), request.hashtags());
         recordThumbnailFile(saved.getId(), request.thumbnailKey());
         actionLogPublisher.publish("CONTENT_CREATE", "CONTENT", String.valueOf(saved.getId()), request.title());
-        return getDetail(saved.getId());
+        return getDetail(saved.getId(), principal);
     }
 
+    /**
+     * Updates content. Both the existing content's channel and the requested target channel must
+     * belong to the operator's church (SYSTEM bypasses), so a CHURCH_MANAGER can neither edit
+     * another church's content nor move its content into another church's channel.
+     *
+     * @param id        content id
+     * @param request   content fields (including the possibly-changed {@code channelId})
+     * @param principal authenticated operator providing the church scope
+     * @return the updated content's detail
+     */
     @Transactional
-    public ContentDetail update(Long id, ContentCreateRequest request) {
+    public ContentDetail update(Long id, ContentCreateRequest request, AdminPrincipal principal) {
         Content content = contentRepository.findById(id)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureChannelInScope(content.getChannelId(), principal);
+        ensureChannelInScope(request.channelId(), principal);
         content.update(
                 request.title(), request.description(), request.type(), request.channelId(),
                 request.mediaUrl(), request.durationSec(), request.thumbnailKey(),
@@ -147,13 +204,21 @@ public class ContentService {
         contentRepository.saveAndFlush(content);
         applyHashtags(id, request.hashtags());
         actionLogPublisher.publish("CONTENT_UPDATE", "CONTENT", String.valueOf(id), request.title());
-        return getDetail(id);
+        return getDetail(id, principal);
     }
 
+    /**
+     * Deletes content (and its hashtag links, files, thumbnail). The content's channel must belong
+     * to the operator's church (SYSTEM bypasses).
+     *
+     * @param id        content id
+     * @param principal authenticated operator providing the church scope
+     */
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, AdminPrincipal principal) {
         Content content = contentRepository.findById(id)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureChannelInScope(content.getChannelId(), principal);
         contentHashtagRepository.deleteByContentId(id);
         contentFileRepository.findByContentId(id).forEach(f -> storageService.delete(f.getS3Key()));
         contentFileRepository.deleteByContentId(id);
@@ -164,7 +229,29 @@ public class ContentService {
 
     // --- helpers -----------------------------------------------------------
 
-    /** Replaces a content's hashtag links, creating any tags that don't exist yet. */
+    /**
+     * Verifies the channel belongs to the operator's church (SYSTEM bypasses). A missing channel or
+     * one owned by another church is rejected as {@code NOT_FOUND}, so the same response hides both
+     * a non-existent channel and another church's channel (no cross-tenant enumeration).
+     */
+    private void ensureChannelInScope(Long channelId, AdminPrincipal principal) {
+        if (principal.isSystem()) {
+            return;
+        }
+        Channel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        if (!channel.getChurchId().equals(principal.churchId())) {
+            throw new ApiException(ResultCode.NOT_FOUND);
+        }
+    }
+
+    /**
+     * Replaces a content's hashtag links, creating any tags that don't exist yet. Tag creation is a
+     * get-or-create that tolerates a concurrent insert: the bulk {@code findByNameIn} resolves
+     * existing tags, then each new tag is inserted and a unique collision (another request created
+     * the same tag in parallel) is absorbed by re-reading the now-present row — mirroring the
+     * {@code DataIntegrityViolationException} conflict handling in WorshipService/CouponService.
+     */
     private void applyHashtags(Long contentId, List<String> names) {
         contentHashtagRepository.deleteByContentId(contentId);
         if (names == null || names.isEmpty()) {
@@ -177,11 +264,26 @@ public class ContentService {
             }
         }
         for (String name : distinct) {
-            Hashtag tag = hashtagRepository.findByName(name)
-                    .orElseGet(() -> hashtagRepository.save(Hashtag.builder().name(name).build()));
+            Hashtag tag = getOrCreateHashtag(name);
             contentHashtagRepository.save(
                     ContentHashtag.builder().contentId(contentId).hashtagId(tag.getId()).build());
         }
+    }
+
+    /**
+     * Atomically resolves a hashtag by name: returns the existing tag, or inserts a new one and
+     * absorbs a unique-name collision from a concurrent insert by re-reading the row.
+     */
+    private Hashtag getOrCreateHashtag(String name) {
+        return hashtagRepository.findByName(name).orElseGet(() -> {
+            try {
+                return hashtagRepository.save(Hashtag.builder().name(name).build());
+            } catch (DataIntegrityViolationException collision) {
+                // A parallel request inserted the same tag first — re-read the now-present row.
+                return hashtagRepository.findByName(name)
+                        .orElseThrow(() -> collision);
+            }
+        });
     }
 
     private void recordThumbnailFile(Long contentId, String thumbnailKey) {

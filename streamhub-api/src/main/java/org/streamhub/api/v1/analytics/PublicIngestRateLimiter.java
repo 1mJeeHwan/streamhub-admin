@@ -53,10 +53,28 @@ public class PublicIngestRateLimiter {
      * @return {@code true} if the request is allowed, {@code false} if the client is over its limit
      */
     public boolean tryAcquire(String clientKey) {
+        return tryAcquire(clientKey, 1L);
+    }
+
+    /**
+     * Attempts to consume {@code cost} tokens at once for the given client key, so a single request
+     * that does proportionally more work (e.g. a batch ingest of N events) is charged N tokens
+     * instead of one. The cost is clamped to at least one token (a request always costs something)
+     * and to at most the bucket {@value #CAPACITY} (a single oversized batch can drain, but not
+     * over-debit, the bucket). Acquisition is all-or-nothing: nothing is consumed unless the full
+     * cost fits.
+     *
+     * @param clientKey stable per-client key, typically the client IP; blank/null keys are treated as
+     *                  a shared "unknown" bucket so a missing IP cannot bypass the limit
+     * @param cost      number of tokens this request should consume (clamped to {@code [1, CAPACITY]})
+     * @return {@code true} if the request is allowed, {@code false} if the client is over its limit
+     */
+    public boolean tryAcquire(String clientKey, long cost) {
+        long tokens = Math.min(CAPACITY, Math.max(1L, cost));
         String key = (clientKey == null || clientKey.isBlank()) ? "unknown" : clientKey;
         long now = clock.getAsLong();
         Bucket bucket = buckets.computeIfAbsent(key, k -> new Bucket(now));
-        boolean allowed = bucket.tryConsume(now);
+        boolean allowed = bucket.tryConsume(now, tokens);
         evictIfReplenished(key, bucket, now);
         return allowed;
     }
@@ -79,10 +97,10 @@ public class PublicIngestRateLimiter {
             this.lastRefillNanos = now;
         }
 
-        private synchronized boolean tryConsume(long now) {
+        private synchronized boolean tryConsume(long now, long cost) {
             refill(now);
-            if (tokens >= 1.0) {
-                tokens -= 1.0;
+            if (tokens >= cost) {
+                tokens -= cost;
                 return true;
             }
             return false;

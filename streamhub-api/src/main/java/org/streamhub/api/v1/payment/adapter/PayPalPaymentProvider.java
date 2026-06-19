@@ -113,10 +113,10 @@ public class PayPalPaymentProvider implements PaymentProvider {
     public PaymentResult cancel(PaymentRequest request, String txnId, String reason) {
         // PayPal refunds a captured payment via POST /v2/payments/captures/{captureId}/refund, which
         // needs the capture id (not the order id) — captured at approve time. Left as a key-gated
-        // stub (no committed key to verify the live call), consistent with this adapter's other
-        // not-live-verified bits.
-        throw new UnsupportedOperationException(
-                "PayPal 결제취소(refund)는 아직 구현되지 않았습니다 (실 키 미연동)");
+        // stub (no committed key to verify the live call); surface a clear operator-facing reason
+        // rather than an opaque 500 so the refund failure is diagnosable in operations.
+        throw new ApiException(ResultCode.INVALID_PARAMETER,
+                "PayPal 환불 미연동: 결제취소(refund) API가 아직 연동되지 않았습니다");
     }
 
     // --- helpers -----------------------------------------------------------

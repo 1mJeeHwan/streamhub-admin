@@ -11,4 +11,6 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     List<Board> findByUseYn(String useYn);
 
     Optional<Board> findByCode(String code);
+
+    boolean existsByCode(String code);
 }

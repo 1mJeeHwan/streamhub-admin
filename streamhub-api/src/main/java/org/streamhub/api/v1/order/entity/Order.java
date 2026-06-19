@@ -72,6 +72,24 @@ public class Order {
     @Column(name = "coupon_discount", nullable = false)
     private Long couponDiscount;
 
+    /**
+     * FK → COUPON of the coupon actually consumed for this order (a redemption row exists and
+     * {@code usedCount} was incremented). Null when no coupon was applied or its consumption is still
+     * pending (real-PG prepare → confirm). Set when redemption is committed; read by the
+     * cancel/refund path to release the redemption back to the member and global pool.
+     */
+    @Column(name = "coupon_id")
+    private Long couponId;
+
+    /**
+     * Coupon code carried from {@code prepare} to {@code confirm} on the real-PG path. On prepare the
+     * coupon is only validated and the discount is computed (not consumed); the actual redemption is
+     * deferred to the payment-approval transaction in {@code confirm}. Null once consumed (or when no
+     * coupon / on the single-transaction demo path, which consumes immediately).
+     */
+    @Column(name = "pending_coupon_code", length = 40)
+    private String pendingCouponCode;
+
     @Column(name = "point_used", nullable = false)
     private Long pointUsed;
 
@@ -114,9 +132,9 @@ public class Order {
     private Order(String orderNo, Long memberId, OrderStatus status, String orderedName,
                   String orderedPhone, String receiverName, String receiverPhone,
                   String receiverAddr, Long goodsTotal, Long shipFee, Long couponDiscount,
-                  Long pointUsed, Long total, String payMethod, String trackingNo,
-                  String shipCompany, String payProvider, PayStatus payStatus,
-                  LocalDateTime orderedAt) {
+                  Long couponId, String pendingCouponCode, Long pointUsed, Long total,
+                  String payMethod, String trackingNo, String shipCompany, String payProvider,
+                  PayStatus payStatus, LocalDateTime orderedAt) {
         this.orderNo = orderNo;
         this.memberId = memberId;
         this.status = status;
@@ -128,6 +146,8 @@ public class Order {
         this.goodsTotal = goodsTotal != null ? goodsTotal : 0L;
         this.shipFee = shipFee != null ? shipFee : 0L;
         this.couponDiscount = couponDiscount != null ? couponDiscount : 0L;
+        this.couponId = couponId;
+        this.pendingCouponCode = pendingCouponCode;
         this.pointUsed = pointUsed != null ? pointUsed : 0L;
         this.total = total;
         this.payMethod = payMethod;
@@ -150,6 +170,16 @@ public class Order {
         this.goodsTotal = goodsTotal;
         long computed = goodsTotal + this.shipFee - this.couponDiscount - this.pointUsed;
         this.total = Math.max(0L, computed);
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Records the coupon that was actually consumed for this order and clears any pending code. Called
+     * from the order flow once redemption is committed, so the cancel/refund path can later release it.
+     */
+    public void applyCoupon(Long couponId) {
+        this.couponId = couponId;
+        this.pendingCouponCode = null;
         this.updatedAt = LocalDateTime.now();
     }
 

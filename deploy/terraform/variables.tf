@@ -70,9 +70,3 @@ variable "ssh_ingress_cidr" {
   type        = string
   default     = "127.0.0.1/32"
 }
-
-variable "api_ingress_cidr" {
-  description = "CIDR allowed to reach the API on 8080 (Vercel/browser). Open by default for a public demo."
-  type        = string
-  default     = "0.0.0.0/0"
-}

@@ -63,6 +63,8 @@ class OrderScopingTest {
     private SmsService smsService;
     @Mock
     private DeliveryService deliveryService;
+    @Mock
+    private org.streamhub.api.v1.coupon.CouponService couponService;
 
     /** SYSTEM operator — no church filter, bypasses the in-scope checks. */
     private static final AdminPrincipal SYSTEM = new AdminPrincipal(1L, AuthoritiesConstants.SYSTEM, null);
@@ -74,7 +76,7 @@ class OrderScopingTest {
         return new OrderService(
                 orderMapper, orderRepository, orderItemRepository, orderReceiptRepository,
                 goodsItemRepository, goodsOptionRepository, memberRepository,
-                actionLogPublisher, smsService, deliveryService);
+                actionLogPublisher, smsService, deliveryService, couponService);
     }
 
     private Order order(OrderStatus status, PayStatus payStatus) {
@@ -149,6 +151,33 @@ class OrderScopingTest {
         orderService().changeStatus(7L, new OrderStatusChangeRequest(OrderStatus.PAID, null), SYSTEM);
 
         verify(orderRepository).saveAndFlush(order);
+    }
+
+    @Test
+    void changeStatus_toCancel_releasesRedeemedCoupon() {
+        // H1: cancelling an order that used a coupon must return the redemption to the pool.
+        Order order = order(OrderStatus.PAID, PayStatus.APPROVED);
+        order.applyCoupon(55L);
+        when(orderRepository.findById(7L)).thenReturn(Optional.of(order));
+        when(orderItemRepository.findByOrderId(7L)).thenReturn(List.of());
+        when(orderMapper.selectDetail(7L)).thenReturn(new org.streamhub.api.v1.order.dto.OrderDetail());
+
+        orderService().changeStatus(7L, new OrderStatusChangeRequest(OrderStatus.CANCEL, null), SYSTEM);
+
+        verify(couponService).releaseRedemption(55L, 1L);
+    }
+
+    @Test
+    void changeStatus_toCancelWithoutCoupon_doesNotTouchCoupons() {
+        // No coupon on the order → nothing to release.
+        Order order = order(OrderStatus.PAID, PayStatus.APPROVED);
+        when(orderRepository.findById(7L)).thenReturn(Optional.of(order));
+        when(orderItemRepository.findByOrderId(7L)).thenReturn(List.of());
+        when(orderMapper.selectDetail(7L)).thenReturn(new org.streamhub.api.v1.order.dto.OrderDetail());
+
+        orderService().changeStatus(7L, new OrderStatusChangeRequest(OrderStatus.CANCEL, null), SYSTEM);
+
+        verify(couponService, never()).releaseRedemption(any(), any());
     }
 
     @Test

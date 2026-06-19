@@ -159,7 +159,7 @@ public class MemberOrderService {
     public MemberPaymentPrepareResult prepare(Long memberId, MemberPaymentPrepareRequest request) {
         Member member = requireMember(memberId);
         String provider = resolveProvider(request.provider());
-        Order order = createAlbumOrder(member, request.albumId(), request.couponCode());
+        Order order = prepareAlbumOrder(member, request.albumId(), request.couponCode());
 
         PaymentResultDto requested = paymentService.request(new PayRequestCommand(order.getId(), provider));
 
@@ -193,7 +193,13 @@ public class MemberOrderService {
             throw new ApiException(ResultCode.INVALID_PARAMETER, "결제 금액이 일치하지 않습니다");
         }
 
+        // The PG approval (and the order's PLACED → PAID transition) happens first; only on its
+        // success do we consume the coupon held since prepare. Redeeming here — inside the same
+        // confirm transaction — means a PG decline rolls everything back and the coupon is never
+        // burned, closing the H2 "prepare permanently consumes the coupon" leak. The discount was
+        // already baked into order.total at prepare time and re-verified above against the PG amount.
         paymentService.approve(new PayApproveCommand(order.getId(), request.paymentKey(), null));
+        consumePendingCoupon(order);
 
         Order paid = orderRepository.findById(order.getId()).orElseThrow();
         return new MemberOrderResult(
@@ -202,11 +208,63 @@ public class MemberOrderService {
     }
 
     /**
-     * Validates an on-sale album and creates the order + single line item (PLACED). When a
-     * {@code couponCode} is supplied it is redeemed against the goods price (server-validated and
-     * consumed in this same transaction), and the resulting discount is applied to the order total.
+     * Demo/single-transaction order creation: validates an on-sale album and creates the order +
+     * single line item (PLACED). When a {@code couponCode} is supplied it is <b>redeemed</b> against
+     * the goods price (server-validated and consumed in this same transaction), the discount is
+     * applied to the order total, and the consumed coupon id is recorded on the order so a later
+     * cancel/refund can release the redemption.
      */
     private Order createAlbumOrder(Member member, Long albumId, String couponCode) {
+        PricedAlbum priced = priceAlbum(albumId);
+        Long redeemedCouponId = null;
+        long couponDiscount = 0L;
+        if (couponCode != null && !couponCode.isBlank()) {
+            CouponService.RedeemResult redeemed =
+                    couponService.redeem(couponCode.trim(), priced.price(), member.getId());
+            redeemedCouponId = redeemed.couponId();
+            couponDiscount = redeemed.discount();
+        }
+        Order order = createOrder(member, priced.price(), couponDiscount, redeemedCouponId, null);
+        saveLineItem(order, priced);
+        return order;
+    }
+
+    /**
+     * Real-PG order creation: validates an on-sale album and creates the order + single line item
+     * (PLACED). When a {@code couponCode} is supplied it is only <b>validated</b> (discount computed
+     * and applied to the total) and stashed as the order's pending code — the actual redemption is
+     * deferred to {@link #confirm} so a PG decline never burns the coupon (H2).
+     */
+    private Order prepareAlbumOrder(Member member, Long albumId, String couponCode) {
+        PricedAlbum priced = priceAlbum(albumId);
+        String pendingCode = couponCode != null && !couponCode.isBlank() ? couponCode.trim() : null;
+        long couponDiscount = pendingCode != null
+                ? couponService.previewDiscount(pendingCode, priced.price()).discount()
+                : 0L;
+        Order order = createOrder(member, priced.price(), couponDiscount, null, pendingCode);
+        saveLineItem(order, priced);
+        return order;
+    }
+
+    /**
+     * Consumes the coupon held on the order since {@code prepare} (real-PG path), then records the
+     * consumed coupon id on the order. No-op when the order carries no pending code. The discount was
+     * already applied to the order total at prepare time, so the recomputed redeem discount is used
+     * only to consume the coupon — the order total is not changed here.
+     */
+    private void consumePendingCoupon(Order order) {
+        String pendingCode = order.getPendingCouponCode();
+        if (pendingCode == null || pendingCode.isBlank()) {
+            return;
+        }
+        CouponService.RedeemResult redeemed =
+                couponService.redeem(pendingCode, order.getGoodsTotal(), order.getMemberId());
+        order.applyCoupon(redeemed.couponId());
+        orderRepository.saveAndFlush(order);
+    }
+
+    /** Resolves and validates the purchasable goods backing an on-sale album. */
+    private PricedAlbum priceAlbum(Long albumId) {
         Album album = albumRepository.findById(albumId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
         if (album.getStatus() != AlbumStatus.ON_SALE) {
@@ -217,23 +275,23 @@ public class MemberOrderService {
         }
         GoodsItem goods = goodsItemRepository.findById(album.getGoodsItemId())
                 .orElseThrow(() -> new ApiException(ResultCode.INVALID_PARAMETER, "구매할 수 없는 앨범입니다"));
-        long price = goods.getPrice();
+        return new PricedAlbum(album.getTitle(), goods.getId(), goods.getPrice());
+    }
 
-        long couponDiscount = couponCode != null && !couponCode.isBlank()
-                ? couponService.redeem(couponCode.trim(), price, member.getId()).discount()
-                : 0L;
-
-        Order order = createOrder(member, price, couponDiscount);
+    private void saveLineItem(Order order, PricedAlbum priced) {
         orderItemRepository.save(OrderItem.builder()
                 .orderId(order.getId())
-                .goodsId(goods.getId())
-                .goodsName(album.getTitle())
+                .goodsId(priced.goodsId())
+                .goodsName(priced.title())
                 .optionName(null)
-                .unitPrice(price)
+                .unitPrice(priced.price())
                 .qty(1)
-                .lineTotal(price)
+                .lineTotal(priced.price())
                 .build());
-        return order;
+    }
+
+    /** The on-sale album resolved to its purchasable goods (title + goods id + unit price). */
+    private record PricedAlbum(String title, Long goodsId, long price) {
     }
 
     private Member requireMember(Long memberId) {
@@ -256,7 +314,8 @@ public class MemberOrderService {
 
     // --- helpers -----------------------------------------------------------
 
-    private Order createOrder(Member member, long price, long couponDiscount) {
+    private Order createOrder(Member member, long price, long couponDiscount,
+                              Long couponId, String pendingCouponCode) {
         long total = Math.max(0L, price - couponDiscount);
         Order order = Order.builder()
                 .orderNo(nextOrderNo())
@@ -269,6 +328,8 @@ public class MemberOrderService {
                 .goodsTotal(price)
                 .shipFee(0L)
                 .couponDiscount(couponDiscount)
+                .couponId(couponId)
+                .pendingCouponCode(pendingCouponCode)
                 .pointUsed(0L)
                 .total(total)
                 .payMethod(PAY_METHOD)

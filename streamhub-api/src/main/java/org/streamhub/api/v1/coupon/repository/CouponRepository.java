@@ -26,4 +26,16 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     @Query("UPDATE Coupon c SET c.usedCount = c.usedCount + 1 "
             + "WHERE c.id = :id AND (c.usageLimit IS NULL OR c.usedCount < c.usageLimit)")
     int incrementUsedCount(@Param("id") Long id);
+
+    /**
+     * Atomically releases one consumed use: decrements {@code usedCount} only while it is positive, in
+     * a single conditional UPDATE. Returns the number of rows updated — {@code 1} when a use was
+     * released, {@code 0} when {@code usedCount} was already {@code 0}. The {@code usedCount > 0} guard
+     * makes the release idempotent (a double-release cannot drive the counter negative) and mirrors the
+     * lost-update-safe {@link #incrementUsedCount} on the consumption side.
+     */
+    @Modifying
+    @Query("UPDATE Coupon c SET c.usedCount = c.usedCount - 1 "
+            + "WHERE c.id = :id AND c.usedCount > 0")
+    int decrementUsedCount(@Param("id") Long id);
 }

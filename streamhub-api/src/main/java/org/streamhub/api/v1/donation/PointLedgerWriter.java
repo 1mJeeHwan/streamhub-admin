@@ -15,9 +15,11 @@ import org.streamhub.api.v1.member.repository.PointLedgerRepository;
  * one-off donation accrual so both keep an identical append path.
  *
  * <p>The member's cached {@link Member#getPointBalance()} is the single source of truth:
- * this writer mutates it and derives {@code balanceAfter} from it, exactly as
- * {@code PointService.grant} does — so the ledger running balance and the member balance
- * can never diverge regardless of which path (manual grant vs. donation accrual) wrote last.
+ * this writer mutates it via the atomic guarded UPDATE
+ * ({@code MemberRepository.adjustBalance}) and derives {@code balanceAfter} from the
+ * re-read balance, exactly as {@code PointService.grant} does — so the ledger running
+ * balance and the member balance can never diverge regardless of which path (manual grant
+ * vs. donation accrual) wrote last, even under concurrent writers.
  */
 @Component
 public class PointLedgerWriter {
@@ -42,17 +44,20 @@ public class PointLedgerWriter {
      * @return the running balance after this append
      */
     public long append(Long memberId, long delta, String reason, Long donationId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
-        try {
-            member.addPoint(delta);
-        } catch (IllegalStateException e) {
+        // Existence check first so a missing member surfaces as NOT_FOUND rather than being
+        // conflated with an insufficient-balance INVALID_PARAMETER below.
+        if (!memberRepository.existsById(memberId)) {
+            throw new ApiException(ResultCode.NOT_FOUND);
+        }
+        // Atomic guarded UPDATE: a deduction that would underflow affects 0 rows.
+        if (memberRepository.adjustBalance(memberId, delta) == 0) {
             throw new ApiException(ResultCode.INVALID_PARAMETER, "포인트 잔액이 부족합니다");
         }
-        // Flush so any subsequent MyBatis read (outside the persistence context) sees it.
-        memberRepository.saveAndFlush(member);
-
-        long balanceAfter = member.getPointBalance();
+        // adjustBalance cleared the persistence context; re-read the freshly persisted
+        // balance so the ledger's balanceAfter cannot diverge from the member balance.
+        long balanceAfter = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND))
+                .getPointBalance();
         pointLedgerRepository.save(PointLedger.builder()
                 .memberId(memberId)
                 .delta(delta)

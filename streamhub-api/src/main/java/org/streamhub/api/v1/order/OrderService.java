@@ -75,6 +75,7 @@ public class OrderService {
     private final ActionLogPublisher actionLogPublisher;
     private final SmsService smsService;
     private final org.streamhub.api.v1.delivery.DeliveryService deliveryService;
+    private final org.streamhub.api.v1.coupon.CouponService couponService;
 
     public OrderService(
             OrderMapper orderMapper,
@@ -86,7 +87,8 @@ public class OrderService {
             MemberRepository memberRepository,
             ActionLogPublisher actionLogPublisher,
             SmsService smsService,
-            org.streamhub.api.v1.delivery.DeliveryService deliveryService) {
+            org.streamhub.api.v1.delivery.DeliveryService deliveryService,
+            org.streamhub.api.v1.coupon.CouponService couponService) {
         this.orderMapper = orderMapper;
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -97,6 +99,7 @@ public class OrderService {
         this.actionLogPublisher = actionLogPublisher;
         this.smsService = smsService;
         this.deliveryService = deliveryService;
+        this.couponService = couponService;
     }
 
     /**
@@ -193,6 +196,12 @@ public class OrderService {
             if (STOCK_DEDUCTED.contains(from)) {
                 items.forEach(this::restoreStock);
             }
+            // H1: release the redeemed coupon so its usage limit and the member's (coupon, member)
+            // redemption are returned to the pool. releaseRedemption is idempotent and the state
+            // machine forbids re-entering CANCEL/RETURN, so it can run at most once per order.
+            if (order.getCouponId() != null) {
+                couponService.releaseRedemption(order.getCouponId(), order.getMemberId());
+            }
             String defaultMemo = to == OrderStatus.CANCEL ? "주문취소" : "반품환불";
             orderReceiptRepository.save(OrderReceipt.builder()
                     .orderId(orderId)
@@ -266,6 +275,7 @@ public class OrderService {
      *                      has no invoice / the carrier cannot be determined
      */
     @Transactional
+    @CacheEvict(cacheNames = {"dashboardSummary", "dashboardTimeseries"}, allEntries = true)
     public org.streamhub.api.v1.delivery.adapter.Tracking syncDelivery(Long orderId, AdminPrincipal principal) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
@@ -282,6 +292,7 @@ public class OrderService {
      * {@link #syncDelivery(Long, AdminPrincipal)} with an unscoped SYSTEM principal.
      */
     @Transactional
+    @CacheEvict(cacheNames = {"dashboardSummary", "dashboardTimeseries"}, allEntries = true)
     public org.streamhub.api.v1.delivery.adapter.Tracking syncDelivery(Long orderId) {
         return syncDelivery(orderId, SYSTEM_PRINCIPAL);
     }

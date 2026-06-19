@@ -18,6 +18,7 @@ public interface ContentMapper {
             @Param("type") String type,
             @Param("status") String status,
             @Param("channelId") Long channelId,
+            @Param("churchId") Long churchId,
             @Param("offset") int offset,
             @Param("size") int size);
 
@@ -25,7 +26,8 @@ public interface ContentMapper {
             @Param("keyword") String keyword,
             @Param("type") String type,
             @Param("status") String status,
-            @Param("channelId") Long channelId);
+            @Param("channelId") Long channelId,
+            @Param("churchId") Long churchId);
 
     /** Base detail (channel/church names). Hashtags and files are loaded by the service. */
     ContentDetail selectDetail(@Param("id") Long id);

@@ -26,6 +26,7 @@
             <if test="channelId != null">
                 AND c.channel_id = #{channelId}
             </if>
+            AND (#{churchId} IS NULL OR ch.church_id = #{churchId})
         </where>
     </sql>
 
@@ -56,6 +57,7 @@
     <select id="countList" resultType="long">
         SELECT COUNT(*)
         FROM CONTENT c
+            JOIN CHANNEL ch ON c.channel_id = ch.id
         <include refid="searchWhere"/>
     </select>
 

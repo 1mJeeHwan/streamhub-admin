@@ -86,14 +86,15 @@ public class PointService {
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
         ensureInScope(member.getChurchId(), principal);
 
-        try {
-            member.addPoint(request.delta());
-        } catch (IllegalStateException e) {
+        // Atomic guarded UPDATE: a deduction that would underflow affects 0 rows.
+        if (memberRepository.adjustBalance(member.getId(), request.delta()) == 0) {
             throw new ApiException(ResultCode.INVALID_PARAMETER, "포인트 잔액이 부족합니다");
         }
-        // Flush the JPA change before the MyBatis read, which runs outside the
-        // persistence context and would otherwise see stale data.
-        memberRepository.saveAndFlush(member);
+        // adjustBalance cleared the persistence context; re-read the freshly persisted
+        // balance so the ledger's balanceAfter never diverges from the member balance.
+        long balanceAfter = memberRepository.findById(member.getId())
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND))
+                .getPointBalance();
 
         LocalDateTime expireAt = request.expireDays() == null
                 ? null
@@ -101,7 +102,7 @@ public class PointService {
         PointLedger ledger = pointLedgerRepository.saveAndFlush(PointLedger.builder()
                 .memberId(member.getId())
                 .delta(request.delta())
-                .balanceAfter(member.getPointBalance())
+                .balanceAfter(balanceAfter)
                 .reason(request.reason())
                 .sourceType(LedgerSourceType.MANUAL)
                 .status(LedgerStatus.ACTIVE)
@@ -127,31 +128,33 @@ public class PointService {
         List<PointLedger> due = pointLedgerRepository
                 .findByStatusAndExpireAtBefore(LedgerStatus.ACTIVE, LocalDateTime.now());
         for (PointLedger entry : due) {
-            if (entry.getDelta() <= 0) {
-                entry.markExpired(); // usage entries carry no balance to recover
-                continue;
+            if (entry.getDelta() > 0) {
+                Member member = memberRepository.findById(entry.getMemberId()).orElse(null);
+                if (member != null) {
+                    long recover = Math.min(entry.getDelta(), member.getPointBalance());
+                    // Atomic deduction; affects 0 rows if a concurrent spend already drained
+                    // the balance below the recovery amount, in which case no recovery row.
+                    if (recover > 0 && memberRepository.adjustBalance(member.getId(), -recover) == 1) {
+                        long balanceAfter = memberRepository.findById(member.getId())
+                                .map(Member::getPointBalance)
+                                .orElse(0L);
+                        pointLedgerRepository.save(PointLedger.builder()
+                                .memberId(member.getId())
+                                .delta(-recover)
+                                .balanceAfter(balanceAfter)
+                                .reason("포인트 만료 회수")
+                                .sourceType(LedgerSourceType.EXPIRE)
+                                .status(LedgerStatus.ACTIVE)
+                                .expireAt(null)
+                                .createdAt(LocalDateTime.now())
+                                .build());
+                    }
+                }
             }
-            Member member = memberRepository.findById(entry.getMemberId()).orElse(null);
-            if (member == null) {
-                entry.markExpired();
-                continue;
-            }
-            long recover = Math.min(entry.getDelta(), member.getPointBalance());
-            if (recover > 0) {
-                member.addPoint(-recover);
-                memberRepository.save(member);
-                pointLedgerRepository.save(PointLedger.builder()
-                        .memberId(member.getId())
-                        .delta(-recover)
-                        .balanceAfter(member.getPointBalance())
-                        .reason("포인트 만료 회수")
-                        .sourceType(LedgerSourceType.EXPIRE)
-                        .status(LedgerStatus.ACTIVE)
-                        .expireAt(null)
-                        .createdAt(LocalDateTime.now())
-                        .build());
-            }
+            // adjustBalance's context clear detaches entry, so persist the EXPIRED
+            // transition explicitly (merge) rather than relying on dirty-checking.
             entry.markExpired();
+            pointLedgerRepository.save(entry);
         }
         log.info("Expired {} ledger entries", due.size());
     }

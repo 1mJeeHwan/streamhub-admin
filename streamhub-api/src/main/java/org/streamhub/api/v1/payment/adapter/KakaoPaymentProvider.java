@@ -105,9 +105,10 @@ public class KakaoPaymentProvider implements PaymentProvider {
     public PaymentResult cancel(PaymentRequest request, String txnId, String reason) {
         // Kakao cancel is /online/v1/payment/cancel with the stored tid + cancel_amount, mirroring
         // the /ready+/approve auth above. Left as a key-gated stub (no committed key to verify the
-        // live call), consistent with how this adapter ships its other not-live-verified bits.
-        throw new UnsupportedOperationException(
-                "카카오페이 결제취소(cancel)는 아직 구현되지 않았습니다 (실 키 미연동)");
+        // live call); surface a clear operator-facing reason rather than an opaque 500 so the
+        // refund failure is diagnosable in operations.
+        throw new ApiException(ResultCode.INVALID_PARAMETER,
+                "카카오페이 환불 미연동: 결제취소(cancel) API가 아직 연동되지 않았습니다");
     }
 
     // --- helpers -----------------------------------------------------------

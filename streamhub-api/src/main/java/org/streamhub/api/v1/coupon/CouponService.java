@@ -135,17 +135,7 @@ public class CouponService {
     public RedeemResult redeem(String code, long orderAmount, Long memberId) {
         Coupon coupon = couponRepository.findByCode(code)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "존재하지 않는 쿠폰입니다"));
-        if (!coupon.isRedeemableAt(LocalDateTime.now())) {
-            throw new ApiException(ResultCode.INVALID_PARAMETER, "사용할 수 없는 쿠폰입니다");
-        }
-        if (orderAmount < coupon.getMinOrderAmount()) {
-            throw new ApiException(ResultCode.INVALID_PARAMETER,
-                    "최소 주문 금액(" + coupon.getMinOrderAmount() + "원) 이상이어야 합니다");
-        }
-        long discount = coupon.computeDiscount(orderAmount);
-        if (discount <= 0) {
-            throw new ApiException(ResultCode.INVALID_PARAMETER, "할인 금액이 없는 쿠폰입니다");
-        }
+        long discount = validateRedeemable(coupon, orderAmount);
 
         // (a) Per-member guard: the unique (coupon_id, member_id) constraint rejects a re-use.
         try {
@@ -168,7 +158,66 @@ public class CouponService {
     public record RedeemResult(Long couponId, long discount) {
     }
 
+    /**
+     * Validates a coupon code against an order amount <b>without consuming it</b> (no redemption row,
+     * no {@code usedCount} bump) and returns the discount it would yield. Used by the real-PG prepare
+     * step, where the coupon is only validated and the discount applied to the order total; the actual
+     * redemption is deferred to {@link #redeem} inside the payment-approval transaction (confirm). The
+     * per-member uniqueness is still enforced at consumption time, so a preview here is advisory only.
+     *
+     * @return the discount (won) the coupon would apply
+     * @throws ApiException {@code NOT_FOUND} if the code is unknown, {@code INVALID_PARAMETER} if
+     *                      expired/disabled/exhausted, below the minimum order amount, or yields no
+     *                      discount
+     */
+    @Transactional(readOnly = true)
+    public RedeemResult previewDiscount(String code, long orderAmount) {
+        Coupon coupon = couponRepository.findByCode(code)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "존재하지 않는 쿠폰입니다"));
+        long discount = validateRedeemable(coupon, orderAmount);
+        return new RedeemResult(coupon.getId(), discount);
+    }
+
+    /**
+     * Releases a previously consumed redemption when its order is canceled/refunded, in the caller's
+     * transaction: (a) deletes the {@code (coupon_id, member_id)} redemption row, freeing the
+     * per-member slot, and (b) atomically decrements {@code usedCount} (floored at 0) on the global
+     * pool. Both steps are idempotent — a missing row or a zero {@code usedCount} is a no-op — so a
+     * double-release (already guarded against by the order state machine) can never corrupt the
+     * counters.
+     *
+     * @param couponId coupon whose redemption is being released
+     * @param memberId member who held the redemption
+     */
+    @Transactional
+    public void releaseRedemption(Long couponId, Long memberId) {
+        if (couponId == null || memberId == null) {
+            return;
+        }
+        couponRedemptionRepository.deleteByCouponIdAndMemberId(couponId, memberId);
+        couponRepository.decrementUsedCount(couponId);
+    }
+
     // --- helpers -----------------------------------------------------------
+
+    /**
+     * Shared redeemability check: enabled + within window + not exhausted, meets the minimum order
+     * amount, and yields a positive discount. Returns the computed discount (won).
+     */
+    private long validateRedeemable(Coupon coupon, long orderAmount) {
+        if (!coupon.isRedeemableAt(LocalDateTime.now())) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "사용할 수 없는 쿠폰입니다");
+        }
+        if (orderAmount < coupon.getMinOrderAmount()) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER,
+                    "최소 주문 금액(" + coupon.getMinOrderAmount() + "원) 이상이어야 합니다");
+        }
+        long discount = coupon.computeDiscount(orderAmount);
+        if (discount <= 0) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "할인 금액이 없는 쿠폰입니다");
+        }
+        return discount;
+    }
 
     private void validate(CouponDto request) {
         if (request.getCode() == null || request.getCode().isBlank()) {

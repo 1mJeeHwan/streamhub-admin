@@ -34,6 +34,9 @@ public class BoardService {
 
     @Transactional
     public BoardDto create(BoardDto request) {
+        if (boardRepository.existsByCode(request.getCode())) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "이미 존재하는 게시판 코드입니다");
+        }
         Board board = Board.builder()
                 .code(request.getCode())
                 .name(request.getName())
@@ -50,6 +53,9 @@ public class BoardService {
     public BoardDto update(Long id, BoardDto request) {
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        if (!board.getCode().equals(request.getCode()) && boardRepository.existsByCode(request.getCode())) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "이미 존재하는 게시판 코드입니다");
+        }
         board.update(
                 request.getCode(), request.getName(), request.getReadLevel(),
                 request.getWriteLevel(), defaultYn(request.getUseYn()), request.getSortOrder());

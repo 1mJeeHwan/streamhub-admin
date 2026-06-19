@@ -138,6 +138,37 @@ resource "aws_ecr_repository" "api" {
   }
 }
 
+# Prune the repository so it does not accumulate storage cost: expire untagged
+# images immediately, and keep only the 10 most recent tagged images.
+resource "aws_ecr_lifecycle_policy" "api" {
+  repository = aws_ecr_repository.api.name
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Expire untagged images immediately"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 1
+        }
+        action = { type = "expire" }
+      },
+      {
+        rulePriority = 2
+        description  = "Keep only the 10 most recent tagged images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 10
+        }
+        action = { type = "expire" }
+      },
+    ]
+  })
+}
+
 # ---------------------------------------------------------------------------
 # SQS — audit-log queue + dead-letter queue
 # ---------------------------------------------------------------------------
@@ -190,8 +221,17 @@ resource "aws_db_instance" "mysql" {
   vpc_security_group_ids = [aws_security_group.rds.id]
   publicly_accessible    = false
   multi_az               = false
-  skip_final_snapshot    = true
-  deletion_protection    = false
+
+  # Encryption at rest (default aws/rds KMS key).
+  # NOTE: in-place 전환 불가 — 기존 미암호화 인스턴스는 암호화 스냅샷 복원(snapshot → copy with KMS key → restore)으로만 전환 가능. 이 속성을 켜면 새 인스턴스 재생성이 강제된다.
+  storage_encrypted = true
+
+  # Automated backups + safe teardown.
+  backup_retention_period   = 7
+  copy_tags_to_snapshot     = true
+  skip_final_snapshot       = false
+  final_snapshot_identifier = "${var.project}-mysql-final"
+  deletion_protection       = true
 }
 
 # ---------------------------------------------------------------------------
@@ -290,6 +330,13 @@ resource "aws_instance" "api" {
     http_tokens                 = "required"
     http_endpoint               = "enabled"
     http_put_response_hop_limit = 2
+  }
+
+  # Encrypt the root volume at rest (default aws/ebs KMS key).
+  # NOTE: changing this on an existing instance forces re-creation — a running
+  # unencrypted instance must be relaunched (or rebuilt from an encrypted AMI/snapshot).
+  root_block_device {
+    encrypted = true
   }
 
   # A small swap file relieves heap pressure on the 1 GB instance.

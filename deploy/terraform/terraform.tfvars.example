@@ -10,6 +10,5 @@ jwt_secret  = "change-me-to-a-long-random-string-at-least-48-chars-0123456789"
 # Your SSH public key (so you can ssh into the EC2 host).
 ssh_public_key = "ssh-ed25519 AAAA... your-key"
 
-# Lock these down to your IP for safety (e.g. "203.0.113.4/32").
-ssh_ingress_cidr = "0.0.0.0/0"
-api_ingress_cidr = "0.0.0.0/0"
+# Lock this down to your own IP — never 0.0.0.0/0. Replace with YOUR_IP/32.
+ssh_ingress_cidr = "203.0.113.4/32"

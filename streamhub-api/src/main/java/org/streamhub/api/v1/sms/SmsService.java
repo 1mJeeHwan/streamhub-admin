@@ -2,6 +2,7 @@ package org.streamhub.api.v1.sms;
 
 import java.util.List;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
@@ -27,6 +28,11 @@ import org.streamhub.api.v1.sms.repository.SmsMessageRepository;
  * performs no external call; this service persists the {@code SMS_MESSAGE} row with masked
  * recipient and {@code testMode=Y}. Auto-notification callers invoke best-effort and swallow
  * failures (same철학 as {@code ActionLogPublisher}) so a notification never breaks the order.
+ *
+ * <p>The auto-notification helpers run in {@link Propagation#REQUIRES_NEW}: SMS persistence and
+ * dispatch happen in an independent transaction, so a sender failure rolls back only the SMS row
+ * and never marks the parent order/donation transaction rollback-only. Combined with the caller's
+ * try/catch, the parent always commits regardless of notification outcome.
  */
 @Service
 public class SmsService {
@@ -72,8 +78,11 @@ public class SmsService {
     /**
      * Auto-notification for an order event ({@code ORDER_PAID} / {@code ORDER_SHIPPING}).
      * Best-effort: the caller wraps this in try/catch — it never throws into the order tx.
+     *
+     * <p>Runs in {@link Propagation#REQUIRES_NEW} so a sender failure rolls back only this
+     * independent SMS transaction and cannot poison the parent order transaction.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SmsListItem sendForOrder(Order order, SmsKind kind) {
         String content = orderBody(kind, order.getOrderNo());
         SmsMessage saved = persist(
@@ -82,8 +91,13 @@ public class SmsService {
         return SmsListItem.from(saved);
     }
 
-    /** Auto-notification for a one-off donation ({@code DONATION_ONCE}). Best-effort. */
-    @Transactional
+    /**
+     * Auto-notification for a one-off donation ({@code DONATION_ONCE}). Best-effort.
+     *
+     * <p>Runs in {@link Propagation#REQUIRES_NEW} so a sender failure rolls back only this
+     * independent SMS transaction and cannot poison the parent donation transaction.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SmsListItem sendForDonation(Long memberId, Long donationId, Long amount) {
         String content = "[StreamHub] ₩" + amount + " 후원이 정상 접수되었습니다. 감사합니다. (테스트발송)";
         SmsMessage saved = persist(

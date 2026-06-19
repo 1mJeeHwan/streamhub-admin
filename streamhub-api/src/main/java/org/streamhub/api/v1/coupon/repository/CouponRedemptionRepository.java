@@ -1,6 +1,9 @@
 package org.streamhub.api.v1.coupon.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.streamhub.api.v1.coupon.entity.CouponRedemption;
 
 /**
@@ -10,4 +13,13 @@ import org.streamhub.api.v1.coupon.entity.CouponRedemption;
  * {@code DataIntegrityViolationException}.
  */
 public interface CouponRedemptionRepository extends JpaRepository<CouponRedemption, Long> {
+
+    /**
+     * Deletes the redemption row for a {@code (coupon_id, member_id)} pair, freeing the per-member
+     * slot so the member could redeem the coupon again after a cancel/refund. Returns the number of
+     * rows deleted — {@code 0} when no row existed (idempotent release).
+     */
+    @Modifying
+    @Query("DELETE FROM CouponRedemption r WHERE r.couponId = :couponId AND r.memberId = :memberId")
+    int deleteByCouponIdAndMemberId(@Param("couponId") Long couponId, @Param("memberId") Long memberId);
 }

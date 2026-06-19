@@ -16,8 +16,6 @@ export const metadata: Metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 /** First-visit announcement (shown once as a modal). Edit here to change; empty text hides it. */

@@ -17,9 +17,11 @@ import org.streamhub.api.base.response.ResultCode;
  * Toss Payments adapter (C4) — <b>real sandbox integration</b>. Unlike {@link MockPaymentProvider},
  * {@link #approve} calls the live Toss confirm API
  * ({@code POST https://api.tosspayments.com/v1/payments/confirm}) with HTTP Basic auth derived
- * from the configured secret key. In the demo the secret key defaults to Toss's public
- * documentation test key ({@code test_sk_...}), so no real money moves; a real merchant key
- * injected via {@code PAYMENT_TOSS_SECRET_KEY} switches it to a live PG without code changes.
+ * from the configured secret key. The secret key has <b>no default</b> ({@code app.payment.toss.
+ * secret-key} is empty unless set): when unset, both {@link #approve} and {@link #cancel} fail
+ * cleanly with {@link ResultCode#INVALID_PARAMETER} ("토스 시크릿 키 미설정") rather than calling
+ * Toss with empty credentials. Injecting a sandbox/merchant key via {@code PAYMENT_TOSS_SECRET_KEY}
+ * activates the live PG without code changes.
  *
  * <p>The Toss v2 payment window runs in the browser and is what actually authorises the card, so
  * the server {@link #requestPayment} is a no-op: the real transaction id ({@code paymentKey}) is
