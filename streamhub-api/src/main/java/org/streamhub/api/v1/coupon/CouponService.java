@@ -3,6 +3,7 @@ package org.streamhub.api.v1.coupon;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
@@ -11,7 +12,9 @@ import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.coupon.dto.CouponDto;
 import org.streamhub.api.v1.coupon.dto.CouponSearchRequest;
 import org.streamhub.api.v1.coupon.entity.Coupon;
+import org.streamhub.api.v1.coupon.entity.CouponRedemption;
 import org.streamhub.api.v1.coupon.entity.DiscountType;
+import org.streamhub.api.v1.coupon.repository.CouponRedemptionRepository;
 import org.streamhub.api.v1.coupon.repository.CouponRepository;
 
 /**
@@ -23,10 +26,14 @@ import org.streamhub.api.v1.coupon.repository.CouponRepository;
 public class CouponService {
 
     private final CouponRepository couponRepository;
+    private final CouponRedemptionRepository couponRedemptionRepository;
     private final ActionLogPublisher actionLogPublisher;
 
-    public CouponService(CouponRepository couponRepository, ActionLogPublisher actionLogPublisher) {
+    public CouponService(CouponRepository couponRepository,
+                         CouponRedemptionRepository couponRedemptionRepository,
+                         ActionLogPublisher actionLogPublisher) {
         this.couponRepository = couponRepository;
+        this.couponRedemptionRepository = couponRedemptionRepository;
         this.actionLogPublisher = actionLogPublisher;
     }
 
@@ -104,16 +111,28 @@ public class CouponService {
     }
 
     /**
-     * Validates a coupon code against an order amount and consumes one use. Called from the order
-     * flow inside the order's transaction, so a later failure rolls back the {@code usedCount}
-     * increment too. Returns the computed discount (won) to apply to the order.
+     * Validates a coupon code against an order amount for a specific member and consumes one use.
+     * Called from the order flow inside the order's transaction, so a later failure rolls back the
+     * redemption row and the {@code usedCount} increment together. Returns the computed discount
+     * (won) to apply to the order.
+     *
+     * <p>Two independent guards make redemption safe under concurrency and abuse:
+     * <ol>
+     *   <li><b>Per-member:</b> a {@link CouponRedemption} row is inserted; the
+     *       {@code (coupon_id, member_id)} unique constraint rejects a second redemption by the same
+     *       member (a concurrent double-redeem loses the race at the DB →
+     *       {@link DataIntegrityViolationException}).</li>
+     *   <li><b>Global limit:</b> the {@code usedCount} bump is a single atomic conditional UPDATE
+     *       ({@link CouponRepository#incrementUsedCount}); {@code 0} rows updated means the limit is
+     *       exhausted. This closes the lost-update race of a read-modify-write {@code usedCount++}.</li>
+     * </ol>
      *
      * @throws ApiException {@code NOT_FOUND} if the code is unknown,
-     *                      {@code INVALID_PARAMETER} if expired/disabled/exhausted or below the
-     *                      minimum order amount
+     *                      {@code INVALID_PARAMETER} if expired/disabled/exhausted, below the minimum
+     *                      order amount, or already redeemed by this member
      */
     @Transactional
-    public RedeemResult redeem(String code, long orderAmount) {
+    public RedeemResult redeem(String code, long orderAmount, Long memberId) {
         Coupon coupon = couponRepository.findByCode(code)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "존재하지 않는 쿠폰입니다"));
         if (!coupon.isRedeemableAt(LocalDateTime.now())) {
@@ -127,8 +146,21 @@ public class CouponService {
         if (discount <= 0) {
             throw new ApiException(ResultCode.INVALID_PARAMETER, "할인 금액이 없는 쿠폰입니다");
         }
-        coupon.redeem();
-        couponRepository.saveAndFlush(coupon);
+
+        // (a) Per-member guard: the unique (coupon_id, member_id) constraint rejects a re-use.
+        try {
+            couponRedemptionRepository.saveAndFlush(CouponRedemption.builder()
+                    .couponId(coupon.getId())
+                    .memberId(memberId)
+                    .build());
+        } catch (DataIntegrityViolationException duplicate) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "이미 사용한 쿠폰입니다");
+        }
+
+        // (b) Global-limit guard: atomic conditional increment; 0 rows → exhausted.
+        if (couponRepository.incrementUsedCount(coupon.getId()) == 0) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "쿠폰을 모두 소진했습니다");
+        }
         return new RedeemResult(coupon.getId(), discount);
     }
 

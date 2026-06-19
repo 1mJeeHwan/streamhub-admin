@@ -149,12 +149,4 @@ public class Coupon {
         }
         return Math.max(0L, Math.min(raw, orderAmount));
     }
-
-    /** Consumes one use. Throws if the usage limit is already reached. */
-    public void redeem() {
-        if (usageLimit != null && usedCount >= usageLimit) {
-            throw new IllegalStateException("coupon usage limit reached");
-        }
-        this.usedCount++;
-    }
 }

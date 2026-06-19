@@ -7,7 +7,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
+import org.streamhub.api.base.security.AdminPrincipal;
+import org.streamhub.api.base.security.AuthoritiesConstants;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
+import org.streamhub.api.v1.member.entity.Member;
+import org.streamhub.api.v1.member.repository.MemberRepository;
 import org.streamhub.api.v1.order.OrderService;
 import org.streamhub.api.v1.order.dto.OrderStatusChangeRequest;
 import org.streamhub.api.v1.order.entity.Order;
@@ -45,7 +49,16 @@ public class PaymentService {
     private final PaymentProviderRouter providerRouter;
     private final ActionLogPublisher actionLogPublisher;
     private final PaymentMapper paymentMapper;
+    private final MemberRepository memberRepository;
     private final boolean testMode;
+
+    /**
+     * Unscoped SYSTEM principal for the member-facing storefront checkout, which runs in a member
+     * (not admin) security context: the member is acting on the order they just created, so admin
+     * church scoping does not apply. Used by the {@code request}/{@code approve} overloads.
+     */
+    private static final AdminPrincipal SYSTEM_PRINCIPAL =
+            new AdminPrincipal(null, AuthoritiesConstants.SYSTEM, null);
 
     public PaymentService(
             OrderRepository orderRepository,
@@ -54,6 +67,7 @@ public class PaymentService {
             PaymentProviderRouter providerRouter,
             ActionLogPublisher actionLogPublisher,
             PaymentMapper paymentMapper,
+            MemberRepository memberRepository,
             @Value("${app.payment.test-mode:true}") boolean testMode) {
         this.orderRepository = orderRepository;
         this.orderReceiptRepository = orderReceiptRepository;
@@ -61,27 +75,35 @@ public class PaymentService {
         this.providerRouter = providerRouter;
         this.actionLogPublisher = actionLogPublisher;
         this.paymentMapper = paymentMapper;
+        this.memberRepository = memberRepository;
         this.testMode = testMode;
     }
 
     /**
      * Paginated payment-history search (MyBatis): payment/refund receipts joined with their order
-     * and the paying member. All filters optional; ordered newest-first.
+     * and the paying member. All filters optional; ordered newest-first. Receipts carry no church
+     * column, so the filter is applied through the {@code ORDERS → MEMBER} join; CHURCH_MANAGER
+     * operators are pinned to their own church.
+     *
+     * @param request   search/pagination filters
+     * @param principal authenticated operator providing the church scope
+     * @return the filtered, paginated payment-history list
      */
     @Transactional(readOnly = true)
-    public ResInfinityList<PaymentListItem> list(PaymentSearchRequest request) {
+    public ResInfinityList<PaymentListItem> list(PaymentSearchRequest request, AdminPrincipal principal) {
         String searchField = blankToNull(request.searchField());
         String keyword = blankToNull(request.keyword());
         String kind = request.kind() == null ? null : request.kind().name();
         String method = blankToNull(request.method());
         String provider = blankToNull(request.provider());
+        Long churchId = scopedChurchId(request.churchId(), principal);
         int size = request.pageSizeOrDefault();
 
         List<PaymentListItem> rows = paymentMapper.selectList(
-                searchField, keyword, kind, method, provider,
+                searchField, keyword, kind, method, provider, churchId,
                 request.fromDate(), request.toDate(), request.offset(), size);
         long total = paymentMapper.countList(
-                searchField, keyword, kind, method, provider,
+                searchField, keyword, kind, method, provider, churchId,
                 request.fromDate(), request.toDate());
         return ResInfinityList.of(rows, total, size);
     }
@@ -91,16 +113,28 @@ public class PaymentService {
     }
 
     /**
-     * Initiates a (mock) payment for an order: resolves the provider, gets a transaction id, and
-     * marks the order {@link PayStatus#REQUESTED}.
-     *
-     * @throws ApiException {@code NOT_FOUND} if the order is missing, or {@code INVALID_PARAMETER}
-     *                      if it is already approved
+     * Member-storefront entry point for {@link #request(PayRequestCommand, AdminPrincipal)}: the
+     * member checkout has no admin principal and legitimately spans no church scope (it acts on the
+     * order the member just created), so it delegates with an unscoped SYSTEM principal.
      */
     @Transactional
     public PaymentResultDto request(PayRequestCommand command) {
+        return request(command, SYSTEM_PRINCIPAL);
+    }
+
+    /**
+     * Initiates a (mock) payment for an order: resolves the provider, gets a transaction id, and
+     * marks the order {@link PayStatus#REQUESTED}.
+     *
+     * @throws ApiException {@code NOT_FOUND} if the order is missing, {@code INVALID_PARAMETER}
+     *                      if it is already approved, or {@code FORBIDDEN} if the order is outside
+     *                      the operator's church
+     */
+    @Transactional
+    public PaymentResultDto request(PayRequestCommand command, AdminPrincipal principal) {
         Order order = orderRepository.findById(command.orderId())
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureMemberInScope(order.getMemberId(), principal);
         if (order.getPayStatus() == PayStatus.APPROVED) {
             throw new ApiException(ResultCode.INVALID_PARAMETER, "이미 결제된 주문입니다");
         }
@@ -118,6 +152,15 @@ public class PaymentService {
     }
 
     /**
+     * Member-storefront entry point for {@link #approve(PayApproveCommand, AdminPrincipal)}:
+     * delegates with an unscoped SYSTEM principal (the member checkout has no admin church scope).
+     */
+    @Transactional
+    public PaymentResultDto approve(PayApproveCommand command) {
+        return approve(command, SYSTEM_PRINCIPAL);
+    }
+
+    /**
      * Approves a previously requested (mock) payment: confirms via the provider, transitions the
      * order {@code PLACED → PAID} (reusing the order state machine: stock deduction + PAY receipt),
      * backfills the receipt with the PG provider/txnId, and triggers the paid-notification SMS via
@@ -128,14 +171,16 @@ public class PaymentService {
      * provider, this closes the seam so a real PG integration cannot approve against a stale or
      * forged transaction id.
      *
-     * @throws ApiException {@code NOT_FOUND} if missing, or {@code INVALID_PARAMETER} if the order
+     * @throws ApiException {@code NOT_FOUND} if missing, {@code INVALID_PARAMETER} if the order
      *                      is not in {@link PayStatus#REQUESTED} or the txnId does not match the
-     *                      request-stage id
+     *                      request-stage id, or {@code FORBIDDEN} if the order is outside the
+     *                      operator's church
      */
     @Transactional
-    public PaymentResultDto approve(PayApproveCommand command) {
+    public PaymentResultDto approve(PayApproveCommand command, AdminPrincipal principal) {
         Order order = orderRepository.findById(command.orderId())
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureMemberInScope(order.getMemberId(), principal);
         if (order.getPayStatus() != PayStatus.REQUESTED) {
             throw new ApiException(ResultCode.INVALID_PARAMETER, "결제요청 상태가 아닙니다");
         }
@@ -154,9 +199,10 @@ public class PaymentService {
         orderRepository.saveAndFlush(order);
 
         // Reuse the order state machine: PLACED → PAID (stock deduction + PAY receipt + SMS hook).
+        // payStatus is APPROVED above, so the state machine's PLACED→PAID payment guard is satisfied.
         if (order.getStatus() == OrderStatus.PLACED) {
             orderService.changeStatus(order.getId(),
-                    new OrderStatusChangeRequest(OrderStatus.PAID, "결제승인(MOCK)"));
+                    new OrderStatusChangeRequest(OrderStatus.PAID, "결제승인(MOCK)"), principal);
         }
 
         // Backfill the latest PAY receipt with the PG provider/txnId.
@@ -180,14 +226,16 @@ public class PaymentService {
      * while the charge still stands. For the mock provider the PG cancel is a no-op, so the demo
      * refund path is unchanged.
      *
-     * @throws ApiException {@code NOT_FOUND} if the order is missing, or {@code INVALID_PARAMETER}
-     *                      if the payment was not approved or the status transition is illegal; any
+     * @throws ApiException {@code NOT_FOUND} if the order is missing, {@code INVALID_PARAMETER}
+     *                      if the payment was not approved or the status transition is illegal,
+     *                      or {@code FORBIDDEN} if the order is outside the operator's church; any
      *                      PG decline surfaces as the provider's {@code INVALID_PARAMETER} message
      */
     @Transactional
-    public PaymentResultDto refund(PayCancelCommand command) {
+    public PaymentResultDto refund(PayCancelCommand command, AdminPrincipal principal) {
         Order order = orderRepository.findById(command.orderId())
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureMemberInScope(order.getMemberId(), principal);
         if (order.getPayStatus() != PayStatus.APPROVED) {
             throw new ApiException(ResultCode.INVALID_PARAMETER, "승인된 결제가 아닙니다");
         }
@@ -201,7 +249,7 @@ public class PaymentService {
 
         // 2) Reverse the internal side: stock restore + REFUND receipt via the order state machine.
         OrderStatus to = command.resolvedStatus();
-        orderService.changeStatus(order.getId(), new OrderStatusChangeRequest(to, command.reason()));
+        orderService.changeStatus(order.getId(), new OrderStatusChangeRequest(to, command.reason()), principal);
 
         // 3) Mark the payment canceled and backfill the REFUND receipt with the PG provider/txnId.
         order.applyPayCancel();
@@ -214,18 +262,38 @@ public class PaymentService {
         return PaymentResultDto.of(order.getId(), result, testMode);
     }
 
-    /** Returns the latest PAY receipt for an order (the payment receipt). */
+    /**
+     * Returns the latest PAY receipt for an order (the payment receipt). A CHURCH_MANAGER may only
+     * read receipts for orders owned by members in their own church.
+     */
     @Transactional(readOnly = true)
-    public PaymentReceiptDto receipt(Long orderId) {
-        if (!orderRepository.existsById(orderId)) {
-            throw new ApiException(ResultCode.NOT_FOUND);
-        }
+    public PaymentReceiptDto receipt(Long orderId, AdminPrincipal principal) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureMemberInScope(order.getMemberId(), principal);
         return latestPayReceipt(orderId)
                 .map(PaymentReceiptDto::from)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
     }
 
     // --- helpers -----------------------------------------------------------
+
+    /** Resolves the church filter: CHURCH_MANAGER is pinned to its own church. */
+    private Long scopedChurchId(Long requestedChurchId, AdminPrincipal principal) {
+        return principal.isSystem() ? requestedChurchId : principal.churchId();
+    }
+
+    /** Verifies the order's owning member belongs to the operator's church (SYSTEM bypasses). */
+    private void ensureMemberInScope(Long memberId, AdminPrincipal principal) {
+        if (principal.isSystem()) {
+            return;
+        }
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        if (!member.getChurchId().equals(principal.churchId())) {
+            throw new ApiException(ResultCode.FORBIDDEN);
+        }
+    }
 
     private java.util.Optional<OrderReceipt> latestPayReceipt(Long orderId) {
         return latestReceiptOfKind(orderId, ReceiptKind.PAY);

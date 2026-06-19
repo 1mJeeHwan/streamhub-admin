@@ -66,9 +66,9 @@ variable "ssh_public_key" {
 }
 
 variable "ssh_ingress_cidr" {
-  description = "CIDR allowed to SSH to EC2. Set to your IP/32. Default is open — tighten it."
+  description = "MUST be set in terraform.tfvars to your IP/32; SSM Session Manager is the preferred access path."
   type        = string
-  default     = "0.0.0.0/0"
+  default     = "127.0.0.1/32"
 }
 
 variable "api_ingress_cidr" {

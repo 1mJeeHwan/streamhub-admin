@@ -16,6 +16,12 @@ data "aws_ssm_parameter" "al2023" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
+# AWS-managed prefix list of CloudFront's origin-facing IP ranges. Used to lock the
+# API port (8080) so only CloudFront can reach the origin, not the whole internet.
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
 # ---------------------------------------------------------------------------
 # Security groups
 # ---------------------------------------------------------------------------
@@ -32,11 +38,12 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = [var.ssh_ingress_cidr]
   }
   ingress {
-    description = "API"
+    description = "API (CloudFront origin-facing IPs only)"
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
-    cidr_blocks = [var.api_ingress_cidr]
+    # Reachable ONLY from CloudFront's IP ranges — direct plaintext access bypassing the CDN is blocked.
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
   }
   egress {
     from_port   = 0
@@ -85,8 +92,10 @@ resource "aws_s3_bucket_public_access_block" "media" {
 resource "aws_s3_bucket_cors_configuration" "media" {
   bucket = aws_s3_bucket.media.id
   cors_rule {
-    allowed_methods = ["GET", "PUT", "POST", "HEAD"]
-    allowed_origins = ["*"] # tighten to the Vercel origin in production
+    # Media reads only need GET/HEAD; uploads go through the API host, not the browser.
+    allowed_methods = ["GET", "HEAD"]
+    # Tightened to the known Vercel frontend origins (was "*").
+    allowed_origins = ["https://streamhub-user.vercel.app", "https://streamhub-admin.vercel.app"]
     allowed_headers = ["*"]
     max_age_seconds = 3000
   }
@@ -205,13 +214,18 @@ resource "aws_iam_role" "ec2" {
 
 data "aws_iam_policy_document" "ec2" {
   statement {
+    sid = "EcrAuth"
+    # GetAuthorizationToken is account-scoped; AWS requires resources = ["*"].
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+  statement {
     sid = "EcrPull"
     actions = [
-      "ecr:GetAuthorizationToken",
       "ecr:BatchGetImage",
       "ecr:GetDownloadUrlForLayer",
     ]
-    resources = ["*"]
+    resources = [aws_ecr_repository.api.arn]
   }
   statement {
     sid       = "ReadSecrets"
@@ -269,6 +283,14 @@ resource "aws_instance" "api" {
   vpc_security_group_ids = [aws_security_group.ec2.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2.name
   key_name               = aws_key_pair.main.key_name
+
+  # Enforce IMDSv2 (token-required). The live instance already enforces this;
+  # pinning it here prevents drift on relaunch. hop_limit 2 lets containers reach IMDS.
+  metadata_options {
+    http_tokens                 = "required"
+    http_endpoint               = "enabled"
+    http_put_response_hop_limit = 2
+  }
 
   # A small swap file relieves heap pressure on the 1 GB instance.
   user_data = templatefile("${path.module}/user_data.sh.tftpl", {

@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -77,7 +78,10 @@ public class HlsPackagingService {
         Path work = null;
         try {
             work = Files.createTempDirectory("hls-" + trackId + "-");
-            Path input = work.resolve("input" + extension(sourceFilename));
+            // Build the temp input name from a sanitized extension rather than the raw upload name:
+            // a crafted name (e.g. "x.mp3/../../../tmp/evil") would otherwise let work.resolve(...)
+            // escape the temp dir and write an arbitrary file before ffmpeg.
+            Path input = work.resolve("input" + safeExtension(sourceFilename));
             Files.write(input, audio);
 
             // ffmpeg key_info file: line1 = key URI written into the playlist (rewritten when served),
@@ -97,7 +101,8 @@ public class HlsPackagingService {
             track.attachHls(prefix, saved.getId(), durationSec);
             trackRepository.save(track);
 
-            log.info("Packaged encrypted HLS for track {} ({} s) under {}", trackId, durationSec, prefix);
+            log.info("Packaged encrypted HLS for track {} from '{}' ({} s) under {}",
+                    trackId, sourceFilename, durationSec, prefix);
             return prefix;
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) {
@@ -176,6 +181,27 @@ public class HlsPackagingService {
         return (int) Math.round(total);
     }
 
+    private static final Pattern SAFE_EXTENSION = Pattern.compile("^\\.[A-Za-z0-9]{1,5}$");
+    private static final String DEFAULT_EXTENSION = ".mp3";
+
+    /**
+     * Returns a safe extension for the temp input file. The raw upload name is untrusted, so the
+     * extension is accepted only if it matches {@code ^\.[A-Za-z0-9]{1,5}$} (no {@code /}, {@code \},
+     * or {@code ..}); anything else defaults to {@value #DEFAULT_EXTENSION}. This neutralizes path
+     * traversal in the temp input path (e.g. {@code x.mp3/../../../tmp/evil}).
+     */
+    static String safeExtension(String sourceFilename) {
+        if (sourceFilename == null) {
+            return DEFAULT_EXTENSION;
+        }
+        int dot = sourceFilename.lastIndexOf('.');
+        if (dot < 0) {
+            return DEFAULT_EXTENSION;
+        }
+        String ext = sourceFilename.substring(dot);
+        return SAFE_EXTENSION.matcher(ext).matches() ? ext : DEFAULT_EXTENSION;
+    }
+
     private void cleanup(Path dir) {
         if (dir == null) {
             return;
@@ -193,11 +219,4 @@ public class HlsPackagingService {
         }
     }
 
-    private String extension(String filename) {
-        if (filename == null) {
-            return ".mp3";
-        }
-        int dot = filename.lastIndexOf('.');
-        return dot >= 0 ? filename.substring(dot) : ".mp3";
-    }
 }

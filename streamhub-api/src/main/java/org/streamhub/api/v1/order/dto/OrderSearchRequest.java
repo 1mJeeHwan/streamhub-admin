@@ -8,6 +8,9 @@ import org.streamhub.api.v1.order.entity.OrderStatus;
  *
  * <p>{@code searchField} selects which column {@code keyword} matches:
  * {@code orderNo} / {@code orderedName} / {@code receiverName} / {@code trackingNo}.
+ *
+ * <p>{@code churchId} is honored only for SYSTEM operators; CHURCH_MANAGER operators are pinned
+ * to their own church by the service regardless of this value.
  */
 public record OrderSearchRequest(
         Integer pageNumber,
@@ -16,6 +19,7 @@ public record OrderSearchRequest(
         String keyword,
         OrderStatus status,
         String payMethod,
+        Long churchId,
         LocalDate fromDate,
         LocalDate toDate) {
 

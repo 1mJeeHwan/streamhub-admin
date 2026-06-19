@@ -2,11 +2,6 @@ package org.streamhub.api.v1.album.hls;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +24,10 @@ import org.streamhub.api.v1.album.repository.TrackRepository;
  *       ({@code previewUrl}) so the encrypted-streaming pipeline can be demonstrated end-to-end
  *       without a real copyrighted master.</li>
  * </ul>
+ *
+ * <p>The demo sample is fetched server-side through {@link HlsSampleDownloader}, which validates the
+ * URL with {@link SsrfGuard} (a {@code previewUrl} is admin-settable free text — without validation
+ * it could be pointed at internal services or cloud metadata).
  */
 @Tag(name = "Album HLS Admin", description = "암호화 풀트랙 패키징 (관리자)")
 @RestController
@@ -39,12 +38,14 @@ public class AlbumHlsAdminController {
 
     private final HlsPackagingService packagingService;
     private final TrackRepository trackRepository;
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10)).build();
+    private final HlsSampleDownloader sampleDownloader;
 
-    public AlbumHlsAdminController(HlsPackagingService packagingService, TrackRepository trackRepository) {
+    public AlbumHlsAdminController(HlsPackagingService packagingService,
+                                   TrackRepository trackRepository,
+                                   HlsSampleDownloader sampleDownloader) {
         this.packagingService = packagingService;
         this.trackRepository = trackRepository;
+        this.sampleDownloader = sampleDownloader;
     }
 
     @Operation(summary = "풀트랙 업로드·암호화", description = "오디오 파일을 AES-128 암호화 HLS로 패키징해 저장한다.")
@@ -71,26 +72,8 @@ public class AlbumHlsAdminController {
         if (sampleUrl == null || sampleUrl.isBlank()) {
             throw new ApiException(ResultCode.INVALID_PARAMETER, "샘플 URL이 없는 트랙입니다");
         }
-        byte[] audio = download(sampleUrl);
+        byte[] audio = sampleDownloader.download(sampleUrl);
         String prefix = packagingService.packageTrack(trackId, audio, "demo.mp3");
         return ResultDTO.ok(prefix);
-    }
-
-    private byte[] download(String url) {
-        try {
-            HttpResponse<byte[]> response = httpClient.send(
-                    HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(60)).GET().build(),
-                    HttpResponse.BodyHandlers.ofByteArray());
-            if (response.statusCode() != 200) {
-                throw new ApiException(ResultCode.INTERNAL_ERROR,
-                        "샘플 다운로드 실패 (HTTP " + response.statusCode() + ")");
-            }
-            return response.body();
-        } catch (java.io.IOException | InterruptedException e) {
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
-            throw new ApiException(ResultCode.INTERNAL_ERROR, "샘플 다운로드 실패: " + e.getMessage());
-        }
     }
 }

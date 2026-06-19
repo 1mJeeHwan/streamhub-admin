@@ -19,6 +19,7 @@ public interface OrderMapper {
             @Param("keyword") String keyword,
             @Param("status") String status,
             @Param("payMethod") String payMethod,
+            @Param("churchId") Long churchId,
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate,
             @Param("offset") int offset,
@@ -29,6 +30,7 @@ public interface OrderMapper {
             @Param("keyword") String keyword,
             @Param("status") String status,
             @Param("payMethod") String payMethod,
+            @Param("churchId") Long churchId,
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate);
 

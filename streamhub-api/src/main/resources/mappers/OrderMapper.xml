@@ -31,6 +31,9 @@
             <if test="payMethod != null and payMethod != ''">
                 AND o.pay_method = #{payMethod}
             </if>
+            <if test="churchId != null">
+                AND m.church_id = #{churchId}
+            </if>
             <if test="fromDate != null">
                 AND o.ordered_at &gt;= #{fromDate}
             </if>
@@ -64,6 +67,7 @@
     <select id="countList" resultType="long">
         SELECT COUNT(*)
         FROM ORDERS o
+            JOIN MEMBER m ON o.member_id = m.id
         <include refid="searchWhere"/>
     </select>
 

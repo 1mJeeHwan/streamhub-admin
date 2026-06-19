@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
+import org.streamhub.api.base.security.AdminPrincipal;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.member.entity.Church;
 import org.streamhub.api.v1.member.repository.ChurchRepository;
@@ -203,24 +204,43 @@ public class WorshipService {
         return familyRows;
     }
 
+    /**
+     * Paginated registration search. Registrations carry an explicit {@code church_id}; the filter
+     * is pinned to the operator's church for CHURCH_MANAGER, ignoring any attacker-supplied
+     * {@code request.churchId()}. SYSTEM operators honor the requested church (null = all).
+     *
+     * @param request   search/pagination filters
+     * @param principal authenticated operator providing the church scope
+     * @return the filtered, paginated registration list
+     */
     @Transactional(readOnly = true)
-    public ResInfinityList<WorshipRegistrationListItem> list(WorshipSearchRequest request) {
+    public ResInfinityList<WorshipRegistrationListItem> list(WorshipSearchRequest request, AdminPrincipal principal) {
         String searchField = blankToNull(request.searchField());
         String keyword = blankToNull(request.keyword());
         String status = request.status() == null ? null : request.status().name();
+        Long churchId = scopedChurchId(request.churchId(), principal);
         int size = request.pageSizeOrDefault();
 
         List<WorshipRegistrationListItem> rows = worshipMapper.selectList(
-                searchField, keyword, status, request.churchId(),
+                searchField, keyword, status, churchId,
                 request.fromDate(), request.toDate(), request.offset(), size);
         long total = worshipMapper.countList(
-                searchField, keyword, status, request.churchId(),
+                searchField, keyword, status, churchId,
                 request.fromDate(), request.toDate());
         return ResInfinityList.of(rows, total, size);
     }
 
+    /**
+     * Registration detail. Verifies the registration's church is in the operator's scope first so a
+     * CHURCH_MANAGER cannot read another church's registration.
+     *
+     * @param id        registration id
+     * @param principal authenticated operator providing the church scope
+     * @return the registration detail with family rows
+     */
     @Transactional(readOnly = true)
-    public WorshipRegistrationDetail getDetail(Long id) {
+    public WorshipRegistrationDetail getDetail(Long id, AdminPrincipal principal) {
+        ensureRegistrationInScope(id, principal);
         WorshipRegistrationDetail detail = worshipMapper.selectDetail(id);
         if (detail == null) {
             throw new ApiException(ResultCode.NOT_FOUND);
@@ -236,13 +256,15 @@ public class WorshipService {
      * Firing the (no-op) contacted notification on {@code → CONTACTED} happens in the same
      * transaction.
      *
-     * @throws ApiException {@code NOT_FOUND} if the registration is missing, or
-     *                      {@code INVALID_PARAMETER} for an illegal transition
+     * @throws ApiException {@code NOT_FOUND} if the registration is missing,
+     *                      {@code INVALID_PARAMETER} for an illegal transition, or
+     *                      {@code FORBIDDEN} if the registration is outside the operator's church
      */
     @Transactional
-    public WorshipRegistrationDetail changeStatus(Long id, WorshipStatusChangeRequest request) {
+    public WorshipRegistrationDetail changeStatus(Long id, WorshipStatusChangeRequest request, AdminPrincipal principal) {
         WorshipRegistration registration = worshipRegistrationRepository.findById(id)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureChurchInScope(registration.getChurchId(), principal);
         RegistrationStatus from = registration.getStatus();
         RegistrationStatus to = request.status();
         if (!TRANSITIONS.getOrDefault(from, Set.of()).contains(to)) {
@@ -260,10 +282,32 @@ public class WorshipService {
         }
         actionLogPublisher.publish(
                 "WORSHIP_" + to.name(), "WORSHIP", String.valueOf(id), registration.getRegNo());
-        return getDetail(id);
+        return getDetail(id, principal);
     }
 
     // --- helpers -----------------------------------------------------------
+
+    /** Resolves the church filter: CHURCH_MANAGER is pinned to its own church. */
+    private Long scopedChurchId(Long requestedChurchId, AdminPrincipal principal) {
+        return principal.isSystem() ? requestedChurchId : principal.churchId();
+    }
+
+    /** Loads the registration and verifies its church is in the operator's scope. */
+    private void ensureRegistrationInScope(Long registrationId, AdminPrincipal principal) {
+        if (principal.isSystem()) {
+            return;
+        }
+        WorshipRegistration registration = worshipRegistrationRepository.findById(registrationId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureChurchInScope(registration.getChurchId(), principal);
+    }
+
+    /** Verifies the church belongs to the operator's scope (SYSTEM bypasses). */
+    private void ensureChurchInScope(Long churchId, AdminPrincipal principal) {
+        if (!principal.isSystem() && !churchId.equals(principal.churchId())) {
+            throw new ApiException(ResultCode.FORBIDDEN);
+        }
+    }
 
     /**
      * Builds a {@code WR-yyyyMMdd-NNNN} candidate, advancing the suffix past any number already

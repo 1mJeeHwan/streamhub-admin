@@ -6,6 +6,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.streamhub.api.base.exception.ApiException;
+import org.streamhub.api.base.response.ResultCode;
 
 /**
  * Selects the active {@link PaymentProvider} from all registered beans by PG code (C4 seam).
@@ -14,6 +16,11 @@ import org.springframework.stereotype.Component;
  * then the configured {@code app.payment.provider} default, then {@link MockPaymentProvider}.
  * In the demo only the {@code MOCK} bean is present (the real adapters are
  * {@code @ConditionalOnProperty}-gated), so every request resolves to mock.
+ *
+ * <p>When {@code app.payment.test-mode=false} the {@code MockPaymentProvider} bean is absent. If a
+ * request still asks for {@code MOCK} (or no real provider can be resolved), {@link #resolve} fails
+ * with a clear {@link ApiException} instead of returning {@code null} and triggering an NPE — so a
+ * real deployment never silently degrades into a free mock approval.
  */
 @Component
 public class PaymentProviderRouter {
@@ -28,7 +35,13 @@ public class PaymentProviderRouter {
         this.defaultProvider = defaultProvider == null ? "MOCK" : defaultProvider.toUpperCase();
     }
 
-    /** Resolves the provider for the requested PG code, falling back to the default then MOCK. */
+    /**
+     * Resolves the provider for the requested PG code, falling back to the configured default then
+     * MOCK. Fails clearly when no provider can be resolved — e.g. {@code MOCK} requested but the mock
+     * bean is gated off ({@code test-mode=false}) — instead of returning {@code null}.
+     *
+     * @throws ApiException {@code INTERNAL_ERROR} if no matching provider bean is registered
+     */
     public PaymentProvider resolve(String requestedCode) {
         if (requestedCode != null) {
             PaymentProvider exact = byCode.get(requestedCode.toUpperCase());
@@ -40,6 +53,11 @@ public class PaymentProviderRouter {
         if (configured != null) {
             return configured;
         }
-        return byCode.get("MOCK");
+        PaymentProvider mock = byCode.get("MOCK");
+        if (mock != null) {
+            return mock;
+        }
+        throw new ApiException(ResultCode.INTERNAL_ERROR,
+                "결제 수단(" + requestedCode + ")을 사용할 수 없습니다");
     }
 }

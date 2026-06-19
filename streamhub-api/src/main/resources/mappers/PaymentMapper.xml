@@ -31,6 +31,9 @@
             <if test="provider != null and provider != ''">
                 AND r.provider = #{provider}
             </if>
+            <if test="churchId != null">
+                AND m.church_id = #{churchId}
+            </if>
             <if test="fromDate != null">
                 AND r.created_at &gt;= #{fromDate}
             </if>

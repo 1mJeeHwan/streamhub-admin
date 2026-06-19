@@ -1,14 +1,21 @@
 package org.streamhub.api.v1.payment.adapter;
 
 import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
  * Default payment provider (demo/test mode). <b>Performs no external call.</b> It synthesises a
  * deterministic transaction id ({@code MOCK-{orderNo}-{seq}}) and always approves. The
  * sequence is process-local and only disambiguates repeated requests for the same order.
+ *
+ * <p><b>Security gate:</b> this fake approver is only registered while {@code app.payment.test-mode}
+ * is {@code true} (the default for the demo). A real deployment sets {@code test-mode=false}, so
+ * this bean is absent and no free/silent approval path can survive — every purchase must then go
+ * through a real PG via prepare → window → confirm.
  */
 @Component
+@ConditionalOnProperty(name = "app.payment.test-mode", havingValue = "true", matchIfMissing = true)
 public class MockPaymentProvider implements PaymentProvider {
 
     private static final String CODE = "MOCK";

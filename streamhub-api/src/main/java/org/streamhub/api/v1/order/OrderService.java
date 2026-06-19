@@ -11,9 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
+import org.streamhub.api.base.security.AdminPrincipal;
+import org.streamhub.api.base.security.AuthoritiesConstants;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.goods.repository.GoodsItemRepository;
 import org.streamhub.api.v1.goods.repository.GoodsOptionRepository;
+import org.streamhub.api.v1.member.entity.Member;
+import org.streamhub.api.v1.member.repository.MemberRepository;
 import org.streamhub.api.v1.order.dto.OrderDetail;
 import org.streamhub.api.v1.order.dto.OrderItemDto;
 import org.streamhub.api.v1.order.dto.OrderListItem;
@@ -25,6 +29,7 @@ import org.streamhub.api.v1.order.entity.Order;
 import org.streamhub.api.v1.order.entity.OrderItem;
 import org.streamhub.api.v1.order.entity.OrderReceipt;
 import org.streamhub.api.v1.order.entity.OrderStatus;
+import org.streamhub.api.v1.order.entity.PayStatus;
 import org.streamhub.api.v1.order.entity.ReceiptKind;
 import org.streamhub.api.v1.order.mapper.OrderMapper;
 import org.streamhub.api.v1.order.repository.OrderItemRepository;
@@ -52,6 +57,10 @@ public class OrderService {
      */
     private static final Map<OrderStatus, Set<OrderStatus>> TRANSITIONS = buildTransitions();
 
+    /** Unscoped SYSTEM principal for the background delivery-sync batch (no HTTP operator). */
+    private static final AdminPrincipal SYSTEM_PRINCIPAL =
+            new AdminPrincipal(null, AuthoritiesConstants.SYSTEM, null);
+
     /** Statuses in which stock has already been deducted (deducted on {@code PAID}). */
     private static final Set<OrderStatus> STOCK_DEDUCTED =
             Set.of(OrderStatus.PAID, OrderStatus.READY, OrderStatus.SHIPPING, OrderStatus.DONE);
@@ -62,6 +71,7 @@ public class OrderService {
     private final OrderReceiptRepository orderReceiptRepository;
     private final GoodsItemRepository goodsItemRepository;
     private final GoodsOptionRepository goodsOptionRepository;
+    private final MemberRepository memberRepository;
     private final ActionLogPublisher actionLogPublisher;
     private final SmsService smsService;
     private final org.streamhub.api.v1.delivery.DeliveryService deliveryService;
@@ -73,6 +83,7 @@ public class OrderService {
             OrderReceiptRepository orderReceiptRepository,
             GoodsItemRepository goodsItemRepository,
             GoodsOptionRepository goodsOptionRepository,
+            MemberRepository memberRepository,
             ActionLogPublisher actionLogPublisher,
             SmsService smsService,
             org.streamhub.api.v1.delivery.DeliveryService deliveryService) {
@@ -82,30 +93,49 @@ public class OrderService {
         this.orderReceiptRepository = orderReceiptRepository;
         this.goodsItemRepository = goodsItemRepository;
         this.goodsOptionRepository = goodsOptionRepository;
+        this.memberRepository = memberRepository;
         this.actionLogPublisher = actionLogPublisher;
         this.smsService = smsService;
         this.deliveryService = deliveryService;
     }
 
+    /**
+     * Paginated order search. Orders carry no church column, so the filter is applied through the
+     * {@code MEMBER} join; CHURCH_MANAGER operators are pinned to their own church.
+     *
+     * @param request   search/pagination filters
+     * @param principal authenticated operator providing the church scope
+     * @return the filtered, paginated order list
+     */
     @Transactional(readOnly = true)
-    public ResInfinityList<OrderListItem> list(OrderSearchRequest request) {
+    public ResInfinityList<OrderListItem> list(OrderSearchRequest request, AdminPrincipal principal) {
         String searchField = blankToNull(request.searchField());
         String keyword = blankToNull(request.keyword());
         String status = request.status() == null ? null : request.status().name();
         String payMethod = blankToNull(request.payMethod());
+        Long churchId = scopedChurchId(request.churchId(), principal);
         int size = request.pageSizeOrDefault();
 
         List<OrderListItem> orders = orderMapper.selectList(
-                searchField, keyword, status, payMethod,
+                searchField, keyword, status, payMethod, churchId,
                 request.fromDate(), request.toDate(), request.offset(), size);
         long total = orderMapper.countList(
-                searchField, keyword, status, payMethod,
+                searchField, keyword, status, payMethod, churchId,
                 request.fromDate(), request.toDate());
         return ResInfinityList.of(orders, total, size);
     }
 
+    /**
+     * Order detail. Verifies the owning member is in the operator's church first so a
+     * CHURCH_MANAGER cannot read another church's order.
+     *
+     * @param id        order id
+     * @param principal authenticated operator providing the church scope
+     * @return the assembled order detail (line items + receipts)
+     */
     @Transactional(readOnly = true)
-    public OrderDetail getDetail(Long id) {
+    public OrderDetail getDetail(Long id, AdminPrincipal principal) {
+        ensureOrderInScope(id, principal);
         OrderDetail detail = orderMapper.selectDetail(id);
         if (detail == null) {
             throw new ApiException(ResultCode.NOT_FOUND);
@@ -123,18 +153,29 @@ public class OrderService {
      *   <li>{@code → CANCEL/RETURN}: restores stock if it was already deducted, writes a REFUND receipt.</li>
      * </ul>
      *
-     * @throws ApiException {@code NOT_FOUND} if the order is missing, or
-     *                      {@code INVALID_PARAMETER} for an illegal transition or insufficient stock
+     * <p>A direct transition to {@code PAID} is additionally guarded: it is rejected unless the
+     * order's {@link PayStatus} is already {@code APPROVED} (finding #10). This stops an operator
+     * marking an order PAID without a real payment having been approved; the legitimate payment
+     * flow sets {@code APPROVED} on the order before reaching this transition.
+     *
+     * @throws ApiException {@code NOT_FOUND} if the order is missing,
+     *                      {@code INVALID_PARAMETER} for an illegal transition / insufficient stock /
+     *                      a {@code → PAID} without an approved payment, or {@code FORBIDDEN} if the
+     *                      order is outside the operator's church
      */
     @Transactional
     @CacheEvict(cacheNames = {"dashboardSummary", "dashboardTimeseries"}, allEntries = true)
-    public OrderDetail changeStatus(Long orderId, OrderStatusChangeRequest request) {
+    public OrderDetail changeStatus(Long orderId, OrderStatusChangeRequest request, AdminPrincipal principal) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureMemberInScope(order.getMemberId(), principal);
         OrderStatus from = order.getStatus();
         OrderStatus to = request.status();
         if (!TRANSITIONS.getOrDefault(from, Set.of()).contains(to)) {
             throw new ApiException(ResultCode.INVALID_PARAMETER, "허용되지 않는 상태 전이");
+        }
+        if (to == OrderStatus.PAID && order.getPayStatus() != PayStatus.APPROVED) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "결제 승인 없이 PAID로 전이할 수 없습니다");
         }
 
         List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
@@ -167,7 +208,7 @@ public class OrderService {
         actionLogPublisher.publish(
                 "ORDER_" + to.name(), "ORDER", String.valueOf(orderId), order.getOrderNo());
         notifyStatus(order, to);
-        return getDetail(orderId);
+        return getDetail(orderId, principal);
     }
 
     /**
@@ -192,12 +233,14 @@ public class OrderService {
 
     /**
      * Sets shipment tracking info. If the order is in {@code READY} it is auto-promoted
-     * to {@code SHIPPING} (spec §3.4).
+     * to {@code SHIPPING} (spec §3.4). A CHURCH_MANAGER may only update orders owned by
+     * members in their own church.
      */
     @Transactional
-    public OrderDetail changeTracking(Long orderId, OrderTrackingRequest request) {
+    public OrderDetail changeTracking(Long orderId, OrderTrackingRequest request, AdminPrincipal principal) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureMemberInScope(order.getMemberId(), principal);
         order.setTracking(request.trackingNo(), request.shipCompany());
         boolean promotedToShipping = false;
         if (order.getStatus() == OrderStatus.READY) {
@@ -210,7 +253,7 @@ public class OrderService {
         if (promotedToShipping) {
             notifyStatus(order, OrderStatus.SHIPPING);
         }
-        return getDetail(orderId);
+        return getDetail(orderId, principal);
     }
 
     /**
@@ -223,13 +266,39 @@ public class OrderService {
      *                      has no invoice / the carrier cannot be determined
      */
     @Transactional
-    public org.streamhub.api.v1.delivery.adapter.Tracking syncDelivery(Long orderId) {
+    public org.streamhub.api.v1.delivery.adapter.Tracking syncDelivery(Long orderId, AdminPrincipal principal) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureMemberInScope(order.getMemberId(), principal);
         org.streamhub.api.v1.delivery.adapter.Tracking tracking = deliveryService.trackOrder(order);
         deliveryDrivenTransition(order.getStatus(), tracking).ifPresent(next ->
-                changeStatus(orderId, new OrderStatusChangeRequest(next, "배송상태 자동연동(" + next + ")")));
+                changeStatus(orderId, new OrderStatusChangeRequest(next, "배송상태 자동연동(" + next + ")"), principal));
         return tracking;
+    }
+
+    /**
+     * System-context delivery sync for the scheduled courier-polling batch (C8), which runs without
+     * an authenticated operator and so legitimately spans all churches. Equivalent to
+     * {@link #syncDelivery(Long, AdminPrincipal)} with an unscoped SYSTEM principal.
+     */
+    @Transactional
+    public org.streamhub.api.v1.delivery.adapter.Tracking syncDelivery(Long orderId) {
+        return syncDelivery(orderId, SYSTEM_PRINCIPAL);
+    }
+
+    /**
+     * Read-only courier tracking for an order, scoped to the operator's church (no status change).
+     * Closes the cross-church tracking leak: a CHURCH_MANAGER may only read tracking for its own
+     * church's orders.
+     *
+     * @throws ApiException {@code NOT_FOUND} if missing, {@code FORBIDDEN} if another church's order
+     */
+    @Transactional(readOnly = true)
+    public org.streamhub.api.v1.delivery.adapter.Tracking trackingInfo(Long orderId, AdminPrincipal principal) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureMemberInScope(order.getMemberId(), principal);
+        return deliveryService.trackOrder(order);
     }
 
     /**
@@ -258,6 +327,33 @@ public class OrderService {
     }
 
     // --- helpers -----------------------------------------------------------
+
+    /** Resolves the church filter: CHURCH_MANAGER is pinned to its own church. */
+    private Long scopedChurchId(Long requestedChurchId, AdminPrincipal principal) {
+        return principal.isSystem() ? requestedChurchId : principal.churchId();
+    }
+
+    /** Loads the order and verifies its owning member is in the operator's church. */
+    private void ensureOrderInScope(Long orderId, AdminPrincipal principal) {
+        if (principal.isSystem()) {
+            return;
+        }
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureMemberInScope(order.getMemberId(), principal);
+    }
+
+    /** Verifies the member belongs to the operator's church (SYSTEM bypasses). */
+    private void ensureMemberInScope(Long memberId, AdminPrincipal principal) {
+        if (principal.isSystem()) {
+            return;
+        }
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        if (!member.getChurchId().equals(principal.churchId())) {
+            throw new ApiException(ResultCode.FORBIDDEN);
+        }
+    }
 
     /**
      * Deducts stock for a line (option stock first, else item stock) via a single atomic,

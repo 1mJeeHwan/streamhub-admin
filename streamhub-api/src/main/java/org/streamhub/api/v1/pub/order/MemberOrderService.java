@@ -68,6 +68,7 @@ public class MemberOrderService {
     private final org.streamhub.api.v1.delivery.DeliveryService deliveryService;
     private final CouponService couponService;
     private final String tossClientKey;
+    private final boolean paymentTestMode;
     private final SecureRandom random = new SecureRandom();
 
     public MemberOrderService(
@@ -81,7 +82,9 @@ public class MemberOrderService {
             org.streamhub.api.v1.delivery.DeliveryService deliveryService,
             CouponService couponService,
             @org.springframework.beans.factory.annotation.Value("${app.payment.toss.client-key:}")
-            String tossClientKey) {
+            String tossClientKey,
+            @org.springframework.beans.factory.annotation.Value("${app.payment.test-mode:true}")
+            boolean paymentTestMode) {
         this.albumRepository = albumRepository;
         this.goodsItemRepository = goodsItemRepository;
         this.memberRepository = memberRepository;
@@ -92,6 +95,7 @@ public class MemberOrderService {
         this.deliveryService = deliveryService;
         this.couponService = couponService;
         this.tossClientKey = tossClientKey;
+        this.paymentTestMode = paymentTestMode;
     }
 
     /**
@@ -116,11 +120,21 @@ public class MemberOrderService {
      * mock payment (request → approve) so the order ends {@code PAID} with stock deducted and a PAY
      * receipt written — all reusing the existing order/payment domain.
      *
-     * @throws ApiException {@code NOT_FOUND} if the album is missing or not on sale,
+     * <p><b>This is an explicit demo/test-mode path, not a real charge.</b> It approves server-side
+     * with no payment window and no money moves. It is therefore gated on {@code app.payment.test-mode}:
+     * when test-mode is off (a real deployment) this method is rejected with {@code FORBIDDEN}, forcing
+     * the caller through the real prepare → PG window → confirm flow. The free path can never be a
+     * silent unconditional bypass.
+     *
+     * @throws ApiException {@code FORBIDDEN} if {@code app.payment.test-mode} is off (real deployment),
+     *                      {@code NOT_FOUND} if the album is missing or not on sale,
      *                      {@code INVALID_PARAMETER} if the album is not purchasable (no bridge goods)
      */
     @Transactional
     public MemberOrderResult purchase(Long memberId, MemberOrderCreateRequest request) {
+        if (!paymentTestMode) {
+            throw new ApiException(ResultCode.FORBIDDEN, "데모 모드에서만 즉시 구매가 가능합니다");
+        }
         Member member = requireMember(memberId);
         Order order = createAlbumOrder(member, request.albumId(), request.couponCode());
 
@@ -206,7 +220,7 @@ public class MemberOrderService {
         long price = goods.getPrice();
 
         long couponDiscount = couponCode != null && !couponCode.isBlank()
-                ? couponService.redeem(couponCode.trim(), price).discount()
+                ? couponService.redeem(couponCode.trim(), price, member.getId()).discount()
                 : 0L;
 
         Order order = createOrder(member, price, couponDiscount);

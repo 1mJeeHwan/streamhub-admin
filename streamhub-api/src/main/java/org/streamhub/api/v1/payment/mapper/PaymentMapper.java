@@ -20,6 +20,7 @@ public interface PaymentMapper {
             @Param("kind") String kind,
             @Param("method") String method,
             @Param("provider") String provider,
+            @Param("churchId") Long churchId,
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate,
             @Param("offset") int offset,
@@ -31,6 +32,7 @@ public interface PaymentMapper {
             @Param("kind") String kind,
             @Param("method") String method,
             @Param("provider") String provider,
+            @Param("churchId") Long churchId,
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate);
 }

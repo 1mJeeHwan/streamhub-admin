@@ -1,7 +1,6 @@
 package org.streamhub.api.v1.coupon;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
@@ -58,16 +57,13 @@ class CouponTest {
     }
 
     @Test
-    void redeem_incrementsUsedCount_andEnforcesLimit() {
+    void isRedeemableAt_falseWhenUsageLimitReached() {
         Coupon limited = Coupon.builder().code("L").name("l").discountType(DiscountType.AMOUNT)
                 .discountValue(1000).minOrderAmount(0).roundUnit(0)
                 .startAt(LocalDateTime.now().minusDays(1)).endAt(LocalDateTime.now().plusDays(1))
-                .useYn("Y").usageLimit(1).build();
+                .useYn("Y").usageLimit(1).usedCount(1).build();
 
-        assertThat(limited.getUsedCount()).isZero();
-        limited.redeem();
-        assertThat(limited.getUsedCount()).isEqualTo(1);
-        assertThat(limited.isRedeemableAt(LocalDateTime.now())).isFalse(); // exhausted
-        assertThatThrownBy(limited::redeem).isInstanceOf(IllegalStateException.class);
+        // The atomic increment lives in the repository now; the entity only reports redeemability.
+        assertThat(limited.isRedeemableAt(LocalDateTime.now())).isFalse();
     }
 }
