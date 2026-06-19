@@ -38,7 +38,7 @@
             JOIN MEMBER m            ON s.member_id = m.id
             JOIN SUBSCRIPTION_PLAN p ON s.plan_id = p.id
         <include refid="searchWhere"/>
-        ORDER BY s.started_at DESC, s.id DESC
+        ORDER BY ${orderBy}
         LIMIT #{offset}, #{size}
     </select>
 

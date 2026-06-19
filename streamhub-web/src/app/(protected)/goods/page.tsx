@@ -48,6 +48,9 @@ export default function GoodsPage() {
   const [status, setStatus] = useState<StatusFilter>("ALL");
   const [soldOut, setSoldOut] = useState<SoldOutFilter>("ALL");
   const [pageNumber, setPageNumber] = useState(1);
+  const [sort, setSort] = useState<{ by: string; dir: "asc" | "desc" } | null>(
+    null,
+  );
 
   // Draft inputs (not yet applied to the query).
   const [keywordDraft, setKeywordDraft] = useState("");
@@ -73,8 +76,11 @@ export default function GoodsPage() {
       categoryId: categoryId === "ALL" ? undefined : Number(categoryId),
       status: status === "ALL" ? undefined : status,
       soldOut: soldOut === "ALL" ? undefined : soldOut,
-    }),
-    [pageNumber, keyword, categoryId, status, soldOut],
+      // Server-side sort (cast until the Orval client is regenerated post-deploy; the backend
+      // GoodsSearchRequest already accepts sortBy/sortDir and sends them in the POST body).
+      ...(sort ? { sortBy: sort.by, sortDir: sort.dir } : {}),
+    }) as GoodsSearchRequest,
+    [pageNumber, keyword, categoryId, status, soldOut, sort],
   );
 
   // List is a POST search, but it's a read — model it as a cached query keyed by
@@ -117,6 +123,18 @@ export default function GoodsPage() {
       return;
     }
     setPageNumber(next);
+    resetDirty();
+  };
+
+  // Sorting changes the whole result set, so jump back to the first page and drop any
+  // pending inline edits (they would refer to rows no longer on the current page).
+  const handleSortChange = (
+    by: string | null,
+    dir: "asc" | "desc" | null,
+  ) => {
+    setSort(by && dir ? { by, dir } : null);
+    setPageNumber(1);
+    setMessage(null);
     resetDirty();
   };
 
@@ -313,7 +331,11 @@ export default function GoodsPage() {
           <p className="text-sm text-red-600">목록을 불러오지 못했습니다.</p>
         </div>
       ) : (
-        <GoodsGrid rows={rows} onRowEdited={handleRowEdited} />
+        <GoodsGrid
+          rows={rows}
+          onRowEdited={handleRowEdited}
+          onSortChange={handleSortChange}
+        />
       )}
 
       {/* Pagination */}

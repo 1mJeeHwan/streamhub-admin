@@ -251,14 +251,14 @@ class PaymentServiceTest {
                 new org.streamhub.api.v1.payment.dto.PaymentListItem();
         row.setId(1L);
         row.setKind(org.streamhub.api.v1.order.entity.ReceiptKind.PAY);
-        when(paymentMapper.selectList(any(), any(), any(), any(), any(), any(), any(), any(),
+        when(paymentMapper.selectList(any(), any(), any(), any(), any(), any(), any(), any(), any(),
                 org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
                 .thenReturn(java.util.List.of(row));
         when(paymentMapper.countList(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(1L);
 
         var page = paymentService().list(new org.streamhub.api.v1.payment.dto.PaymentSearchRequest(
-                0, 10, null, null, null, null, null, null, null, null), SYSTEM);
+                0, 10, null, null, null, null, null, null, null, null, null, null), SYSTEM);
 
         org.assertj.core.api.Assertions.assertThat(page.getContents()).hasSize(1);
         org.assertj.core.api.Assertions.assertThat(page.getTotalCount()).isEqualTo(1L);

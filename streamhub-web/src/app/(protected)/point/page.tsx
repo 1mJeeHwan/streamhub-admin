@@ -30,6 +30,9 @@ export default function PointPage() {
   // Committed search criteria (applied on 검색 / page change).
   const [keyword, setKeyword] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
+  const [sort, setSort] = useState<{ by: string; dir: "asc" | "desc" } | null>(
+    null,
+  );
 
   // Draft input (not yet applied to the query).
   const [keywordDraft, setKeywordDraft] = useState("");
@@ -39,13 +42,17 @@ export default function PointPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   const searchRequest = useMemo<PointLedgerSearchRequest>(
-    () => ({
-      // UI pageNumber is 1-based (for display); the backend expects 0-based.
-      pageNumber: pageNumber - 1,
-      pageSize: PAGE_SIZE,
-      keyword: keyword.trim() || undefined,
-    }),
-    [pageNumber, keyword],
+    () =>
+      ({
+        // UI pageNumber is 1-based (for display); the backend expects 0-based.
+        pageNumber: pageNumber - 1,
+        pageSize: PAGE_SIZE,
+        keyword: keyword.trim() || undefined,
+        // Server-side sort (cast until the Orval client is regenerated post-deploy; the backend
+        // PointLedgerSearchRequest already accepts sortBy/sortDir and sends them in the POST body).
+        ...(sort ? { sortBy: sort.by, sortDir: sort.dir } : {}),
+      }) as PointLedgerSearchRequest,
+    [pageNumber, keyword, sort],
   );
 
   // List is a POST search, but it's a read — model it as a cached query keyed by
@@ -72,6 +79,12 @@ export default function PointPage() {
       return;
     }
     setPageNumber(next);
+  };
+
+  // Sorting changes the whole result set, so jump back to the first page.
+  const handleSortChange = (by: string | null, dir: "asc" | "desc" | null) => {
+    setSort(by && dir ? { by, dir } : null);
+    setPageNumber(1);
   };
 
   const handleGrantSuccess = () => {
@@ -168,7 +181,7 @@ export default function PointPage() {
           <p className="text-sm text-red-600">목록을 불러오지 못했습니다.</p>
         </div>
       ) : (
-        <PointLedgerGrid rows={rows} />
+        <PointLedgerGrid rows={rows} onSortChange={handleSortChange} />
       )}
 
       {/* Pagination */}

@@ -8,6 +8,7 @@ import {
   type ColDef,
   type GridReadyEvent,
   type ICellRendererParams,
+  type SortChangedEvent,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 
@@ -38,6 +39,8 @@ const gridTheme = themeQuartz.withParams({
 
 interface SmsGridProps {
   rows: SmsListItem[];
+  /** Server-side sort callback: the column field + direction (null when sorting is cleared). */
+  onSortChange?: (sortBy: string | null, sortDir: "asc" | "desc" | null) => void;
 }
 
 /**
@@ -46,7 +49,7 @@ interface SmsGridProps {
  * channel and status columns render colored badges; testMode rows are flagged
  * with a 데모/테스트 발송 pill.
  */
-export default function SmsGrid({ rows }: SmsGridProps) {
+export default function SmsGrid({ rows, onSortChange }: SmsGridProps) {
   const columnDefs = useMemo<ColDef<SmsListItem>[]>(
     () => [
       {
@@ -127,6 +130,13 @@ export default function SmsGrid({ rows }: SmsGridProps) {
     event.api.sizeColumnsToFit();
   };
 
+  // Server-side sort: report the active sort column so the page refetches the whole result set
+  // sorted (not just the visible page). Single-column sort.
+  const handleSortChanged = (event: SortChangedEvent) => {
+    const sorted = event.api.getColumnState().find((col) => col.sort);
+    onSortChange?.((sorted?.colId as string) ?? null, (sorted?.sort as "asc" | "desc") ?? null);
+  };
+
   return (
     <div className="h-[560px] w-full">
       <AgGridReact<SmsListItem>
@@ -135,6 +145,7 @@ export default function SmsGrid({ rows }: SmsGridProps) {
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
         onGridReady={handleGridReady}
+        onSortChanged={handleSortChanged}
         getRowId={(params) => String(params.data.id)}
         overlayNoRowsTemplate="발송 내역이 없습니다."
       />

@@ -41,6 +41,7 @@ export default function SmsPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
+  const [sort, setSort] = useState<{ by: string; dir: "asc" | "desc" } | null>(null);
 
   // Draft inputs (not yet applied to the query).
   const [keywordDraft, setKeywordDraft] = useState("");
@@ -60,8 +61,11 @@ export default function SmsPage() {
       kind: kind === "ALL" ? undefined : kind,
       from: from || undefined,
       to: to || undefined,
-    }),
-    [pageNumber, keyword, kind, from, to],
+      // Server-side sort (cast until the Orval client is regenerated post-deploy; the backend
+      // SmsSearchRequest already accepts sortBy/sortDir and sends them in the POST body).
+      ...(sort ? { sortBy: sort.by, sortDir: sort.dir } : {}),
+    }) as SmsSearchRequest,
+    [pageNumber, keyword, kind, from, to, sort],
   );
 
   // List is a POST search, but it's a read — model it as a cached query keyed by
@@ -90,6 +94,12 @@ export default function SmsPage() {
       return;
     }
     setPageNumber(next);
+  };
+
+  // Sorting changes the whole result set, so jump back to the first page.
+  const handleSortChange = (by: string | null, dir: "asc" | "desc" | null) => {
+    setSort(by && dir ? { by, dir } : null);
+    setPageNumber(1);
   };
 
   const handleSent = () => {
@@ -223,7 +233,7 @@ export default function SmsPage() {
           <p className="text-sm text-red-600">발송 내역을 불러오지 못했습니다.</p>
         </div>
       ) : (
-        <SmsGrid rows={rows} />
+        <SmsGrid rows={rows} onSortChange={handleSortChange} />
       )}
 
       {/* Pagination */}

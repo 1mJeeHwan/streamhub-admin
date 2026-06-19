@@ -10,6 +10,7 @@ import {
   type GridReadyEvent,
   type ICellRendererParams,
   type RowClickedEvent,
+  type SortChangedEvent,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 
@@ -39,6 +40,8 @@ const gridTheme = themeQuartz.withParams({
 
 interface ContentGridProps {
   rows: ContentListItem[];
+  /** Server-side sort callback: the column field + direction (null when sorting is cleared). */
+  onSortChange?: (sortBy: string | null, sortDir: "asc" | "desc" | null) => void;
 }
 
 function ThumbnailCell({ url }: { url?: string }) {
@@ -66,7 +69,7 @@ function ThumbnailCell({ url }: { url?: string }) {
  * ContentGrid renders the content result set with AG Grid (community, v33).
  * Clicking a row (or the 상세 button) navigates to the content detail page.
  */
-export default function ContentGrid({ rows }: ContentGridProps) {
+export default function ContentGrid({ rows, onSortChange }: ContentGridProps) {
   const router = useRouter();
 
   const columnDefs = useMemo<ColDef<ContentListItem>[]>(
@@ -173,6 +176,13 @@ export default function ContentGrid({ rows }: ContentGridProps) {
     event.api.sizeColumnsToFit();
   };
 
+  // Server-side sort: report the active sort column so the page refetches the whole result set
+  // sorted (not just the visible page). Single-column sort.
+  const handleSortChanged = (event: SortChangedEvent) => {
+    const sorted = event.api.getColumnState().find((col) => col.sort);
+    onSortChange?.((sorted?.colId as string) ?? null, (sorted?.sort as "asc" | "desc") ?? null);
+  };
+
   const handleRowClicked = (event: RowClickedEvent<ContentListItem>) => {
     const id = event.data?.id;
     if (id != null) {
@@ -189,6 +199,7 @@ export default function ContentGrid({ rows }: ContentGridProps) {
         defaultColDef={defaultColDef}
         suppressCellFocus
         onGridReady={handleGridReady}
+        onSortChanged={handleSortChanged}
         onRowClicked={handleRowClicked}
         overlayNoRowsTemplate="조회된 콘텐츠가 없습니다."
       />

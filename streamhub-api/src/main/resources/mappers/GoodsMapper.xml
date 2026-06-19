@@ -44,7 +44,7 @@
         FROM GOODS_ITEM gi
             JOIN GOODS_CATEGORY gc ON gi.category_id = gc.id
         <include refid="searchWhere"/>
-        ORDER BY gi.created_at DESC, gi.id DESC
+        ORDER BY ${orderBy}
         LIMIT #{offset}, #{size}
     </select>
 

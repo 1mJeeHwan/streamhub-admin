@@ -10,6 +10,7 @@ import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.base.storage.StorageService;
+import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.goods.dto.GoodsBulkUpdateRequest;
 import org.streamhub.api.v1.goods.dto.GoodsCreateRequest;
@@ -33,6 +34,21 @@ import org.streamhub.api.v1.goods.repository.GoodsOptionRepository;
  */
 @Service
 public class GoodsService {
+
+    /** Whitelisted sort keys (GoodsListItem field → SQL column) for server-side list sorting. */
+    private static final Map<String, String> GOODS_SORT_COLUMNS = Map.ofEntries(
+            Map.entry("code", "gi.code"),
+            Map.entry("name", "gi.name"),
+            Map.entry("categoryName", "gc.name"),
+            Map.entry("price", "gi.price"),
+            Map.entry("listPrice", "gi.list_price"),
+            Map.entry("stock", "gi.stock"),
+            Map.entry("notiQty", "gi.noti_qty"),
+            Map.entry("soldOut", "gi.sold_out"),
+            Map.entry("useYn", "gi.use_yn"),
+            Map.entry("status", "gi.status"),
+            Map.entry("saleCount", "gi.sale_count"),
+            Map.entry("viewCount", "gi.view_count"));
 
     private final GoodsMapper goodsMapper;
     private final GoodsItemRepository goodsItemRepository;
@@ -62,9 +78,11 @@ public class GoodsService {
         String keyword = blankToNull(request.keyword());
         String soldOut = blankToNull(request.soldOut());
         int size = request.pageSizeOrDefault();
+        String orderBy = SortResolver.resolve(request.sortBy(), request.sortDir(),
+                GOODS_SORT_COLUMNS, "gi.id", "gi.created_at DESC, gi.id DESC");
 
         List<GoodsListItem> items =
-                goodsMapper.selectList(keyword, request.categoryId(), status, soldOut, request.offset(), size);
+                goodsMapper.selectList(keyword, request.categoryId(), status, soldOut, orderBy, request.offset(), size);
         items.forEach(item -> item.setThumbnailUrl(storageService.publicUrl(item.getThumbnailKey())));
         long total = goodsMapper.countList(keyword, request.categoryId(), status, soldOut);
         return ResInfinityList.of(items, total, size);

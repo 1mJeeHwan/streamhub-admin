@@ -11,6 +11,7 @@ import {
   type ICellRendererParams,
   type RowClickedEvent,
   type SelectionChangedEvent,
+  type SortChangedEvent,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 
@@ -36,6 +37,8 @@ const gridTheme = themeQuartz.withParams({
 
 interface MemberGridProps {
   rows: MemberListItem[];
+  /** Server-side sort callback: the column field + direction (null when sorting is cleared). */
+  onSortChange?: (sortBy: string | null, sortDir: "asc" | "desc" | null) => void;
 }
 
 /**
@@ -46,6 +49,7 @@ interface MemberGridProps {
 export default function MemberGrid({
   rows,
   onSelectionChanged,
+  onSortChange,
 }: MemberGridProps & {
   onSelectionChanged: (selectedIds: number[]) => void;
 }) {
@@ -141,6 +145,13 @@ export default function MemberGrid({
     onSelectionChanged(ids);
   };
 
+  // Server-side sort: report the active sort column so the page refetches the whole result set
+  // sorted (not just the visible page). Single-column sort.
+  const handleSortChanged = (event: SortChangedEvent) => {
+    const sorted = event.api.getColumnState().find((col) => col.sort);
+    onSortChange?.((sorted?.colId as string) ?? null, (sorted?.sort as "asc" | "desc") ?? null);
+  };
+
   const handleRowClicked = (event: RowClickedEvent<MemberListItem>) => {
     const id = event.data?.id;
     if (id != null) {
@@ -159,6 +170,7 @@ export default function MemberGrid({
         suppressCellFocus
         onGridReady={handleGridReady}
         onSelectionChanged={handleSelectionChanged}
+        onSortChanged={handleSortChanged}
         onRowClicked={handleRowClicked}
         overlayNoRowsTemplate="조회된 회원이 없습니다."
       />

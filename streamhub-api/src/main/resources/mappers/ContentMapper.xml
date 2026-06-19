@@ -50,7 +50,7 @@
             JOIN CHANNEL ch  ON c.channel_id = ch.id
             JOIN CHURCH chu  ON ch.church_id = chu.id
         <include refid="searchWhere"/>
-        ORDER BY c.created_at DESC, c.id DESC
+        ORDER BY ${orderBy}
         LIMIT #{offset}, #{size}
     </select>
 

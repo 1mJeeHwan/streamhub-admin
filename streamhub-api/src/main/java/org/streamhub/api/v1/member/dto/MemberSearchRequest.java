@@ -10,13 +10,17 @@ import org.streamhub.api.v1.member.entity.UserStatus;
  * @param keyword    matched against name / email / phone (LIKE)
  * @param userStatus filter by lifecycle status
  * @param churchId   filter by church (SYSTEM only; ignored/overridden for CHURCH_MANAGER)
+ * @param sortBy     client sort key (resolved against a server-side whitelist); nullable
+ * @param sortDir    {@code asc}/{@code desc}; nullable
  */
 public record MemberSearchRequest(
         Integer pageNumber,
         Integer pageSize,
         String keyword,
         UserStatus userStatus,
-        Long churchId) {
+        Long churchId,
+        String sortBy,
+        String sortDir) {
 
     public int pageNumberOrDefault() {
         return pageNumber == null || pageNumber < 0 ? 0 : pageNumber;

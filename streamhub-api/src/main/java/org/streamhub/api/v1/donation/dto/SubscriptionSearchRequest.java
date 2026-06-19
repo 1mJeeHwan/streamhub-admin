@@ -13,7 +13,9 @@ public record SubscriptionSearchRequest(
         String keyword,
         SubscriptionStatus status,
         Long planId,
-        Long churchId) {
+        Long churchId,
+        String sortBy,
+        String sortDir) {
 
     public int pageSizeOrDefault() {
         return pageSize == null || pageSize <= 0 ? 10 : pageSize;

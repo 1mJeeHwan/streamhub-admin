@@ -10,6 +10,7 @@ import {
   type GridReadyEvent,
   type ICellRendererParams,
   type RowClickedEvent,
+  type SortChangedEvent,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 
@@ -57,6 +58,8 @@ interface PaymentGridProps {
   rows: PaymentListItem[];
   /** Invoked when the 환불 action of an eligible PAY receipt is clicked. */
   onRefund: (row: PaymentListItem) => void;
+  /** Server-side sort callback: the column field + direction (null when sorting is cleared). */
+  onSortChange?: (sortBy: string | null, sortDir: "asc" | "desc" | null) => void;
 }
 
 /**
@@ -64,7 +67,7 @@ interface PaymentGridProps {
  * Each row is a payment/refund receipt; clicking a row (or the 주문 button) opens
  * the related order detail, where refunds/transitions are performed.
  */
-export default function PaymentGrid({ rows, onRefund }: PaymentGridProps) {
+export default function PaymentGrid({ rows, onRefund, onSortChange }: PaymentGridProps) {
   const router = useRouter();
 
   const columnDefs = useMemo<ColDef<PaymentListItem>[]>(
@@ -212,6 +215,13 @@ export default function PaymentGrid({ rows, onRefund }: PaymentGridProps) {
     event.api.sizeColumnsToFit();
   };
 
+  // Server-side sort: report the active sort column so the page refetches the whole result set
+  // sorted (not just the visible page). Single-column sort.
+  const handleSortChanged = (event: SortChangedEvent) => {
+    const sorted = event.api.getColumnState().find((col) => col.sort);
+    onSortChange?.((sorted?.colId as string) ?? null, (sorted?.sort as "asc" | "desc") ?? null);
+  };
+
   const handleRowClicked = (event: RowClickedEvent<PaymentListItem>) => {
     const orderId = event.data?.orderId;
     if (orderId != null) {
@@ -228,6 +238,7 @@ export default function PaymentGrid({ rows, onRefund }: PaymentGridProps) {
         defaultColDef={defaultColDef}
         suppressCellFocus
         onGridReady={handleGridReady}
+        onSortChanged={handleSortChanged}
         onRowClicked={handleRowClicked}
         overlayNoRowsTemplate="조회된 결제 내역이 없습니다."
       />

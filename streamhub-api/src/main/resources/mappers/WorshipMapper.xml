@@ -54,7 +54,7 @@
         FROM WORSHIP_REGISTRATION wr
             JOIN CHURCH chu ON wr.church_id = chu.id
         <include refid="searchWhere"/>
-        ORDER BY wr.created_at DESC, wr.id DESC
+        ORDER BY ${orderBy}
         LIMIT #{offset}, #{size}
     </select>
 

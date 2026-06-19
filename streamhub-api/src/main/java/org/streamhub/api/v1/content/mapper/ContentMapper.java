@@ -19,6 +19,7 @@ public interface ContentMapper {
             @Param("status") String status,
             @Param("channelId") Long channelId,
             @Param("churchId") Long churchId,
+            @Param("orderBy") String orderBy,
             @Param("offset") int offset,
             @Param("size") int size);
 

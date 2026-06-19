@@ -1,12 +1,14 @@
 package org.streamhub.api.v1.member;
 
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.base.security.AdminPrincipal;
+import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.member.dto.MemberDetail;
 import org.streamhub.api.v1.member.dto.MemberListItem;
 import org.streamhub.api.v1.member.dto.MemberSearchRequest;
@@ -24,6 +26,17 @@ import org.streamhub.api.v1.member.repository.MemberRepository;
 @Service
 public class MemberService {
 
+    /** Whitelisted sort keys (MemberListItem field → SQL column) for server-side list sorting. */
+    private static final Map<String, String> MEMBER_SORT_COLUMNS = Map.of(
+            "name", "m.name",
+            "email", "m.email",
+            "phone", "m.phone",
+            "churchName", "c.name",
+            "regionName", "r.name",
+            "userStatus", "m.user_status",
+            "liveYn", "m.live_yn",
+            "createdAt", "m.created_at");
+
     private final MemberMapper memberMapper;
     private final MemberRepository memberRepository;
     private final org.streamhub.api.v1.actionlog.ActionLogPublisher actionLogPublisher;
@@ -40,9 +53,11 @@ public class MemberService {
         Long churchId = scopedChurchId(request.churchId(), principal);
         String status = request.userStatus() == null ? null : request.userStatus().name();
         int size = request.pageSizeOrDefault();
+        String orderBy = SortResolver.resolve(request.sortBy(), request.sortDir(),
+                MEMBER_SORT_COLUMNS, "m.id", "m.created_at DESC, m.id DESC");
 
         List<MemberListItem> contents =
-                memberMapper.selectList(blankToNull(request.keyword()), status, churchId, request.offset(), size);
+                memberMapper.selectList(blankToNull(request.keyword()), status, churchId, orderBy, request.offset(), size);
         long total = memberMapper.countList(blankToNull(request.keyword()), status, churchId);
         return ResInfinityList.of(contents, total, size);
     }

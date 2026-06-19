@@ -1,6 +1,7 @@
 package org.streamhub.api.v1.payment;
 
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +10,7 @@ import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.base.security.AdminPrincipal;
 import org.streamhub.api.base.security.AuthoritiesConstants;
+import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.member.entity.Member;
 import org.streamhub.api.v1.member.repository.MemberRepository;
@@ -42,6 +44,18 @@ import org.streamhub.api.v1.payment.mapper.PaymentMapper;
  */
 @Service
 public class PaymentService {
+
+    /** Whitelisted sort keys (PaymentListItem field → SQL column) for server-side list sorting. */
+    private static final Map<String, String> PAYMENT_SORT_COLUMNS = Map.of(
+            "createdAt", "r.created_at",
+            "kind", "r.kind",
+            "orderNo", "o.order_no",
+            "memberName", "m.name",
+            "amount", "r.amount",
+            "method", "r.method",
+            "provider", "r.provider",
+            "txnId", "r.txn_id",
+            "payStatus", "o.pay_status");
 
     private final OrderRepository orderRepository;
     private final OrderReceiptRepository orderReceiptRepository;
@@ -98,10 +112,12 @@ public class PaymentService {
         String provider = blankToNull(request.provider());
         Long churchId = scopedChurchId(request.churchId(), principal);
         int size = request.pageSizeOrDefault();
+        String orderBy = SortResolver.resolve(request.sortBy(), request.sortDir(),
+                PAYMENT_SORT_COLUMNS, "r.id", "r.created_at DESC, r.id DESC");
 
         List<PaymentListItem> rows = paymentMapper.selectList(
                 searchField, keyword, kind, method, provider, churchId,
-                request.fromDate(), request.toDate(), request.offset(), size);
+                request.fromDate(), request.toDate(), orderBy, request.offset(), size);
         long total = paymentMapper.countList(
                 searchField, keyword, kind, method, provider, churchId,
                 request.fromDate(), request.toDate());

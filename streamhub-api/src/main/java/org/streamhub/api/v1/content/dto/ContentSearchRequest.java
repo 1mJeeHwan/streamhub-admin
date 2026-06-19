@@ -12,7 +12,9 @@ public record ContentSearchRequest(
         String keyword,
         ContentType type,
         ContentStatus status,
-        Long channelId) {
+        Long channelId,
+        String sortBy,
+        String sortDir) {
 
     public int pageSizeOrDefault() {
         return pageSize == null || pageSize <= 0 ? 10 : pageSize;

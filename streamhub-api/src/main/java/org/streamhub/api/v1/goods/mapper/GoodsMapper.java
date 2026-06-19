@@ -18,6 +18,7 @@ public interface GoodsMapper {
             @Param("categoryId") Long categoryId,
             @Param("status") String status,
             @Param("soldOut") String soldOut,
+            @Param("orderBy") String orderBy,
             @Param("offset") int offset,
             @Param("size") int size);
 

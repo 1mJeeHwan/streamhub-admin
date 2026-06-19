@@ -1,10 +1,12 @@
 package org.streamhub.api.v1.sms;
 
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.response.ResInfinityList;
+import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.order.entity.Order;
 import org.streamhub.api.v1.sms.adapter.SmsSendCommand;
@@ -37,6 +39,17 @@ import org.streamhub.api.v1.sms.repository.SmsMessageRepository;
 @Service
 public class SmsService {
 
+    /** Whitelisted sort keys (SmsListItem field → SQL column) for server-side list sorting. */
+    private static final Map<String, String> SMS_SORT_COLUMNS = Map.of(
+            "sentAt", "s.sent_at",
+            "kind", "s.kind",
+            "channel", "s.channel",
+            "toNumber", "s.to_number",
+            "memberName", "m.name",
+            "content", "s.content",
+            "status", "s.status",
+            "sender", "s.sender");
+
     private final SmsMapper smsMapper;
     private final SmsMessageRepository smsMessageRepository;
     private final SmsSenderRouter smsSenderRouter;
@@ -58,9 +71,11 @@ public class SmsService {
         String keyword = blankToNull(request.keyword());
         String kind = request.kind() == null ? null : request.kind().name();
         int size = request.pageSizeOrDefault();
+        String orderBy = SortResolver.resolve(request.sortBy(), request.sortDir(),
+                SMS_SORT_COLUMNS, "s.id", "s.sent_at DESC, s.id DESC");
 
         List<SmsListItem> contents =
-                smsMapper.selectList(keyword, kind, request.from(), request.to(), request.offset(), size);
+                smsMapper.selectList(keyword, kind, request.from(), request.to(), orderBy, request.offset(), size);
         long total = smsMapper.countList(keyword, kind, request.from(), request.to());
         return ResInfinityList.of(contents, total, size);
     }

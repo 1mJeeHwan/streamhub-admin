@@ -37,7 +37,7 @@
         FROM POINT_LEDGER pl
             JOIN MEMBER mb ON pl.member_id = mb.id
         <include refid="searchWhere"/>
-        ORDER BY pl.created_at DESC, pl.id DESC
+        ORDER BY ${orderBy}
         LIMIT #{offset}, #{size}
     </select>
 

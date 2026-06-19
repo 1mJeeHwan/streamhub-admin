@@ -21,6 +21,7 @@ public interface WorshipMapper {
             @Param("churchId") Long churchId,
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate,
+            @Param("orderBy") String orderBy,
             @Param("offset") int offset,
             @Param("size") int size);
 

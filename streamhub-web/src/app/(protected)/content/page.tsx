@@ -46,6 +46,7 @@ export default function ContentPage() {
   const [type, setType] = useState<TypeFilter>("ALL");
   const [status, setStatus] = useState<StatusFilter>("ALL");
   const [pageNumber, setPageNumber] = useState(1);
+  const [sort, setSort] = useState<{ by: string; dir: "asc" | "desc" } | null>(null);
 
   // Draft inputs (not yet applied to the query).
   const [keywordDraft, setKeywordDraft] = useState("");
@@ -60,8 +61,11 @@ export default function ContentPage() {
       keyword: keyword.trim() || undefined,
       type: type === "ALL" ? undefined : type,
       status: status === "ALL" ? undefined : status,
-    }),
-    [pageNumber, keyword, type, status],
+      // Server-side sort (cast until the Orval client is regenerated post-deploy; the backend
+      // ContentSearchRequest already accepts sortBy/sortDir and sends them in the POST body).
+      ...(sort ? { sortBy: sort.by, sortDir: sort.dir } : {}),
+    }) as ContentSearchRequest,
+    [pageNumber, keyword, type, status, sort],
   );
 
   // List is a POST search, but it's a read — model it as a cached query keyed by the criteria
@@ -89,6 +93,12 @@ export default function ContentPage() {
       return;
     }
     setPageNumber(next);
+  };
+
+  // Sorting changes the whole result set, so jump back to the first page.
+  const handleSortChange = (by: string | null, dir: "asc" | "desc" | null) => {
+    setSort(by && dir ? { by, dir } : null);
+    setPageNumber(1);
   };
 
   return (
@@ -203,7 +213,7 @@ export default function ContentPage() {
           <p className="text-sm text-red-600">목록을 불러오지 못했습니다.</p>
         </div>
       ) : (
-        <ContentGrid rows={rows} />
+        <ContentGrid rows={rows} onSortChange={handleSortChange} />
       )}
 
       {/* Pagination */}

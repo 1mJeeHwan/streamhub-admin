@@ -50,6 +50,9 @@ export default function WorshipPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
+  const [sort, setSort] = useState<{ by: string; dir: "asc" | "desc" } | null>(
+    null,
+  );
 
   // Draft inputs (not yet applied to the query).
   const [searchFieldDraft, setSearchFieldDraft] = useState<SearchField>("name");
@@ -68,8 +71,11 @@ export default function WorshipPage() {
       status: status === "ALL" ? undefined : status,
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
-    }),
-    [pageNumber, searchField, keyword, status, fromDate, toDate],
+      // Server-side sort (cast until the Orval client is regenerated post-deploy; the backend
+      // WorshipSearchRequest already accepts sortBy/sortDir and sends them in the POST body).
+      ...(sort ? { sortBy: sort.by, sortDir: sort.dir } : {}),
+    }) as WorshipSearchRequest,
+    [pageNumber, searchField, keyword, status, fromDate, toDate, sort],
   );
 
   // List is a POST search, but it's a read — model it as a cached query keyed by
@@ -100,6 +106,12 @@ export default function WorshipPage() {
       return;
     }
     setPageNumber(next);
+  };
+
+  // Sorting changes the whole result set, so jump back to the first page.
+  const handleSortChange = (by: string | null, dir: "asc" | "desc" | null) => {
+    setSort(by && dir ? { by, dir } : null);
+    setPageNumber(1);
   };
 
   return (
@@ -242,7 +254,7 @@ export default function WorshipPage() {
           <p className="text-sm text-red-600">목록을 불러오지 못했습니다.</p>
         </div>
       ) : (
-        <WorshipGrid rows={rows} />
+        <WorshipGrid rows={rows} onSortChange={handleSortChange} />
       )}
 
       {/* Pagination */}

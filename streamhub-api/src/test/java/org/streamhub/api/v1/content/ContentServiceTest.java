@@ -100,7 +100,7 @@ class ContentServiceTest {
         // (which would return every church's content); it must be rejected outright.
         AdminPrincipal managerNoChurch =
                 new AdminPrincipal(3L, AuthoritiesConstants.CHURCH_MANAGER, null);
-        ContentSearchRequest request = new ContentSearchRequest(0, 10, null, null, null, null);
+        ContentSearchRequest request = new ContentSearchRequest(0, 10, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> service().list(request, managerNoChurch))
                 .isInstanceOf(ApiException.class);
@@ -110,14 +110,14 @@ class ContentServiceTest {
 
     @Test
     void list_forManager_passesOwnChurchToMapper() {
-        ContentSearchRequest request = new ContentSearchRequest(0, 10, null, null, null, null);
-        when(contentMapper.selectList(any(), any(), any(), any(), eq(100L), anyInt(), anyInt()))
+        ContentSearchRequest request = new ContentSearchRequest(0, 10, null, null, null, null, null, null);
+        when(contentMapper.selectList(any(), any(), any(), any(), eq(100L), any(), anyInt(), anyInt()))
                 .thenReturn(java.util.List.of());
         when(contentMapper.countList(any(), any(), any(), any(), eq(100L))).thenReturn(0L);
 
         service().list(request, MANAGER_100);
 
         // The manager's own churchId (100) is pushed into the query, never null/open.
-        verify(contentMapper).selectList(any(), any(), any(), any(), eq(100L), anyInt(), anyInt());
+        verify(contentMapper).selectList(any(), any(), any(), any(), eq(100L), any(), anyInt(), anyInt());
     }
 }

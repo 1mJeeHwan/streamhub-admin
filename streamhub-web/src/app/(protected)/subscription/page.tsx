@@ -41,6 +41,7 @@ export default function SubscriptionPage() {
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<StatusFilter>("ALL");
   const [pageNumber, setPageNumber] = useState(1);
+  const [sort, setSort] = useState<{ by: string; dir: "asc" | "desc" } | null>(null);
 
   // Draft inputs (not yet applied to the query).
   const [keywordDraft, setKeywordDraft] = useState("");
@@ -53,8 +54,11 @@ export default function SubscriptionPage() {
       pageSize: PAGE_SIZE,
       keyword: keyword.trim() || undefined,
       status: status === "ALL" ? undefined : status,
-    }),
-    [pageNumber, keyword, status],
+      // Server-side sort (cast until the Orval client is regenerated post-deploy; the backend
+      // SubscriptionSearchRequest already accepts sortBy/sortDir and sends them in the POST body).
+      ...(sort ? { sortBy: sort.by, sortDir: sort.dir } : {}),
+    }) as SubscriptionSearchRequest,
+    [pageNumber, keyword, status, sort],
   );
 
   // POST search modeled as a cached query so page/filter changes refetch and
@@ -81,6 +85,12 @@ export default function SubscriptionPage() {
       return;
     }
     setPageNumber(next);
+  };
+
+  // Sorting changes the whole result set, so jump back to the first page.
+  const handleSortChange = (by: string | null, dir: "asc" | "desc" | null) => {
+    setSort(by && dir ? { by, dir } : null);
+    setPageNumber(1);
   };
 
   return (
@@ -168,7 +178,7 @@ export default function SubscriptionPage() {
           <p className="text-sm text-red-600">목록을 불러오지 못했습니다.</p>
         </div>
       ) : (
-        <SubscriptionGrid rows={rows} />
+        <SubscriptionGrid rows={rows} onSortChange={handleSortChange} />
       )}
 
       {/* Pagination */}

@@ -18,6 +18,7 @@ public interface SmsMapper {
             @Param("kind") String kind,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to,
+            @Param("orderBy") String orderBy,
             @Param("offset") int offset,
             @Param("size") int size);
 

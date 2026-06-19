@@ -148,33 +148,37 @@ class WorshipServiceTest {
     void list_forManager_isPinnedToOwnChurch_ignoringRequestedChurchId() {
         // The manager requests church 999 but is forced to their own church 100 in the mapper call.
         when(worshipMapper.selectList(any(), any(), any(), org.mockito.ArgumentMatchers.eq(100L),
-                any(), any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
+                any(), any(), anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt()))
                 .thenReturn(List.of());
         when(worshipMapper.countList(any(), any(), any(), org.mockito.ArgumentMatchers.eq(100L),
                 any(), any())).thenReturn(0L);
 
         worshipService.list(new org.streamhub.api.v1.worship.dto.WorshipSearchRequest(
-                0, 10, null, null, null, 999L, null, null), MANAGER_100);
+                0, 10, null, null, null, 999L, null, null, null, null), MANAGER_100);
 
         // Verified by the eq(100L) stubbing: a 999L churchId would not match and the call would NPE.
         verify(worshipMapper).selectList(any(), any(), any(), org.mockito.ArgumentMatchers.eq(100L),
-                any(), any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+                any(), any(), anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test
     void list_forSystem_honorsRequestedChurchId() {
         // SYSTEM honors the requested church filter (999) unchanged.
         when(worshipMapper.selectList(any(), any(), any(), org.mockito.ArgumentMatchers.eq(999L),
-                any(), any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
+                any(), any(), anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt()))
                 .thenReturn(List.of());
         when(worshipMapper.countList(any(), any(), any(), org.mockito.ArgumentMatchers.eq(999L),
                 any(), any())).thenReturn(0L);
 
         worshipService.list(new org.streamhub.api.v1.worship.dto.WorshipSearchRequest(
-                0, 10, null, null, null, 999L, null, null), SYSTEM);
+                0, 10, null, null, null, 999L, null, null, null, null), SYSTEM);
 
         verify(worshipMapper).selectList(any(), any(), any(), org.mockito.ArgumentMatchers.eq(999L),
-                any(), any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+                any(), any(), anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test

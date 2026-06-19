@@ -12,6 +12,8 @@ import org.streamhub.api.v1.sms.entity.SmsKind;
  * @param kind       send-trigger filter
  * @param from       inclusive lower bound on {@code sent_at}
  * @param to         inclusive upper bound on {@code sent_at} (whole-day)
+ * @param sortBy     list sort key (grid column field); resolved against a server-side whitelist
+ * @param sortDir    {@code "asc"}/{@code "desc"} sort direction
  */
 public record SmsSearchRequest(
         Integer pageNumber,
@@ -19,7 +21,9 @@ public record SmsSearchRequest(
         String keyword,
         SmsKind kind,
         LocalDate from,
-        LocalDate to) {
+        LocalDate to,
+        String sortBy,
+        String sortDir) {
 
     public int pageSizeOrDefault() {
         return pageSize == null || pageSize <= 0 ? 10 : pageSize;

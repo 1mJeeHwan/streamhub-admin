@@ -19,6 +19,7 @@ public interface PointMapper {
      * @param keyword  member name/email or ledger reason LIKE filter (nullable)
      * @param memberId restrict to a single member (nullable)
      * @param churchId church filter (nullable; set by RBAC scope or user filter)
+     * @param orderBy  safe {@code ORDER BY} body resolved by the service (never raw client input)
      * @param offset   row offset
      * @param size     page size
      */
@@ -26,6 +27,7 @@ public interface PointMapper {
             @Param("keyword") String keyword,
             @Param("memberId") Long memberId,
             @Param("churchId") Long churchId,
+            @Param("orderBy") String orderBy,
             @Param("offset") int offset,
             @Param("size") int size);
 

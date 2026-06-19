@@ -14,6 +14,7 @@ import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.base.security.AdminPrincipal;
+import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.member.entity.Church;
 import org.streamhub.api.v1.member.repository.ChurchRepository;
@@ -52,6 +53,21 @@ public class WorshipService {
 
     /** Max family rows per registration (spec §2.3). */
     private static final int MAX_FAMILY = 5;
+
+    /**
+     * Whitelisted sort keys (WorshipRegistrationListItem field → SQL column) for server-side list
+     * sorting. {@code familyCount} maps to the family-count subquery alias.
+     */
+    private static final Map<String, String> WORSHIP_SORT_COLUMNS = Map.of(
+            "regNo", "wr.reg_no",
+            "name", "wr.name",
+            "gender", "wr.gender",
+            "churchName", "chu.name",
+            "registerDept", "wr.register_dept",
+            "phone", "wr.phone",
+            "familyCount", "family_count",
+            "status", "wr.status",
+            "createdAt", "wr.created_at");
 
     private static final DateTimeFormatter REG_NO_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
 
@@ -220,10 +236,12 @@ public class WorshipService {
         String status = request.status() == null ? null : request.status().name();
         Long churchId = scopedChurchId(request.churchId(), principal);
         int size = request.pageSizeOrDefault();
+        String orderBy = SortResolver.resolve(request.sortBy(), request.sortDir(),
+                WORSHIP_SORT_COLUMNS, "wr.id", "wr.created_at DESC, wr.id DESC");
 
         List<WorshipRegistrationListItem> rows = worshipMapper.selectList(
                 searchField, keyword, status, churchId,
-                request.fromDate(), request.toDate(), request.offset(), size);
+                request.fromDate(), request.toDate(), orderBy, request.offset(), size);
         long total = worshipMapper.countList(
                 searchField, keyword, status, churchId,
                 request.fromDate(), request.toDate());

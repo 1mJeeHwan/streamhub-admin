@@ -3,6 +3,7 @@ package org.streamhub.api.v1.member;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
@@ -60,23 +61,47 @@ class MemberServiceTest {
 
     @Test
     void list_asSystem_usesRequestedChurchFilter() {
-        when(memberMapper.selectList(isNull(), isNull(), eq(5L), anyInt(), anyInt())).thenReturn(List.of());
+        when(memberMapper.selectList(isNull(), isNull(), eq(5L), anyString(), anyInt(), anyInt())).thenReturn(List.of());
         when(memberMapper.countList(isNull(), isNull(), eq(5L))).thenReturn(0L);
 
-        memberService.list(new MemberSearchRequest(0, 10, null, null, 5L), SYSTEM);
+        memberService.list(new MemberSearchRequest(0, 10, null, null, 5L, null, null), SYSTEM);
 
-        verify(memberMapper).selectList(isNull(), isNull(), eq(5L), eq(0), eq(10));
+        verify(memberMapper).selectList(isNull(), isNull(), eq(5L), anyString(), eq(0), eq(10));
     }
 
     @Test
     void list_asChurchManager_forcesOwnChurch_ignoringRequest() {
-        when(memberMapper.selectList(isNull(), isNull(), eq(3L), anyInt(), anyInt())).thenReturn(List.of());
+        when(memberMapper.selectList(isNull(), isNull(), eq(3L), anyString(), anyInt(), anyInt())).thenReturn(List.of());
         when(memberMapper.countList(isNull(), isNull(), eq(3L))).thenReturn(0L);
 
         // Manager requests church 5, but must be pinned to their own church 3.
-        memberService.list(new MemberSearchRequest(0, 10, null, null, 5L), MANAGER);
+        memberService.list(new MemberSearchRequest(0, 10, null, null, 5L, null, null), MANAGER);
 
-        verify(memberMapper).selectList(isNull(), isNull(), eq(3L), anyInt(), anyInt());
+        verify(memberMapper).selectList(isNull(), isNull(), eq(3L), anyString(), anyInt(), anyInt());
+    }
+
+    @Test
+    void list_whitelistedSortKey_isResolvedToColumn() {
+        when(memberMapper.selectList(isNull(), isNull(), isNull(), eq("m.name ASC, m.id DESC"), anyInt(), anyInt()))
+                .thenReturn(List.of());
+        when(memberMapper.countList(isNull(), isNull(), isNull())).thenReturn(0L);
+
+        memberService.list(new MemberSearchRequest(0, 10, null, null, null, "name", "asc"), SYSTEM);
+
+        verify(memberMapper).selectList(isNull(), isNull(), isNull(), eq("m.name ASC, m.id DESC"), eq(0), eq(10));
+    }
+
+    @Test
+    void list_unknownSortKey_fallsBackToDefaultOrder() {
+        when(memberMapper.selectList(isNull(), isNull(), isNull(), eq("m.created_at DESC, m.id DESC"), anyInt(), anyInt()))
+                .thenReturn(List.of());
+        when(memberMapper.countList(isNull(), isNull(), isNull())).thenReturn(0L);
+
+        // 'phantom' is not in the whitelist → default ordering.
+        memberService.list(new MemberSearchRequest(0, 10, null, null, null, "phantom", "asc"), SYSTEM);
+
+        verify(memberMapper).selectList(
+                isNull(), isNull(), isNull(), eq("m.created_at DESC, m.id DESC"), eq(0), eq(10));
     }
 
     @Test

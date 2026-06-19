@@ -10,6 +10,7 @@ import {
   type ColDef,
   type GridReadyEvent,
   type ICellRendererParams,
+  type SortChangedEvent,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 
@@ -36,6 +37,8 @@ interface GoodsGridProps {
   rows: GoodsListItem[];
   /** Called with a row id whenever one of its editable cells changes. */
   onRowEdited: (id: number) => void;
+  /** Server-side sort callback: the column field + direction (null when sorting is cleared). */
+  onSortChange?: (sortBy: string | null, sortDir: "asc" | "desc" | null) => void;
 }
 
 function ThumbnailCell({ url }: { url?: string }) {
@@ -70,7 +73,11 @@ const countFormatter = (params: { value?: number | null }) =>
  * Several columns (price/stock/notiQty/soldOut/useYn) are inline-editable; each
  * edit reports the row id up via onRowEdited so the parent can batch a bulk save.
  */
-export default function GoodsGrid({ rows, onRowEdited }: GoodsGridProps) {
+export default function GoodsGrid({
+  rows,
+  onRowEdited,
+  onSortChange,
+}: GoodsGridProps) {
   const router = useRouter();
 
   const columnDefs = useMemo<ColDef<GoodsListItem>[]>(
@@ -221,6 +228,16 @@ export default function GoodsGrid({ rows, onRowEdited }: GoodsGridProps) {
     event.api.sizeColumnsToFit();
   };
 
+  // Server-side sort: report the active sort column so the page refetches the whole result set
+  // sorted (not just the visible page). Single-column sort.
+  const handleSortChanged = (event: SortChangedEvent) => {
+    const sorted = event.api.getColumnState().find((col) => col.sort);
+    onSortChange?.(
+      (sorted?.colId as string) ?? null,
+      (sorted?.sort as "asc" | "desc") ?? null,
+    );
+  };
+
   const handleCellValueChanged = (
     event: CellValueChangedEvent<GoodsListItem>,
   ) => {
@@ -239,6 +256,7 @@ export default function GoodsGrid({ rows, onRowEdited }: GoodsGridProps) {
         defaultColDef={defaultColDef}
         stopEditingWhenCellsLoseFocus
         onGridReady={handleGridReady}
+        onSortChanged={handleSortChanged}
         onCellValueChanged={handleCellValueChanged}
         getRowId={(params) => String(params.data.id)}
         overlayNoRowsTemplate="조회된 굿즈가 없습니다."

@@ -8,13 +8,17 @@ package org.streamhub.api.v1.member.dto;
  * @param keyword    matched against member name / email / ledger reason (LIKE)
  * @param memberId   restrict to a single member (nullable)
  * @param churchId   filter by church (SYSTEM only; ignored/overridden for CHURCH_MANAGER)
+ * @param sortBy     client sort key (resolved against the service whitelist; nullable)
+ * @param sortDir    {@code "asc"}/{@code "desc"} (nullable; defaults to DESC)
  */
 public record PointLedgerSearchRequest(
         Integer pageNumber,
         Integer pageSize,
         String keyword,
         Long memberId,
-        Long churchId) {
+        Long churchId,
+        String sortBy,
+        String sortDir) {
 
     public int pageNumberOrDefault() {
         return pageNumber == null || pageNumber < 0 ? 0 : pageNumber;

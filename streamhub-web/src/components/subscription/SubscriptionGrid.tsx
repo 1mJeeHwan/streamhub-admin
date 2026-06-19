@@ -10,6 +10,7 @@ import {
   type GridReadyEvent,
   type ICellRendererParams,
   type RowClickedEvent,
+  type SortChangedEvent,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 
@@ -34,13 +35,15 @@ const gridTheme = themeQuartz.withParams({
 
 interface SubscriptionGridProps {
   rows: SubscriptionListItem[];
+  /** Server-side sort callback: the column field + direction (null when sorting is cleared). */
+  onSortChange?: (sortBy: string | null, sortDir: "asc" | "desc" | null) => void;
 }
 
 /**
  * SubscriptionGrid renders the subscription result set with AG Grid (v33).
  * Clicking a row (or the 상세 button) navigates to the subscription detail.
  */
-export default function SubscriptionGrid({ rows }: SubscriptionGridProps) {
+export default function SubscriptionGrid({ rows, onSortChange }: SubscriptionGridProps) {
   const router = useRouter();
 
   const columnDefs = useMemo<ColDef<SubscriptionListItem>[]>(
@@ -120,6 +123,13 @@ export default function SubscriptionGrid({ rows }: SubscriptionGridProps) {
     event.api.sizeColumnsToFit();
   };
 
+  // Server-side sort: report the active sort column so the page refetches the whole result set
+  // sorted (not just the visible page). Single-column sort.
+  const handleSortChanged = (event: SortChangedEvent) => {
+    const sorted = event.api.getColumnState().find((col) => col.sort);
+    onSortChange?.((sorted?.colId as string) ?? null, (sorted?.sort as "asc" | "desc") ?? null);
+  };
+
   const handleRowClicked = (event: RowClickedEvent<SubscriptionListItem>) => {
     const id = event.data?.id;
     if (id != null) {
@@ -136,6 +146,7 @@ export default function SubscriptionGrid({ rows }: SubscriptionGridProps) {
         defaultColDef={defaultColDef}
         suppressCellFocus
         onGridReady={handleGridReady}
+        onSortChanged={handleSortChanged}
         onRowClicked={handleRowClicked}
         overlayNoRowsTemplate="조회된 구독이 없습니다."
       />

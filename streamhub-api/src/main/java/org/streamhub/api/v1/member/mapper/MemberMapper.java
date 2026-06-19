@@ -20,6 +20,7 @@ public interface MemberMapper {
      * @param keyword    name/email/phone LIKE filter (nullable)
      * @param userStatus {@code UserStatus} name filter (nullable)
      * @param churchId   church filter (nullable; set by RBAC scope or user filter)
+     * @param orderBy    safe {@code ORDER BY} body built by {@code SortResolver} (whitelisted columns only)
      * @param offset     row offset
      * @param size       page size
      */
@@ -27,6 +28,7 @@ public interface MemberMapper {
             @Param("keyword") String keyword,
             @Param("userStatus") String userStatus,
             @Param("churchId") Long churchId,
+            @Param("orderBy") String orderBy,
             @Param("offset") int offset,
             @Param("size") int size);
 

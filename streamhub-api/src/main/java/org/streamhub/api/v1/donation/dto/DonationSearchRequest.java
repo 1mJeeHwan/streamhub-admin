@@ -17,7 +17,9 @@ public record DonationSearchRequest(
         DonationStatus status,
         LocalDateTime from,
         LocalDateTime to,
-        Long churchId) {
+        Long churchId,
+        String sortBy,
+        String sortDir) {
 
     public int pageSizeOrDefault() {
         return pageSize == null || pageSize <= 0 ? 10 : pageSize;

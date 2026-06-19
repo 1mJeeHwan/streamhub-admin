@@ -2,6 +2,7 @@ package org.streamhub.api.v1.member;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +10,7 @@ import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.base.security.AdminPrincipal;
+import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.member.dto.PointGrantRequest;
 import org.streamhub.api.v1.member.dto.PointLedgerListItem;
@@ -34,6 +36,21 @@ import org.streamhub.api.v1.member.repository.PointLedgerRepository;
 @Service
 public class PointService {
 
+    /** Whitelisted sort keys (PointLedgerListItem field → SQL column) for server-side list sorting. */
+    private static final Map<String, String> POINT_SORT_COLUMNS = Map.of(
+            "createdAt", "pl.created_at",
+            "memberName", "mb.name",
+            "memberEmail", "mb.email",
+            "reason", "pl.reason",
+            "delta", "pl.delta",
+            "balanceAfter", "pl.balance_after",
+            "sourceType", "pl.source_type",
+            "status", "pl.status",
+            "expireAt", "pl.expire_at");
+
+    /** Default ledger ordering (newest first), also the per-member tab order. */
+    private static final String DEFAULT_ORDER_BY = "pl.created_at DESC, pl.id DESC";
+
     private final PointMapper pointMapper;
     private final PointLedgerRepository pointLedgerRepository;
     private final MemberRepository memberRepository;
@@ -53,9 +70,11 @@ public class PointService {
     public ResInfinityList<PointLedgerListItem> list(PointLedgerSearchRequest request, AdminPrincipal principal) {
         Long churchId = scopedChurchId(request.churchId(), principal);
         int size = request.pageSizeOrDefault();
+        String orderBy = SortResolver.resolve(request.sortBy(), request.sortDir(),
+                POINT_SORT_COLUMNS, "pl.id", DEFAULT_ORDER_BY);
 
         List<PointLedgerListItem> contents = pointMapper.selectList(
-                blankToNull(request.keyword()), request.memberId(), churchId, request.offset(), size);
+                blankToNull(request.keyword()), request.memberId(), churchId, orderBy, request.offset(), size);
         long total = pointMapper.countList(blankToNull(request.keyword()), request.memberId(), churchId);
         return ResInfinityList.of(contents, total, size);
     }
@@ -70,7 +89,8 @@ public class PointService {
 
         int size = pageSize <= 0 ? 10 : pageSize;
         int offset = (pageNumber < 0 ? 0 : pageNumber) * size;
-        List<PointLedgerListItem> contents = pointMapper.selectList(null, memberId, null, offset, size);
+        List<PointLedgerListItem> contents =
+                pointMapper.selectList(null, memberId, null, DEFAULT_ORDER_BY, offset, size);
         long total = pointMapper.countList(null, memberId, null);
         return ResInfinityList.of(contents, total, size);
     }

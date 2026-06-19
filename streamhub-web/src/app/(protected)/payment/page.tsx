@@ -58,6 +58,7 @@ export default function PaymentPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
+  const [sort, setSort] = useState<{ by: string; dir: "asc" | "desc" } | null>(null);
 
   // Draft inputs (not yet applied to the query).
   const [searchFieldDraft, setSearchFieldDraft] = useState<SearchField>("orderNo");
@@ -85,8 +86,11 @@ export default function PaymentPage() {
       method: method === "ALL" ? undefined : method,
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
-    }),
-    [pageNumber, searchField, keyword, kind, method, fromDate, toDate],
+      // Server-side sort (cast until the Orval client is regenerated post-deploy; the backend
+      // PaymentSearchRequest already accepts sortBy/sortDir and sends them in the POST body).
+      ...(sort ? { sortBy: sort.by, sortDir: sort.dir } : {}),
+    }) as PaymentSearchRequest,
+    [pageNumber, searchField, keyword, kind, method, fromDate, toDate, sort],
   );
 
   // List is a POST search but a read — model it as a cached query keyed by the
@@ -117,6 +121,12 @@ export default function PaymentPage() {
       return;
     }
     setPageNumber(next);
+  };
+
+  // Sorting changes the whole result set, so jump back to the first page.
+  const handleSortChange = (by: string | null, dir: "asc" | "desc" | null) => {
+    setSort(by && dir ? { by, dir } : null);
+    setPageNumber(1);
   };
 
   const openRefund = (row: PaymentListItem) => {
@@ -334,7 +344,11 @@ export default function PaymentPage() {
           <p className="text-sm text-red-600">목록을 불러오지 못했습니다.</p>
         </div>
       ) : (
-        <PaymentGrid rows={rows} onRefund={openRefund} />
+        <PaymentGrid
+          rows={rows}
+          onRefund={openRefund}
+          onSortChange={handleSortChange}
+        />
       )}
 
       {/* Pagination */}

@@ -3,6 +3,7 @@ package org.streamhub.api.v1.content;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.base.security.AdminPrincipal;
 import org.streamhub.api.base.security.AuthoritiesConstants;
 import org.streamhub.api.base.storage.StorageService;
+import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.content.dto.ContentCreateRequest;
 import org.streamhub.api.v1.content.dto.ContentDetail;
 import org.streamhub.api.v1.content.dto.ContentFileDto;
@@ -42,6 +44,16 @@ public class ContentService {
     /** Unscoped SYSTEM principal for public endpoints (no authenticated operator, all churches). */
     private static final AdminPrincipal SYSTEM_PRINCIPAL =
             new AdminPrincipal(null, AuthoritiesConstants.SYSTEM, null);
+
+    /** Whitelisted sort keys (ContentListItem field → SQL column) for server-side list sorting. */
+    private static final Map<String, String> CONTENT_SORT_COLUMNS = Map.of(
+            "title", "c.title",
+            "type", "c.type",
+            "status", "c.status",
+            "channelName", "ch.name",
+            "viewCount", "c.view_count",
+            "durationSec", "c.duration_sec",
+            "createdAt", "c.created_at");
 
     private final ContentMapper contentMapper;
     private final ContentRepository contentRepository;
@@ -114,9 +126,11 @@ public class ContentService {
             }
         }
         int size = request.pageSizeOrDefault();
+        String orderBy = SortResolver.resolve(request.sortBy(), request.sortDir(),
+                CONTENT_SORT_COLUMNS, "c.id", "c.created_at DESC, c.id DESC");
 
         List<ContentListItem> contents = contentMapper.selectList(
-                keyword, type, status, request.channelId(), churchId, request.offset(), size);
+                keyword, type, status, request.channelId(), churchId, orderBy, request.offset(), size);
         contents.forEach(item -> item.setThumbnailUrl(storageService.publicUrl(item.getThumbnailKey())));
         long total = contentMapper.countList(keyword, type, status, request.channelId(), churchId);
         return ResInfinityList.of(contents, total, size);
@@ -127,7 +141,8 @@ public class ContentService {
     public ResInfinityList<ContentListItem> listPublic(ContentSearchRequest request) {
         ContentSearchRequest forced = new ContentSearchRequest(
                 request.pageNumber(), request.pageSize(), request.keyword(),
-                request.type(), ContentStatus.PUBLISHED, null);
+                request.type(), ContentStatus.PUBLISHED, null,
+                request.sortBy(), request.sortDir());
         return list(forced, SYSTEM_PRINCIPAL);
     }
 

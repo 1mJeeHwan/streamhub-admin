@@ -60,6 +60,7 @@ export default function DonationPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
+  const [sort, setSort] = useState<{ by: string; dir: "asc" | "desc" } | null>(null);
 
   // Draft inputs.
   const [keywordDraft, setKeywordDraft] = useState("");
@@ -80,8 +81,11 @@ export default function DonationPage() {
       status: status === "ALL" ? undefined : status,
       from: toIso(from, false),
       to: toIso(to, true),
-    }),
-    [pageNumber, keyword, type, status, from, to],
+      // Server-side sort (cast until the Orval client is regenerated post-deploy; the backend
+      // DonationSearchRequest already accepts sortBy/sortDir and sends them in the POST body).
+      ...(sort ? { sortBy: sort.by, sortDir: sort.dir } : {}),
+    }) as DonationSearchRequest,
+    [pageNumber, keyword, type, status, from, to, sort],
   );
 
   const listQuery = useQuery({
@@ -111,6 +115,12 @@ export default function DonationPage() {
       return;
     }
     setPageNumber(next);
+  };
+
+  // Sorting changes the whole result set, so jump back to the first page.
+  const handleSortChange = (by: string | null, dir: "asc" | "desc" | null) => {
+    setSort(by && dir ? { by, dir } : null);
+    setPageNumber(1);
   };
 
   const handleCreateOnce = (payload: OnceDonationRequest) => {
@@ -283,7 +293,7 @@ export default function DonationPage() {
           <p className="text-sm text-red-600">목록을 불러오지 못했습니다.</p>
         </div>
       ) : (
-        <DonationGrid rows={rows} />
+        <DonationGrid rows={rows} onSortChange={handleSortChange} />
       )}
 
       {/* Pagination */}

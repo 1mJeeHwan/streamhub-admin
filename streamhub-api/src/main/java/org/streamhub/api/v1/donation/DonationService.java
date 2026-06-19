@@ -2,6 +2,7 @@ package org.streamhub.api.v1.donation;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -10,6 +11,7 @@ import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.base.security.AdminPrincipal;
+import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.donation.dto.BillingCalendarItem;
 import org.streamhub.api.v1.donation.dto.BillingCalendarRequest;
@@ -38,6 +40,17 @@ public class DonationService {
 
     /** One-off donations accrue 1% of the amount as grace points (policy constant). */
     private static final long ONCE_POINT_RATE_DIVISOR = 100L;
+
+    /** Whitelisted sort keys (DonationListItem field → SQL column) for server-side list sorting. */
+    private static final Map<String, String> DONATION_SORT_COLUMNS = Map.of(
+            "memberName", "m.name",
+            "planName", "p.name",
+            "type", "d.type",
+            "amount", "d.amount",
+            "cycleNo", "d.cycle_no",
+            "status", "d.status",
+            "pointAwarded", "d.point_awarded",
+            "paidAt", "d.paid_at");
 
     private final DonationMapper donationMapper;
     private final DonationRepository donationRepository;
@@ -77,9 +90,11 @@ public class DonationService {
         String keyword = blankToNull(request.keyword());
         Long churchId = scopedChurchId(request.churchId(), principal);
         int size = request.pageSizeOrDefault();
+        String orderBy = SortResolver.resolve(request.sortBy(), request.sortDir(),
+                DONATION_SORT_COLUMNS, "d.id", "d.paid_at DESC, d.id DESC");
 
         List<DonationListItem> contents = donationMapper.selectList(
-                keyword, type, status, request.from(), request.to(), churchId, request.offset(), size);
+                keyword, type, status, request.from(), request.to(), churchId, orderBy, request.offset(), size);
         long total = donationMapper.countList(keyword, type, status, request.from(), request.to(), churchId);
         return ResInfinityList.of(contents, total, size);
     }

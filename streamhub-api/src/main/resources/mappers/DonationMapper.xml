@@ -46,7 +46,7 @@
             LEFT JOIN SUBSCRIPTION s ON d.subscription_id = s.id
             LEFT JOIN SUBSCRIPTION_PLAN p ON s.plan_id = p.id
         <include refid="searchWhere"/>
-        ORDER BY d.paid_at DESC, d.id DESC
+        ORDER BY ${orderBy}
         LIMIT #{offset}, #{size}
     </select>
 

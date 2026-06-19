@@ -17,7 +17,9 @@ public record WorshipSearchRequest(
         RegistrationStatus status,
         Long churchId,
         LocalDate fromDate,
-        LocalDate toDate) {
+        LocalDate toDate,
+        String sortBy,
+        String sortDir) {
 
     public int pageSizeOrDefault() {
         return pageSize == null || pageSize <= 0 ? 10 : pageSize;

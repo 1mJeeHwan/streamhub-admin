@@ -21,6 +21,7 @@ public interface DonationMapper {
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,
             @Param("churchId") Long churchId,
+            @Param("orderBy") String orderBy,
             @Param("offset") int offset,
             @Param("size") int size);
 

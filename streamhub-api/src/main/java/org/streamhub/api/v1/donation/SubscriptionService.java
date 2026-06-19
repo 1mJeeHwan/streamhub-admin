@@ -2,6 +2,7 @@ package org.streamhub.api.v1.donation;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +10,7 @@ import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.base.security.AdminPrincipal;
+import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.donation.dto.SubscriptionDetail;
 import org.streamhub.api.v1.donation.dto.SubscriptionListItem;
@@ -29,6 +31,16 @@ import org.streamhub.api.v1.member.repository.MemberRepository;
  */
 @Service
 public class SubscriptionService {
+
+    /** Whitelisted sort keys (SubscriptionListItem field → SQL column) for server-side list sorting. */
+    private static final Map<String, String> SUBSCRIPTION_SORT_COLUMNS = Map.of(
+            "memberName", "m.name",
+            "planName", "p.name",
+            "planGrade", "p.grade",
+            "status", "s.status",
+            "cycleNo", "s.cycle_no",
+            "nextBillingAt", "s.next_billing_at",
+            "startedAt", "s.started_at");
 
     private final SubscriptionMapper subscriptionMapper;
     private final SubscriptionRepository subscriptionRepository;
@@ -63,9 +75,11 @@ public class SubscriptionService {
         String keyword = blankToNull(request.keyword());
         Long churchId = scopedChurchId(request.churchId(), principal);
         int size = request.pageSizeOrDefault();
+        String orderBy = SortResolver.resolve(request.sortBy(), request.sortDir(),
+                SUBSCRIPTION_SORT_COLUMNS, "s.id", "s.started_at DESC, s.id DESC");
 
-        List<SubscriptionListItem> contents =
-                subscriptionMapper.selectList(keyword, status, request.planId(), churchId, request.offset(), size);
+        List<SubscriptionListItem> contents = subscriptionMapper.selectList(
+                keyword, status, request.planId(), churchId, orderBy, request.offset(), size);
         long total = subscriptionMapper.countList(keyword, status, request.planId(), churchId);
         return ResInfinityList.of(contents, total, size);
     }

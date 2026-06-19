@@ -8,6 +8,7 @@ import {
   type ColDef,
   type GridReadyEvent,
   type ICellRendererParams,
+  type SortChangedEvent,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 
@@ -36,6 +37,8 @@ const gridTheme = themeQuartz.withParams({
 
 interface PointLedgerGridProps {
   rows: PointLedgerListItem[];
+  /** Server-side sort callback: the column field + direction (null when sorting is cleared). */
+  onSortChange?: (sortBy: string | null, sortDir: "asc" | "desc" | null) => void;
 }
 
 /** Renders a signed point delta with thousands separators (+/-). */
@@ -52,7 +55,10 @@ function formatDelta(value?: number | null): string {
  * PointLedgerGrid renders the point-ledger result set with AG Grid
  * (community, v33). Ledger rows are read-only — no navigation on click.
  */
-export default function PointLedgerGrid({ rows }: PointLedgerGridProps) {
+export default function PointLedgerGrid({
+  rows,
+  onSortChange,
+}: PointLedgerGridProps) {
   const columnDefs = useMemo<ColDef<PointLedgerListItem>[]>(
     () => [
       {
@@ -141,6 +147,16 @@ export default function PointLedgerGrid({ rows }: PointLedgerGridProps) {
     event.api.sizeColumnsToFit();
   };
 
+  // Server-side sort: report the active sort column so the page refetches the whole result set
+  // sorted (not just the visible page). Single-column sort.
+  const handleSortChanged = (event: SortChangedEvent) => {
+    const sorted = event.api.getColumnState().find((col) => col.sort);
+    onSortChange?.(
+      (sorted?.colId as string) ?? null,
+      (sorted?.sort as "asc" | "desc") ?? null,
+    );
+  };
+
   return (
     <div className="h-[560px] w-full">
       <AgGridReact<PointLedgerListItem>
@@ -150,6 +166,7 @@ export default function PointLedgerGrid({ rows }: PointLedgerGridProps) {
         defaultColDef={defaultColDef}
         suppressCellFocus
         onGridReady={handleGridReady}
+        onSortChanged={handleSortChanged}
         overlayNoRowsTemplate="포인트 내역이 없습니다."
       />
     </div>

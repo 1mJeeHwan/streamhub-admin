@@ -18,6 +18,7 @@ public interface SubscriptionMapper {
             @Param("status") String status,
             @Param("planId") Long planId,
             @Param("churchId") Long churchId,
+            @Param("orderBy") String orderBy,
             @Param("offset") int offset,
             @Param("size") int size);
 

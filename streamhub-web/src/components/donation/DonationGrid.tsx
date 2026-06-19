@@ -7,6 +7,7 @@ import {
   themeQuartz,
   type ColDef,
   type ICellRendererParams,
+  type SortChangedEvent,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 
@@ -31,13 +32,15 @@ const gridTheme = themeQuartz.withParams({
 
 interface DonationGridProps {
   rows: DonationListItem[];
+  /** Server-side sort callback: the column field + direction (null when sorting is cleared). */
+  onSortChange?: (sortBy: string | null, sortDir: "asc" | "desc" | null) => void;
 }
 
 /**
  * DonationGrid renders the donation history result set with AG Grid (v33).
  * Every paid row is in test mode (no real PG), surfaced via the 결제구분 column.
  */
-export default function DonationGrid({ rows }: DonationGridProps) {
+export default function DonationGrid({ rows, onSortChange }: DonationGridProps) {
   const columnDefs = useMemo<ColDef<DonationListItem>[]>(
     () => [
       { field: "memberName", headerName: "회원", minWidth: 120, flex: 1 },
@@ -113,6 +116,13 @@ export default function DonationGrid({ rows }: DonationGridProps) {
     [],
   );
 
+  // Server-side sort: report the active sort column so the page refetches the whole result set
+  // sorted (not just the visible page). Single-column sort.
+  const handleSortChanged = (event: SortChangedEvent) => {
+    const sorted = event.api.getColumnState().find((col) => col.sort);
+    onSortChange?.((sorted?.colId as string) ?? null, (sorted?.sort as "asc" | "desc") ?? null);
+  };
+
   return (
     <div className="h-[560px] w-full">
       <AgGridReact<DonationListItem>
@@ -122,6 +132,7 @@ export default function DonationGrid({ rows }: DonationGridProps) {
         defaultColDef={defaultColDef}
         suppressCellFocus
         onGridReady={(event) => event.api.sizeColumnsToFit()}
+        onSortChanged={handleSortChanged}
         overlayNoRowsTemplate="조회된 후원 내역이 없습니다."
       />
     </div>

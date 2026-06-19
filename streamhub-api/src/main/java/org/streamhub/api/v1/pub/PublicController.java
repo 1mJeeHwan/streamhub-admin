@@ -67,9 +67,9 @@ public class PublicController {
     @GetMapping("/home")
     public ResultDTO<PublicHomeResponse> home() {
         ResInfinityList<ContentListItem> videos =
-                contentService.listPublic(new ContentSearchRequest(0, HOME_SIZE, null, ContentType.VIDEO, null, null));
+                contentService.listPublic(new ContentSearchRequest(0, HOME_SIZE, null, ContentType.VIDEO, null, null, null, null));
         ResInfinityList<ContentListItem> musics =
-                contentService.listPublic(new ContentSearchRequest(0, HOME_SIZE, null, ContentType.SOUND, null, null));
+                contentService.listPublic(new ContentSearchRequest(0, HOME_SIZE, null, ContentType.SOUND, null, null, null, null));
         ResInfinityList<PostListItem> posts =
                 postService.listPublished(new PostSearchRequest(0, HOME_SIZE, null));
         return ResultDTO.ok(new PublicHomeResponse(
@@ -84,7 +84,7 @@ public class PublicController {
             @RequestParam(required = false) Integer pageNumber,
             @RequestParam(required = false) Integer pageSize) {
         ContentSearchRequest request =
-                new ContentSearchRequest(pageNumber, pageSize, keyword, type, null, null);
+                new ContentSearchRequest(pageNumber, pageSize, keyword, type, null, null, null, null);
         return ResultDTO.ok(contentService.listPublic(request));
     }
 

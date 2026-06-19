@@ -40,7 +40,7 @@
         FROM SMS_MESSAGE s
             LEFT JOIN MEMBER m ON s.member_id = m.id
         <include refid="searchWhere"/>
-        ORDER BY s.sent_at DESC, s.id DESC
+        ORDER BY ${orderBy}
         LIMIT #{offset}, #{size}
     </select>
 

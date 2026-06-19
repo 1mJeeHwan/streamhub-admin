@@ -11,7 +11,9 @@ public record GoodsSearchRequest(
         String keyword,
         Long categoryId,
         GoodsStatus status,
-        String soldOut) {
+        String soldOut,
+        String sortBy,
+        String sortDir) {
 
     public int pageSizeOrDefault() {
         return pageSize == null || pageSize <= 0 ? 10 : pageSize;
