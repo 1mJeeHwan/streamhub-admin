@@ -10,4 +10,7 @@ public interface GoodsReviewRepository extends JpaRepository<GoodsReview, Long> 
     List<GoodsReview> findByDisplayYnOrderByIdDesc(String displayYn);
 
     List<GoodsReview> findAllByOrderByIdDesc();
+
+    /** A member's own reviews, most recent first (the "내 후기" feed). */
+    List<GoodsReview> findByMemberIdOrderByIdDesc(Long memberId);
 }

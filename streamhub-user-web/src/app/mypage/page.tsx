@@ -27,6 +27,10 @@ import {
 } from "@/lib/orders";
 import { formatDate } from "@/lib/format";
 import { NearbyChurchesSection } from "@/components/NearbyChurchesSection";
+import { PurchasedAlbumsSection } from "@/components/mypage/PurchasedAlbumsSection";
+import { PlaylistSection } from "@/components/mypage/PlaylistSection";
+import { WatchHistorySection } from "@/components/mypage/WatchHistorySection";
+import { ReviewsInquiriesSection } from "@/components/mypage/ReviewsInquiriesSection";
 
 function Row({ icon: Icon, label, value }: { icon: typeof Mail; label: string; value: string | null }) {
   return (
@@ -228,8 +232,16 @@ export default function MyPage() {
         로그아웃
       </button>
 
-      {/* Purchase history — token is guaranteed non-null here (member is set). */}
-      {token && <OrderHistorySection token={token} />}
+      {/* Token is guaranteed non-null here (member is set); each section is token-gated. */}
+      {token && (
+        <>
+          <OrderHistorySection token={token} />
+          <PurchasedAlbumsSection token={token} />
+          <PlaylistSection token={token} />
+          <WatchHistorySection token={token} />
+          <ReviewsInquiriesSection token={token} />
+        </>
+      )}
 
       {/* Near-me churches widget — parent already pads px-5, so cancel it here. */}
       <div className="-mx-5 mt-2">

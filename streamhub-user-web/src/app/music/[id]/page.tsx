@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { useContent } from "@/lib/queries";
 import { ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { recordWatch } from "@/lib/me";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { ContentMeta } from "@/components/ContentMeta";
 import { BackLink } from "@/components/BackLink";
@@ -10,6 +13,12 @@ import { EmptyState, ErrorState } from "@/components/States";
 export default function MusicDetailPage({ params }: { params: { id: string } }) {
   const id = Number(params.id);
   const { data, isLoading, isError, error, refetch } = useContent(id);
+  const { token } = useAuth();
+
+  // Best-effort watch record: once per (member, content) view; no-op when anonymous.
+  useEffect(() => {
+    if (data && token) recordWatch(id, token);
+  }, [data, token, id]);
 
   return (
     <div className="animate-fade-up">

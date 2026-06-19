@@ -1,9 +1,12 @@
 "use client";
 
-import { Pause, Play } from "lucide-react";
+import { useState } from "react";
+import { Heart, Pause, Play } from "lucide-react";
 import clsx from "clsx";
 import { formatDuration } from "@/lib/format";
 import type { TrackDto } from "@/lib/albums";
+import { useAuth } from "@/lib/auth";
+import { meApi } from "@/lib/me";
 import { usePreviewPlayer, type PreviewTrack } from "./preview/PreviewPlayerProvider";
 
 /**
@@ -16,17 +19,26 @@ export function TrackRow({
   albumTitle,
   artist,
   coverUrl,
+  favorited = false,
 }: {
   track: TrackDto;
   albumId: number;
   albumTitle: string;
   artist: string;
   coverUrl: string | null;
+  /** Initial 찜 state, if the caller already knows it (else starts un-favorited). */
+  favorited?: boolean;
 }) {
   const { play, toggle, isPlaying, isCurrent } = usePreviewPlayer();
+  const { token } = useAuth();
   const active = isCurrent(albumId, track.id);
   const playing = active && isPlaying;
   const hasPreview = Boolean(track.previewUrl);
+
+  // Optimistic 찜 toggle: flip immediately, fire the API, revert on failure. Heart is shown
+  // only to signed-in members (token present); anonymous visitors don't see it.
+  const [isFavorited, setIsFavorited] = useState(favorited);
+  const [pending, setPending] = useState(false);
 
   const onClick = () => {
     if (!hasPreview) return;
@@ -36,6 +48,24 @@ export function TrackRow({
     }
     const payload: PreviewTrack = { albumId, albumTitle, artist, coverUrl, track };
     play(payload);
+  };
+
+  const onToggleFavorite = async () => {
+    if (!token || pending) return;
+    const next = !isFavorited;
+    setIsFavorited(next);
+    setPending(true);
+    try {
+      if (next) {
+        await meApi.addFavorite(track.id, token);
+      } else {
+        await meApi.removeFavorite(track.id, token);
+      }
+    } catch {
+      setIsFavorited(!next); // revert on failure
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -60,6 +90,21 @@ export function TrackRow({
         <span className="shrink-0 text-xs tabular-nums text-inactive">
           {formatDuration(track.durationSec)}
         </span>
+      )}
+      {token && (
+        <button
+          onClick={onToggleFavorite}
+          disabled={pending}
+          aria-label={isFavorited ? "찜 해제" : "찜하기"}
+          aria-pressed={isFavorited}
+          className={clsx(
+            "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors",
+            isFavorited ? "text-point" : "border border-border text-inactive active:bg-card",
+            pending && "opacity-50",
+          )}
+        >
+          <Heart className={clsx("h-4 w-4", isFavorited && "fill-point")} />
+        </button>
       )}
       <button
         onClick={onClick}

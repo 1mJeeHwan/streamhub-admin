@@ -11,4 +11,7 @@ public interface GoodsInquiryRepository extends JpaRepository<GoodsInquiry, Long
     List<GoodsInquiry> findByAnswerStatusOrderByIdDesc(AnswerStatus answerStatus);
 
     List<GoodsInquiry> findAllByOrderByIdDesc();
+
+    /** A member's own inquiries, most recent first (the "내 문의" feed). */
+    List<GoodsInquiry> findByMemberIdOrderByIdDesc(Long memberId);
 }
