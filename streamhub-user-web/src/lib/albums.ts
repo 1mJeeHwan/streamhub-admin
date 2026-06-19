@@ -68,6 +68,8 @@ export interface TrackDto {
   previewLengthSec: number;
   /** True when an AES-128 encrypted full-track HLS stream exists for purchasers. */
   hasFullTrack?: boolean;
+  /** True when a public (unencrypted) preview HLS stream exists; else play previewUrl directly. */
+  hasPreviewHls?: boolean;
 }
 
 /** Full album detail (GET /pub/v1/albums/{id}). */

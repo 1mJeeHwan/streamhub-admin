@@ -72,6 +72,7 @@
             ch.name         AS channel_name,
             chu.name        AS church_name,
             c.media_url     AS media_url,
+            c.hls_prefix    AS hls_prefix,
             c.thumbnail_key AS thumbnail_key,
             c.duration_sec  AS duration_sec,
             c.view_count    AS view_count,

@@ -22,6 +22,8 @@ public class ContentDetail {
     private String channelName;
     private String churchName;
     private String mediaUrl;
+    /** S3 prefix of the public HLS stream when packaged; null → client uses mediaUrl directly. */
+    private String hlsPrefix;
     private String thumbnailKey;
     private String thumbnailUrl;
     private Integer durationSec;

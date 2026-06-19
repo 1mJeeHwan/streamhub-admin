@@ -10,10 +10,13 @@ import { usePreviewPlayer } from "./PreviewPlayerProvider";
  * TabBar inside the phone frame. Shows cover, title/artist, a 30s progress bar, play/pause and close.
  */
 export function MiniPreviewPlayer() {
-  const { current, isPlaying, elapsed, lengthSec, hasError, toggle, stop } = usePreviewPlayer();
+  const { current, isPlaying, elapsed, lengthSec, loading, loadProgress, hasError, toggle, stop } =
+    usePreviewPlayer();
   if (!current) return null;
 
-  const pct = lengthSec > 0 ? Math.min(100, (elapsed / lengthSec) * 100) : 0;
+  const playbackPct = lengthSec > 0 ? Math.min(100, (elapsed / lengthSec) * 100) : 0;
+  // While preparing the stream the top bar shows load progress; then it tracks playback.
+  const barPct = hasError ? 100 : loading ? Math.max(5, loadProgress) : playbackPct;
 
   return (
     <div className="fixed bottom-[60px] left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 px-3 pb-1">
@@ -22,9 +25,9 @@ export function MiniPreviewPlayer() {
           <div
             className={clsx(
               "h-full transition-[width] duration-200 ease-linear",
-              hasError ? "bg-point" : "bg-primary",
+              hasError ? "bg-point" : loading ? "bg-primary/60" : "bg-primary",
             )}
-            style={{ width: hasError ? "100%" : `${pct}%` }}
+            style={{ width: `${barPct}%` }}
           />
         </div>
         <div className="flex items-center gap-3 px-3 py-2.5">
@@ -47,13 +50,15 @@ export function MiniPreviewPlayer() {
             <p className={clsx("ellipsis-1 text-[11px]", hasError ? "text-point" : "text-inactive")}>
               {hasError
                 ? "미리듣기를 불러오지 못했습니다"
-                : `${current.artist} · ${Math.floor(elapsed)}초 / ${lengthSec}초`}
+                : loading
+                  ? `재생 준비 중 ${Math.round(loadProgress)}%`
+                  : `${current.artist} · ${Math.floor(elapsed)}초 / ${lengthSec}초`}
             </p>
           </div>
 
           <button
             onClick={toggle}
-            disabled={hasError}
+            disabled={hasError || loading}
             aria-label={isPlaying ? "일시정지" : "재생"}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-bg transition active:scale-95 disabled:opacity-40"
           >

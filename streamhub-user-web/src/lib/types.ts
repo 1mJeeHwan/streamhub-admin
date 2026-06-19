@@ -31,6 +31,8 @@ export interface ContentDetail {
   channelName: string | null;
   churchName: string | null;
   mediaUrl: string;
+  /** S3 prefix of the public HLS stream when packaged; null → play mediaUrl directly. */
+  hlsPrefix: string | null;
   thumbnailKey: string | null;
   thumbnailUrl: string | null;
   durationSec: number | null;

@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
@@ -114,8 +115,41 @@ public class HlsPackagingService {
         }
     }
 
+    /**
+     * Packages {@code audio} as a <b>public, unencrypted</b> HLS stream under {@code prefix} (no AES
+     * key — the playlist and segments are freely cacheable). Used for free music with no purchase
+     * gate: album previews and audio content. The caller persists {@code prefix} on its own entity.
+     *
+     * @param prefix        S3 key prefix to store the assets under (e.g. {@code hls/preview/track-7/})
+     * @param maxSeconds     if {@code > 0}, only the first {@code maxSeconds} are packaged (preview clip)
+     * @return total duration of the packaged stream (seconds)
+     * @throws ApiException if the audio is empty, or ffmpeg is unavailable/fails, or upload fails
+     */
+    public int packagePublic(byte[] audio, String prefix, String sourceFilename, int maxSeconds) {
+        if (audio == null || audio.length == 0) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "오디오 파일이 비어 있습니다");
+        }
+        Path work = null;
+        try {
+            work = Files.createTempDirectory("hls-pub-");
+            Path input = work.resolve("input" + safeExtension(sourceFilename));
+            Files.write(input, audio);
+            runFfmpegPublic(work, input, maxSeconds);
+            int durationSec = uploadHlsAssets(work, prefix);
+            log.info("Packaged public HLS from '{}' ({} s) under {}", sourceFilename, durationSec, prefix);
+            return durationSec;
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            throw new ApiException(ResultCode.INTERNAL_ERROR, "HLS 패키징 실패: " + e.getMessage());
+        } finally {
+            cleanup(work);
+        }
+    }
+
     private void runFfmpeg(Path work, Path input, Path keyInfo) throws IOException, InterruptedException {
-        ProcessBuilder pb = new ProcessBuilder(
+        execFfmpeg(work, List.of(
                 ffmpegPath, "-y",
                 "-i", input.toAbsolutePath().toString(),
                 "-vn", "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
@@ -124,7 +158,35 @@ public class HlsPackagingService {
                 "-hls_playlist_type", "vod",
                 "-hls_key_info_file", keyInfo.toAbsolutePath().toString(),
                 "-hls_segment_filename", "seg%03d.ts",
-                "index.m3u8");
+                "index.m3u8"));
+    }
+
+    /**
+     * Plain (unencrypted) HLS transcode — no {@code -hls_key_info_file}, so segments are not
+     * encrypted. {@code maxSeconds > 0} caps the output (e.g. a 30-second preview clip).
+     */
+    private void runFfmpegPublic(Path work, Path input, int maxSeconds)
+            throws IOException, InterruptedException {
+        List<String> cmd = new ArrayList<>(List.of(
+                ffmpegPath, "-y",
+                "-i", input.toAbsolutePath().toString(),
+                "-vn", "-c:a", "aac", "-b:a", "128k", "-ar", "44100"));
+        if (maxSeconds > 0) {
+            cmd.add("-t");
+            cmd.add(String.valueOf(maxSeconds));
+        }
+        cmd.addAll(List.of(
+                "-f", "hls",
+                "-hls_time", String.valueOf(HLS_SEGMENT_SECONDS),
+                "-hls_playlist_type", "vod",
+                "-hls_segment_filename", "seg%03d.ts",
+                "index.m3u8"));
+        execFfmpeg(work, cmd);
+    }
+
+    /** Runs an ffmpeg command in {@code work}, enforcing the timeout and a zero exit code. */
+    private void execFfmpeg(Path work, List<String> cmd) throws IOException, InterruptedException {
+        ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.directory(work.toFile());
         pb.redirectErrorStream(true);
         Process process = pb.start();

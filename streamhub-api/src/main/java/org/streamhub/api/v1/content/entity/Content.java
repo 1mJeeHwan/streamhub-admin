@@ -49,6 +49,14 @@ public class Content {
     @Column(name = "media_url", length = 500)
     private String mediaUrl;
 
+    /**
+     * S3 key prefix for this content's <b>public, unencrypted</b> HLS stream
+     * ({@code hls/content/{id}/}). {@code null} until packaged — when null the frontend falls back
+     * to the legacy direct {@code mediaUrl}. Audio content (음원) is free, so no AES key/gate.
+     */
+    @Column(name = "hls_prefix", length = 200)
+    private String hlsPrefix;
+
     @Column(name = "duration_sec")
     private Integer durationSec;
 
@@ -94,5 +102,10 @@ public class Content {
         this.thumbnailKey = thumbnailKey;
         this.status = status;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /** Records the S3 prefix of this content's packaged public HLS stream. */
+    public void attachHls(String hlsPrefix) {
+        this.hlsPrefix = hlsPrefix;
     }
 }

@@ -85,6 +85,15 @@ public class Track {
     @Column(name = "has_full_track", nullable = false)
     private boolean hasFullTrack;
 
+    /**
+     * S3 key prefix for this track's <b>public, unencrypted</b> 30-second preview HLS
+     * ({@code hls/preview/track-{id}/}). {@code null} until packaged — when null the frontend falls
+     * back to the legacy direct {@code previewUrl}. No AES key: the preview is free, so the playlist
+     * and segments are freely cacheable.
+     */
+    @Column(name = "preview_hls_prefix", length = 200)
+    private String previewHlsPrefix;
+
     @Builder
     private Track(Long albumId, Integer trackNo, String title, Integer durationSec, String previewUrl,
                   Integer previewStartSec, Integer previewLengthSec, MusicSource source,
@@ -108,5 +117,10 @@ public class Track {
         if (durationSec != null) {
             this.durationSec = durationSec;
         }
+    }
+
+    /** Records the S3 prefix of this track's packaged public preview HLS. */
+    public void attachPreviewHls(String previewHlsPrefix) {
+        this.previewHlsPrefix = previewHlsPrefix;
     }
 }

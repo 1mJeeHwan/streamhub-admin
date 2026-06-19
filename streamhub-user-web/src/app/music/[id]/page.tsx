@@ -34,6 +34,8 @@ export default function MusicDetailPage({ params }: { params: { id: string } }) 
         <article className="pt-3">
           <AudioPlayer
             src={data.mediaUrl}
+            contentId={id}
+            hlsAvailable={!!data.hlsPrefix}
             title={data.title}
             channelName={data.channelName}
             thumbnailUrl={data.thumbnailUrl}
