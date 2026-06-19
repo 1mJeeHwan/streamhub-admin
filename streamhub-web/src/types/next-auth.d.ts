@@ -1,6 +1,6 @@
 import type { DefaultSession } from "next-auth";
 
-type AdminRole = "SYSTEM" | "CHURCH_MANAGER";
+type AdminRole = "SYSTEM" | "CHURCH_MANAGER" | "VIEWER";
 
 declare module "next-auth" {
   /**

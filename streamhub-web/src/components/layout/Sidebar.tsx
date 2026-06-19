@@ -98,9 +98,9 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "후원·구독",
     items: [
-      { label: "멤버십 플랜", href: "/subscription-plan", icon: Gem },
+      { label: "멤버십 플랜", href: "/subscription-plan", icon: Gem, systemOnly: true },
       { label: "구독 현황", href: "/subscription", icon: CreditCard },
-      { label: "후원 내역", href: "/donation", icon: HeartHandshake },
+      { label: "후원 내역", href: "/donation", icon: HeartHandshake, systemOnly: true },
       { label: "결제일정", href: "/billing-calendar", icon: CalendarClock },
     ],
   },
