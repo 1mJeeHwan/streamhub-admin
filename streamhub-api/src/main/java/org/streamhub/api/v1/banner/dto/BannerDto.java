@@ -11,6 +11,7 @@ import lombok.Setter;
 import org.streamhub.api.v1.banner.entity.Banner;
 import org.streamhub.api.v1.banner.entity.BannerDevice;
 import org.streamhub.api.v1.banner.entity.BannerPosition;
+import org.streamhub.api.v1.banner.entity.BannerTarget;
 
 /**
  * A banner row. Used as both the admin create/update input and the list/detail output. All
@@ -31,13 +32,19 @@ public class BannerDto {
     @Size(max = 200)
     private String title;
 
+    @Size(max = 255)
+    private String subtitle;
+
     @NotNull
     private BannerPosition position;
 
     @NotNull
     private BannerDevice device;
 
-    @NotBlank
+    /** Content-tab target for the user site (VIDEO/SOUND/ALL); null = not a tab banner. */
+    private BannerTarget targetType;
+
+    /** Optional. Blank renders as a gradient text promo on the user site. */
     @Size(max = 500)
     private String imageUrl;
 
@@ -60,8 +67,10 @@ public class BannerDto {
         BannerDto dto = new BannerDto();
         dto.id = banner.getId();
         dto.title = banner.getTitle();
+        dto.subtitle = banner.getSubtitle();
         dto.position = banner.getPosition();
         dto.device = banner.getDevice();
+        dto.targetType = banner.getTargetType();
         dto.imageUrl = banner.getImageUrl();
         dto.linkUrl = banner.getLinkUrl();
         dto.startAt = banner.getStartAt();

@@ -11,11 +11,11 @@ export function ContentContainer({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-7">
-      <div className="flex items-center justify-between px-5 py-3">
-        <h2 className="ellipsis-1 text-[22px] font-bold leading-tight text-active">{title}</h2>
+    <section className="mt-30px">
+      <div className="flex items-center justify-between px-20px py-14px">
+        <h2 className="ellipsis-1 text-24px font-bold leading-30px text-active">{title}</h2>
         {moreHref && (
-          <Link href={moreHref} className="shrink-0 text-xs font-medium text-primary">
+          <Link href={moreHref} className="shrink-0 text-12px font-medium text-primary">
             더보기
           </Link>
         )}

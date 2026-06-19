@@ -10,6 +10,7 @@ import {
 import {
   BannerDtoDevice,
   BannerDtoPosition,
+  BannerDtoTargetType,
   type BannerDto,
 } from "@/apis/query/streamHubAdminAPI.schemas";
 import { SUCCESS_CODE } from "@/types/api";
@@ -31,6 +32,13 @@ const DEVICE_LABELS: Record<BannerDtoDevice, string> = {
   ALL: "전체",
 };
 
+/** Content-tab target on the user site. "" = not a tab banner (legacy main/side banner). */
+const TARGET_LABELS: Record<BannerDtoTargetType, string> = {
+  VIDEO: "영상 탭",
+  SOUND: "음악 탭",
+  ALL: "전체 탭",
+};
+
 interface BannerFormDialogProps {
   /** Banner being edited, or null/undefined when creating a new one. */
   banner?: BannerDto | null;
@@ -41,8 +49,11 @@ interface BannerFormDialogProps {
 
 interface BannerFormState {
   title: string;
+  subtitle: string;
   position: BannerDtoPosition;
   device: BannerDtoDevice;
+  /** "" = not a content-tab banner. */
+  targetType: "" | BannerDtoTargetType;
   imageUrl: string;
   linkUrl: string;
   startAt: string;
@@ -53,8 +64,10 @@ interface BannerFormState {
 
 const buildFormState = (banner?: BannerDto | null): BannerFormState => ({
   title: banner?.title ?? "",
+  subtitle: banner?.subtitle ?? "",
   position: banner?.position ?? BannerDtoPosition.MAIN_TOP,
   device: banner?.device ?? BannerDtoDevice.ALL,
+  targetType: banner?.targetType ?? "",
   imageUrl: banner?.imageUrl ?? "",
   linkUrl: banner?.linkUrl ?? "",
   startAt: banner?.startAt ?? "",
@@ -107,17 +120,15 @@ export default function BannerFormDialog({
       setMessage("제목을 입력해 주세요.");
       return;
     }
-    if (!form.imageUrl.trim()) {
-      setMessage("이미지 URL을 입력해 주세요.");
-      return;
-    }
 
     const parsedSort = Number(form.sortOrder);
     const payload: BannerDto = {
       title: form.title.trim(),
+      subtitle: form.subtitle.trim() || undefined,
       position: form.position,
       device: form.device,
-      imageUrl: form.imageUrl.trim(),
+      targetType: form.targetType || undefined,
+      imageUrl: form.imageUrl.trim() || undefined,
       linkUrl: form.linkUrl.trim() || undefined,
       startAt: form.startAt.trim() || undefined,
       endAt: form.endAt.trim() || undefined,
@@ -188,6 +199,48 @@ export default function BannerFormDialog({
               />
             </div>
 
+            {/* Subtitle */}
+            <div className="sm:col-span-2">
+              <label
+                htmlFor="banner-subtitle"
+                className="mb-1 block text-xs font-medium text-slate-500"
+              >
+                부제 (탭 배너 설명)
+              </label>
+              <input
+                id="banner-subtitle"
+                type="text"
+                className={FIELD_CLASS}
+                value={form.subtitle}
+                onChange={(event) => update("subtitle", event.target.value)}
+              />
+            </div>
+
+            {/* Target tab */}
+            <div className="sm:col-span-2">
+              <label
+                htmlFor="banner-target"
+                className="mb-1 block text-xs font-medium text-slate-500"
+              >
+                사용자 사이트 탭 노출
+              </label>
+              <select
+                id="banner-target"
+                className={FIELD_CLASS}
+                value={form.targetType}
+                onChange={(event) =>
+                  update("targetType", event.target.value as "" | BannerDtoTargetType)
+                }
+              >
+                <option value="">노출 안 함 (일반 배너)</option>
+                {Object.values(BannerDtoTargetType).map((target) => (
+                  <option key={target} value={target}>
+                    {TARGET_LABELS[target]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Position */}
             <div>
               <label
@@ -242,7 +295,7 @@ export default function BannerFormDialog({
                 htmlFor="banner-image"
                 className="mb-1 block text-xs font-medium text-slate-500"
               >
-                이미지 URL *
+                이미지 URL (탭 배너는 비워두면 그라데이션)
               </label>
               <input
                 id="banner-image"

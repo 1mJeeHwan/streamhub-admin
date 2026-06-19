@@ -67,6 +67,19 @@ export interface HomeBundle {
   posts: PostListItem[];
 }
 
+export type BannerTarget = "VIDEO" | "SOUND" | "ALL";
+
+/** A content-tab promo banner managed in the admin (org.streamhub.api.v1.banner). */
+export interface BannerItem {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  targetType: BannerTarget | null;
+  imageUrl: string | null;
+  linkUrl: string | null;
+  sortOrder: number;
+}
+
 /** Standard API envelope; "0000" means success. */
 export interface ResultDTO<T> {
   resultCode: string;

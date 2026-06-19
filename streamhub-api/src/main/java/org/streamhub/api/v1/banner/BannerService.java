@@ -1,5 +1,6 @@
 package org.streamhub.api.v1.banner;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +10,7 @@ import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.banner.dto.BannerDto;
 import org.streamhub.api.v1.banner.dto.BannerSearchRequest;
 import org.streamhub.api.v1.banner.entity.Banner;
+import org.streamhub.api.v1.banner.entity.BannerTarget;
 import org.streamhub.api.v1.banner.repository.BannerRepository;
 
 /**
@@ -41,6 +43,24 @@ public class BannerService {
                 .toList();
     }
 
+    /**
+     * Public listing for a user-site content tab: visible (useYn=Y) banners whose target matches
+     * {@code target} or is {@code ALL}, currently within their start/end window, ordered by sortOrder.
+     */
+    @Transactional(readOnly = true)
+    public List<BannerDto> listPublic(BannerTarget target) {
+        LocalDateTime now = LocalDateTime.now();
+        return bannerRepository.findAllByOrderBySortOrderAscIdAsc().stream()
+                .filter(banner -> banner.getTargetType() != null)
+                .filter(banner -> target == null || banner.getTargetType() == BannerTarget.ALL
+                        || banner.getTargetType() == target)
+                .filter(banner -> "Y".equals(banner.getUseYn()))
+                .filter(banner -> banner.getStartAt() == null || !banner.getStartAt().isAfter(now))
+                .filter(banner -> banner.getEndAt() == null || !banner.getEndAt().isBefore(now))
+                .map(BannerDto::from)
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public BannerDto getDetail(Long id) {
         Banner banner = bannerRepository.findById(id)
@@ -52,8 +72,10 @@ public class BannerService {
     public BannerDto create(BannerDto request) {
         Banner banner = Banner.builder()
                 .title(request.getTitle())
+                .subtitle(request.getSubtitle())
                 .position(request.getPosition())
                 .device(request.getDevice())
+                .targetType(request.getTargetType())
                 .imageUrl(request.getImageUrl())
                 .linkUrl(request.getLinkUrl())
                 .startAt(request.getStartAt())
@@ -71,9 +93,9 @@ public class BannerService {
         Banner banner = bannerRepository.findById(id)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
         banner.update(
-                request.getTitle(), request.getPosition(), request.getDevice(), request.getImageUrl(),
-                request.getLinkUrl(), request.getStartAt(), request.getEndAt(), request.getSortOrder(),
-                defaultYn(request.getUseYn()));
+                request.getTitle(), request.getSubtitle(), request.getPosition(), request.getDevice(),
+                request.getTargetType(), request.getImageUrl(), request.getLinkUrl(), request.getStartAt(),
+                request.getEndAt(), request.getSortOrder(), defaultYn(request.getUseYn()));
         bannerRepository.saveAndFlush(banner);
         actionLogPublisher.publish("BANNER_UPDATE", "BANNER", String.valueOf(id), request.getTitle());
         return BannerDto.from(banner);

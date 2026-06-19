@@ -4,7 +4,7 @@ import { useHome } from "@/lib/queries";
 import { useAlbums } from "@/lib/albums";
 import { Hero } from "@/components/Hero";
 import { ContentContainer } from "@/components/ContentContainer";
-import { HRow, HItem } from "@/components/HRow";
+import { ItemCarousel } from "@/components/ItemCarousel";
 import { ContentCard } from "@/components/ContentCard";
 import { AlbumCard } from "@/components/AlbumCard";
 import { PostCard } from "@/components/PostCard";
@@ -14,7 +14,7 @@ import { EmptyState, ErrorState } from "@/components/States";
 function HomeSkeleton() {
   return (
     <div>
-      <div className="skeleton aspect-[16/10] w-full" />
+      <div className="skeleton aspect-[8/7] w-full" />
       <div className="mt-7 space-y-5 px-5">
         <div className="skeleton h-6 w-32 rounded" />
         <div className="flex gap-3">
@@ -38,14 +38,14 @@ function CcmAlbumSection() {
   if (isLoading) {
     return (
       <ContentContainer title="CCM 음반" moreHref="/albums">
-        <HRow>
+        <ItemCarousel>
           {Array.from({ length: 4 }).map((_, i) => (
-            <HItem key={i} width={150}>
+            <ItemCarousel.ItemWrapper key={i} width={152}>
               <div className="skeleton aspect-square rounded-card" />
-              <div className="skeleton mt-2.5 h-4 w-4/5 rounded" />
-            </HItem>
+              <div className="skeleton mt-10px h-4 w-4/5 rounded" />
+            </ItemCarousel.ItemWrapper>
           ))}
-        </HRow>
+        </ItemCarousel>
       </ContentContainer>
     );
   }
@@ -53,13 +53,13 @@ function CcmAlbumSection() {
 
   return (
     <ContentContainer title="CCM 음반" moreHref="/albums">
-      <HRow>
+      <ItemCarousel>
         {albums.map((album) => (
-          <HItem key={album.id} width={150}>
-            <AlbumCard item={album} />
-          </HItem>
+          <ItemCarousel.ItemWrapper key={album.id}>
+            <AlbumCard item={album} size="md" />
+          </ItemCarousel.ItemWrapper>
         ))}
-      </HRow>
+      </ItemCarousel>
     </ContentContainer>
   );
 }
@@ -82,13 +82,13 @@ export default function HomePage() {
 
       <ContentContainer title="최신 영상" moreHref="/video">
         {data.videos.length > 0 ? (
-          <HRow>
+          <ItemCarousel>
             {data.videos.map((v) => (
-              <HItem key={v.id} width={240}>
-                <ContentCard item={v} />
-              </HItem>
+              <ItemCarousel.ItemWrapper key={v.id}>
+                <ContentCard item={v} size="lg" />
+              </ItemCarousel.ItemWrapper>
             ))}
-          </HRow>
+          </ItemCarousel>
         ) : (
           <EmptyState message="등록된 영상이 없습니다." />
         )}
@@ -96,13 +96,13 @@ export default function HomePage() {
 
       <ContentContainer title="찬양 음악" moreHref="/music">
         {data.musics.length > 0 ? (
-          <HRow>
+          <ItemCarousel>
             {data.musics.map((m) => (
-              <HItem key={m.id} width={150}>
-                <ContentCard item={m} />
-              </HItem>
+              <ItemCarousel.ItemWrapper key={m.id}>
+                <ContentCard item={m} size="md" />
+              </ItemCarousel.ItemWrapper>
             ))}
-          </HRow>
+          </ItemCarousel>
         ) : (
           <EmptyState message="등록된 음악이 없습니다." />
         )}

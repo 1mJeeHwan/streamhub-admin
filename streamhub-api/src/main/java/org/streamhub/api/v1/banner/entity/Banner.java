@@ -36,6 +36,9 @@ public class Banner {
     @Column(name = "title", nullable = false, length = 200)
     private String title;
 
+    @Column(name = "subtitle", length = 255)
+    private String subtitle;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "position", nullable = false, length = 20)
     private BannerPosition position;
@@ -44,7 +47,13 @@ public class Banner {
     @Column(name = "device", nullable = false, length = 10)
     private BannerDevice device;
 
-    @Column(name = "image_url", nullable = false, length = 500)
+    /** Content-tab target for user-site list pages (null = not a tab banner). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type", length = 20)
+    private BannerTarget targetType;
+
+    /** Optional. Blank/null renders as a gradient text promo on the user site. */
+    @Column(name = "image_url", length = 500)
     private String imageUrl;
 
     @Column(name = "link_url", length = 500)
@@ -66,12 +75,14 @@ public class Banner {
     private LocalDateTime createdAt;
 
     @Builder
-    private Banner(String title, BannerPosition position, BannerDevice device, String imageUrl,
-                   String linkUrl, LocalDateTime startAt, LocalDateTime endAt, int sortOrder,
-                   String useYn, LocalDateTime createdAt) {
+    private Banner(String title, String subtitle, BannerPosition position, BannerDevice device,
+                   BannerTarget targetType, String imageUrl, String linkUrl, LocalDateTime startAt,
+                   LocalDateTime endAt, int sortOrder, String useYn, LocalDateTime createdAt) {
         this.title = title;
+        this.subtitle = subtitle;
         this.position = position;
         this.device = device;
+        this.targetType = targetType;
         this.imageUrl = imageUrl;
         this.linkUrl = linkUrl;
         this.startAt = startAt;
@@ -82,12 +93,14 @@ public class Banner {
     }
 
     /** Updates editable fields. */
-    public void update(String title, BannerPosition position, BannerDevice device, String imageUrl,
-                       String linkUrl, LocalDateTime startAt, LocalDateTime endAt, int sortOrder,
-                       String useYn) {
+    public void update(String title, String subtitle, BannerPosition position, BannerDevice device,
+                       BannerTarget targetType, String imageUrl, String linkUrl, LocalDateTime startAt,
+                       LocalDateTime endAt, int sortOrder, String useYn) {
         this.title = title;
+        this.subtitle = subtitle;
         this.position = position;
         this.device = device;
+        this.targetType = targetType;
         this.imageUrl = imageUrl;
         this.linkUrl = linkUrl;
         this.startAt = startAt;

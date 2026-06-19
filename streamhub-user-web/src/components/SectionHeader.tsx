@@ -13,7 +13,7 @@ export function SectionHeader({
 }) {
   return (
     <div className="flex items-center justify-between px-5 pb-3 pt-1">
-      <h2 className="text-[22px] font-bold leading-tight text-active">
+      <h2 className="text-24px font-bold leading-30px text-active">
         {title}
         {count != null && <span className="ml-2 align-middle text-base font-medium text-inactive">{count}</span>}
       </h2>

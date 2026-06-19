@@ -11,7 +11,7 @@ export function PostCard({ post }: { post: PostListItem }) {
       className="flex items-center gap-3 rounded-card border border-border/70 bg-surface p-4 active:bg-card"
     >
       <div className="min-w-0 flex-1">
-        <p className="ellipsis-1 text-[15px] font-bold text-active">{post.title}</p>
+        <p className="ellipsis-1 text-16px font-bold leading-20px text-active">{post.title}</p>
         {post.excerpt && <p className="ellipsis-1 mt-1 text-xs text-inactive">{post.excerpt}</p>}
         <p className="mt-1.5 text-[11px] text-inactive">{formatDate(post.createdAt)}</p>
       </div>

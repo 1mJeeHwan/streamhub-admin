@@ -20,6 +20,7 @@ import type {
 
 import type {
   PublicAlbumsParams,
+  PublicBannersParams,
   PublicChurchesParams,
   PublicContentsParams,
   PublicPostsParams,
@@ -27,6 +28,7 @@ import type {
   ResultDTOAlbumDetail,
   ResultDTOChurchDetail,
   ResultDTOContentDetail,
+  ResultDTOListBannerDto,
   ResultDTOListStoreDto,
   ResultDTOPostDetail,
   ResultDTOPreviewResponse,
@@ -1193,6 +1195,145 @@ export function usePublicChurchesDetail<
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
   const queryOptions = getPublicChurchesDetailQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * 노출 중인 탭 배너(target=VIDEO/SOUND, ALL 포함). 정렬순.
+ * @summary 공개 배너 목록
+ */
+export const publicBanners = (
+  params?: PublicBannersParams,
+  signal?: AbortSignal
+) => {
+  return customInstance<ResultDTOListBannerDto>({
+    url: `/pub/v1/banners`,
+    method: "GET",
+    params,
+    signal,
+  });
+};
+
+export const getPublicBannersQueryKey = (params?: PublicBannersParams) => {
+  return [`/pub/v1/banners`, ...(params ? [params] : [])] as const;
+};
+
+export const getPublicBannersQueryOptions = <
+  TData = Awaited<ReturnType<typeof publicBanners>>,
+  TError = unknown
+>(
+  params?: PublicBannersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof publicBanners>>, TError, TData>
+    >;
+  }
+) => {
+  const { query: queryOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getPublicBannersQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof publicBanners>>> = ({
+    signal,
+  }) => publicBanners(params, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof publicBanners>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type PublicBannersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof publicBanners>>
+>;
+export type PublicBannersQueryError = unknown;
+
+export function usePublicBanners<
+  TData = Awaited<ReturnType<typeof publicBanners>>,
+  TError = unknown
+>(
+  params: undefined | PublicBannersParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof publicBanners>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof publicBanners>>,
+          TError,
+          Awaited<ReturnType<typeof publicBanners>>
+        >,
+        "initialData"
+      >;
+  },
+  queryClient?: QueryClient
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function usePublicBanners<
+  TData = Awaited<ReturnType<typeof publicBanners>>,
+  TError = unknown
+>(
+  params?: PublicBannersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof publicBanners>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof publicBanners>>,
+          TError,
+          Awaited<ReturnType<typeof publicBanners>>
+        >,
+        "initialData"
+      >;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function usePublicBanners<
+  TData = Awaited<ReturnType<typeof publicBanners>>,
+  TError = unknown
+>(
+  params?: PublicBannersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof publicBanners>>, TError, TData>
+    >;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary 공개 배너 목록
+ */
+
+export function usePublicBanners<
+  TData = Awaited<ReturnType<typeof publicBanners>>,
+  TError = unknown
+>(
+  params?: PublicBannersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof publicBanners>>, TError, TData>
+    >;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getPublicBannersQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

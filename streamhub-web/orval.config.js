@@ -33,10 +33,11 @@
 const lcfirst = (s) => (s ? s[0].toLowerCase() + s.slice(1) : "");
 const ucfirst = (s) => (s ? s[0].toUpperCase() + s.slice(1) : "");
 
-// member-trend / member_trend -> MemberTrend
+// member-trend / member_trend -> MemberTrend ; index.m3u8 -> IndexM3u8
+// Split on any non-alphanumeric run so generated identifiers never contain '.', '-', etc.
 const pascalSeg = (s) =>
   s
-    .split(/[-_]/)
+    .split(/[^A-Za-z0-9]+/)
     .filter(Boolean)
     .map(ucfirst)
     .join("");

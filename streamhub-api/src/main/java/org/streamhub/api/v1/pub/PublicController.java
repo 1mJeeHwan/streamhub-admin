@@ -16,6 +16,9 @@ import org.streamhub.api.v1.album.dto.AlbumListItem;
 import org.streamhub.api.v1.album.dto.AlbumSearchRequest;
 import org.streamhub.api.v1.album.dto.PreviewResponse;
 import org.streamhub.api.v1.album.entity.AlbumGenre;
+import org.streamhub.api.v1.banner.BannerService;
+import org.streamhub.api.v1.banner.dto.BannerDto;
+import org.streamhub.api.v1.banner.entity.BannerTarget;
 import org.streamhub.api.v1.church.ChurchService;
 import org.streamhub.api.v1.church.dto.ChurchDetail;
 import org.streamhub.api.v1.church.dto.ChurchNearbyItem;
@@ -52,15 +55,17 @@ public class PublicController {
     private final ChurchService churchService;
     private final AlbumService albumService;
     private final StoreService storeService;
+    private final BannerService bannerService;
 
     public PublicController(ContentService contentService, PostService postService,
                             ChurchService churchService, AlbumService albumService,
-                            StoreService storeService) {
+                            StoreService storeService, BannerService bannerService) {
         this.contentService = contentService;
         this.postService = postService;
         this.churchService = churchService;
         this.albumService = albumService;
         this.storeService = storeService;
+        this.bannerService = bannerService;
     }
 
     @Operation(summary = "홈 묶음", description = "최신 영상/음악/게시글을 한 번에 반환.")
@@ -74,6 +79,12 @@ public class PublicController {
                 postService.listPublished(new PostSearchRequest(0, HOME_SIZE, null));
         return ResultDTO.ok(new PublicHomeResponse(
                 videos.getContents(), musics.getContents(), posts.getContents()));
+    }
+
+    @Operation(summary = "공개 배너 목록", description = "노출 중인 탭 배너(target=VIDEO/SOUND, ALL 포함). 정렬순.")
+    @GetMapping("/banners")
+    public ResultDTO<List<BannerDto>> banners(@RequestParam(required = false) BannerTarget target) {
+        return ResultDTO.ok(bannerService.listPublic(target));
     }
 
     @Operation(summary = "공개 콘텐츠 목록", description = "PUBLISHED 영상/음악 목록(검색·페이지네이션).")

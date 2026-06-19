@@ -1,6 +1,11 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { Thumbnail } from "./Thumbnail";
 import type { ContentListItem } from "@/lib/types";
+
+/** ng-front-style card size variants: each variant owns the card's own width (px). */
+export const CARD_SIZES = { md: 152, lg: 240, xxl: 210 } as const;
+export type CardSize = keyof typeof CARD_SIZES;
 
 function isNew(createdAt: string): boolean {
   const t = new Date(createdAt).getTime();
@@ -8,13 +13,17 @@ function isNew(createdAt: string): boolean {
   return Date.now() - t < 14 * 24 * 60 * 60 * 1000;
 }
 
-/** production-app content card: rounded-6 thumbnail + bold title + inactive subtitle. */
-export function ContentCard({ item }: { item: ContentListItem }) {
+/**
+ * production-app content card: rounded-6 thumbnail + bold title + inactive subtitle.
+ * With `size` the card owns its width (carousel use); without it the card is full-width (grid use).
+ */
+export function ContentCard({ item, size }: { item: ContentListItem; size?: CardSize }) {
   const isMusic = item.type === "SOUND";
   const href = `${isMusic ? "/music" : "/video"}/${item.id}`;
+  const style: CSSProperties | undefined = size ? { width: CARD_SIZES[size] } : undefined;
 
   return (
-    <Link href={href} className="block w-full">
+    <Link href={href} style={style} className={size ? "block" : "block w-full"}>
       <div className="relative">
         <Thumbnail
           url={item.thumbnailUrl}
@@ -28,10 +37,12 @@ export function ContentCard({ item }: { item: ContentListItem }) {
           </span>
         )}
       </div>
-      <div className="mt-2.5">
-        <p className="ellipsis-2 text-[15px] font-bold leading-snug text-active">{item.title}</p>
+      <div className="mt-10px">
+        <p className="ellipsis-2 text-16px font-bold leading-20px text-active">{item.title}</p>
         {item.channelName && (
-          <p className="ellipsis-1 mt-0.5 text-xs font-medium text-inactive">{item.channelName}</p>
+          <p className="ellipsis-1 mt-0.5 text-12px font-medium leading-20px text-inactive">
+            {item.channelName}
+          </p>
         )}
       </div>
     </Link>

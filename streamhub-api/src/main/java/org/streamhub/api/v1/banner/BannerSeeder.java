@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.streamhub.api.v1.banner.entity.Banner;
 import org.streamhub.api.v1.banner.entity.BannerDevice;
 import org.streamhub.api.v1.banner.entity.BannerPosition;
+import org.streamhub.api.v1.banner.entity.BannerTarget;
 import org.streamhub.api.v1.banner.repository.BannerRepository;
 
 /**
@@ -47,6 +48,12 @@ public class BannerSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        seedPositionBanners();
+        seedTabPromos();
+    }
+
+    /** Legacy main/side image banners (no content-tab target). Seeded once on an empty table. */
+    private void seedPositionBanners() {
         if (bannerRepository.count() > 0) {
             return;
         }
@@ -81,6 +88,46 @@ public class BannerSeeder implements CommandLineRunner {
         }
         bannerRepository.saveAll(banners);
         log.info("Seeded {} banners", banners.size());
+    }
+
+    /**
+     * Content-tab promo banners shown atop the user-site video/music tabs. Gradient text promos
+     * (no image). Idempotent: seeded once when no tab-targeted banner exists yet.
+     */
+    private void seedTabPromos() {
+        boolean hasTabPromo = bannerRepository.findAll().stream()
+                .anyMatch(banner -> banner.getTargetType() != null);
+        if (hasTabPromo) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        List<Banner> promos = new ArrayList<>();
+        promos.add(tabPromo("이번 주 예배 실황", "주일·수요 예배를 영상으로 다시 만나요",
+                BannerTarget.VIDEO, "/video", 1, now));
+        promos.add(tabPromo("지난 예배 다시보기", "놓친 예배, 언제든 시청하세요",
+                BannerTarget.VIDEO, "/video", 2, now));
+        promos.add(tabPromo("찬양 음악 신곡", "새로 업데이트된 찬양을 들어보세요",
+                BannerTarget.SOUND, "/music", 1, now));
+        promos.add(tabPromo("CCM 음반 모음", "은혜로운 음반을 둘러보세요",
+                BannerTarget.SOUND, "/albums", 2, now));
+        bannerRepository.saveAll(promos);
+        log.info("Seeded {} tab promo banners", promos.size());
+    }
+
+    private Banner tabPromo(String title, String subtitle, BannerTarget target, String linkUrl,
+                            int sortOrder, LocalDateTime now) {
+        return Banner.builder()
+                .title(title)
+                .subtitle(subtitle)
+                .position(BannerPosition.MAIN_TOP)
+                .device(BannerDevice.ALL)
+                .targetType(target)
+                .linkUrl(linkUrl)
+                .startAt(now.minusDays(1))
+                .sortOrder(sortOrder)
+                .useYn("Y")
+                .createdAt(now)
+                .build();
     }
 
     /** Placeholder image sized per placement slot (wide for main, tall for side, square for popup). */

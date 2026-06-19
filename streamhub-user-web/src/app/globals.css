@@ -85,10 +85,10 @@ body {
     -webkit-box-orient: vertical;
   }
 
-  /* Horizontal swipe row with snap + hidden scrollbar. */
+  /* Horizontal swipe row with snap + hidden scrollbar. ng-front carousel gap (gap-2 = 8px). */
   .hrow {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     overflow-x: auto;
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
@@ -120,13 +120,16 @@ body {
     color: #fff;
   }
 
+  /* ng-front primary button spec: 52px tall, 10px radius, 14px bold label. */
   .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.7rem 1.2rem;
-    border-radius: 0.75rem;
+    min-height: 52px;
+    padding: 0 1.2rem;
+    border-radius: 10px;
+    font-size: 14px;
     font-weight: 700;
     color: #fff;
     background-color: rgb(var(--primary));

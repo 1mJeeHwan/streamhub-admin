@@ -67,7 +67,7 @@ export function ChurchFinderView() {
   return (
     <div className="px-5 pb-4 pt-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-[22px] font-bold leading-tight">내 주변 교회</h1>
+        <h1 className="text-24px font-bold leading-30px">내 주변 교회</h1>
         {hasDemoData && <DemoBadge label="데모 데이터 · 실제 교회 정보 아님" />}
       </div>
       {usingFallback && (

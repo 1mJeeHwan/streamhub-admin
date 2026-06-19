@@ -594,6 +594,7 @@ export interface ContentDetail {
   channelName?: string;
   churchName?: string;
   mediaUrl?: string;
+  hlsPrefix?: string;
   thumbnailKey?: string;
   thumbnailUrl?: string;
   durationSec?: number;
@@ -847,10 +848,27 @@ export interface CampaignStatusChangeRequest {
 
 export interface BoardDto {
   id?: number;
-  code?: string;
-  name?: string;
+  /**
+   * @minLength 0
+   * @maxLength 40
+   */
+  code: string;
+  /**
+   * @minLength 0
+   * @maxLength 120
+   */
+  name: string;
+  /**
+   * @minimum 1
+   * @maximum 10
+   */
   readLevel?: number;
+  /**
+   * @minimum 1
+   * @maximum 10
+   */
   writeLevel?: number;
+  /** @pattern ^[YN]?$ */
   useYn?: string;
   sortOrder?: number;
   createdAt?: string;
@@ -884,6 +902,16 @@ export const BannerDtoDevice = {
   ALL: "ALL",
 } as const;
 
+export type BannerDtoTargetType =
+  (typeof BannerDtoTargetType)[keyof typeof BannerDtoTargetType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const BannerDtoTargetType = {
+  VIDEO: "VIDEO",
+  SOUND: "SOUND",
+  ALL: "ALL",
+} as const;
+
 export interface BannerDto {
   id?: number;
   /**
@@ -891,13 +919,19 @@ export interface BannerDto {
    * @maxLength 200
    */
   title: string;
+  /**
+   * @minLength 0
+   * @maxLength 255
+   */
+  subtitle?: string;
   position: BannerDtoPosition;
   device: BannerDtoDevice;
+  targetType?: BannerDtoTargetType;
   /**
    * @minLength 0
    * @maxLength 500
    */
-  imageUrl: string;
+  imageUrl?: string;
   /**
    * @minLength 0
    * @maxLength 500
@@ -969,6 +1003,8 @@ export interface TrackDto {
   previewUrl?: string;
   previewStartSec?: number;
   previewLengthSec?: number;
+  hasFullTrack?: boolean;
+  hasPreviewHls?: boolean;
 }
 
 export type AlbumDetailGenre =
@@ -1051,6 +1087,8 @@ export interface WorshipSearchRequest {
   churchId?: number;
   fromDate?: string;
   toDate?: string;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 export interface ResInfinityListWorshipRegistrationListItem {
@@ -1186,6 +1224,8 @@ export interface SubscriptionSearchRequest {
   status?: SubscriptionSearchRequestStatus;
   planId?: number;
   churchId?: number;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 export interface ResInfinityListSubscriptionListItem {
@@ -1321,6 +1361,8 @@ export interface SmsSearchRequest {
   kind?: SmsSearchRequestKind;
   from?: string;
   to?: string;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 export interface ResInfinityListSmsListItem {
@@ -1341,6 +1383,8 @@ export interface PointLedgerSearchRequest {
   keyword?: string;
   memberId?: number;
   churchId?: number;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 export type PointLedgerListItemSourceType =
@@ -1474,8 +1518,11 @@ export interface PaymentSearchRequest {
   kind?: PaymentSearchRequestKind;
   method?: string;
   provider?: string;
+  churchId?: number;
   fromDate?: string;
   toDate?: string;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 export type PaymentListItemKind =
@@ -1555,8 +1602,11 @@ export interface OrderSearchRequest {
   keyword?: string;
   status?: OrderSearchRequestStatus;
   payMethod?: string;
+  churchId?: number;
   fromDate?: string;
   toDate?: string;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 export type OrderListItemStatus =
@@ -1682,6 +1732,8 @@ export interface MemberSearchRequest {
   keyword?: string;
   userStatus?: MemberSearchRequestUserStatus;
   churchId?: number;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 export type MemberListItemUserStatus =
@@ -1797,6 +1849,8 @@ export interface GoodsSearchRequest {
   categoryId?: number;
   status?: GoodsSearchRequestStatus;
   soldOut?: string;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 export type GoodsListItemStatus =
@@ -1962,6 +2016,8 @@ export interface DonationSearchRequest {
   from?: string;
   to?: string;
   churchId?: number;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 export interface ResInfinityListDonationListItem {
@@ -2004,6 +2060,12 @@ export interface ResultDTOListCouponDto {
   resultObject?: CouponDto[];
 }
 
+export interface ResultDTOString {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: string;
+}
+
 export type ContentSearchRequestType =
   (typeof ContentSearchRequestType)[keyof typeof ContentSearchRequestType];
 
@@ -2029,6 +2091,8 @@ export interface ContentSearchRequest {
   type?: ContentSearchRequestType;
   status?: ContentSearchRequestStatus;
   channelId?: number;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 export type ContentListItemType =
@@ -2075,6 +2139,14 @@ export interface ResultDTOResInfinityListContentListItem {
   resultCode?: string;
   resultMessage?: string;
   resultObject?: ResInfinityListContentListItem;
+}
+
+export type ResultDTOMapStringIntegerResultObject = { [key: string]: number };
+
+export interface ResultDTOMapStringInteger {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: ResultDTOMapStringIntegerResultObject;
 }
 
 export interface CommunityPostSearchRequest {
@@ -2415,6 +2487,17 @@ export interface ResultDTOResInfinityListAlbumListItem {
   resultObject?: ResInfinityListAlbumListItem;
 }
 
+export interface ArchiveResult {
+  actionLogs?: number;
+  securityEvents?: number;
+}
+
+export interface ResultDTOArchiveResult {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: ArchiveResult;
+}
+
 export interface ActionLogSearchRequest {
   pageNumber?: number;
   pageSize?: number;
@@ -2430,6 +2513,7 @@ export interface ActionLogItem {
   targetType?: string;
   targetId?: string;
   detail?: string;
+  ip?: string;
   createdAt?: string;
 }
 
@@ -2629,6 +2713,23 @@ export interface MemberPaymentConfirmRequest {
   amount: number;
 }
 
+export interface HistoryRecordRequest {
+  contentId: number;
+  watchSeconds?: number;
+}
+
+export type ResultDTOVoidResultObject = { [key: string]: unknown };
+
+export interface ResultDTOVoid {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: ResultDTOVoidResultObject;
+}
+
+export interface FavoriteAddRequest {
+  trackId: number;
+}
+
 export interface EventIngestRequest {
   type?: string;
   contentType?: string;
@@ -2642,12 +2743,12 @@ export interface EventIngestRequest {
   dwellMs?: number;
 }
 
-export type ResultDTOVoidResultObject = { [key: string]: unknown };
-
-export interface ResultDTOVoid {
-  resultCode?: string;
-  resultMessage?: string;
-  resultObject?: ResultDTOVoidResultObject;
+export interface EventIngestBatchRequest {
+  /**
+   * @minItems 1
+   * @maxItems 60
+   */
+  events: EventIngestRequest[];
 }
 
 export interface MemberLoginRequest {
@@ -3002,6 +3103,31 @@ export interface TrendPoint {
   count?: number;
 }
 
+export interface ResInfinityListSecurityEventItem {
+  contents?: SecurityEventItem[];
+  totalCount?: number;
+  totalPage?: number;
+}
+
+export interface ResultDTOResInfinityListSecurityEventItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: ResInfinityListSecurityEventItem;
+}
+
+export interface SecurityEventItem {
+  id?: number;
+  eventType?: string;
+  severity?: string;
+  actorType?: string;
+  actorId?: number;
+  loginId?: string;
+  ip?: string;
+  path?: string;
+  detail?: string;
+  createdAt?: string;
+}
+
 export type PaymentReceiptDtoKind =
   (typeof PaymentReceiptDtoKind)[keyof typeof PaymentReceiptDtoKind];
 
@@ -3262,6 +3388,18 @@ export interface ResultDTOAnalyticsBreakdownDto {
   resultObject?: AnalyticsBreakdownDto;
 }
 
+export interface HlsPackageStatus {
+  total?: number;
+  packaged?: number;
+  remaining?: number;
+}
+
+export interface ResultDTOHlsPackageStatus {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: HlsPackageStatus;
+}
+
 export interface MeResponse {
   id?: number;
   loginId?: string;
@@ -3352,6 +3490,98 @@ export interface ResultDTOListMemberOrderListItem {
   resultObject?: MemberOrderListItem[];
 }
 
+export interface MyReviewItem {
+  goodsId?: number;
+  goodsName?: string;
+  rating?: number;
+  content?: string;
+  createdAt?: string;
+}
+
+export interface ResultDTOListMyReviewItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: MyReviewItem[];
+}
+
+export type MyInquiryItemStatus =
+  (typeof MyInquiryItemStatus)[keyof typeof MyInquiryItemStatus];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const MyInquiryItemStatus = {
+  WAITING: "WAITING",
+  ANSWERED: "ANSWERED",
+} as const;
+
+export interface MyInquiryItem {
+  goodsId?: number;
+  goodsName?: string;
+  question?: string;
+  answer?: string;
+  status?: MyInquiryItemStatus;
+  createdAt?: string;
+}
+
+export interface ResultDTOListMyInquiryItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: MyInquiryItem[];
+}
+
+export interface ResultDTOListWatchHistoryItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: WatchHistoryItem[];
+}
+
+export type WatchHistoryItemType =
+  (typeof WatchHistoryItemType)[keyof typeof WatchHistoryItemType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const WatchHistoryItemType = {
+  VIDEO: "VIDEO",
+  SOUND: "SOUND",
+} as const;
+
+export interface WatchHistoryItem {
+  contentId?: number;
+  title?: string;
+  type?: WatchHistoryItemType;
+  thumbnailUrl?: string;
+  watchedAt?: string;
+  watchSeconds?: number;
+}
+
+export interface FavoriteItem {
+  trackId?: number;
+  albumId?: number;
+  trackTitle?: string;
+  albumTitle?: string;
+  artist?: string;
+  coverUrl?: string;
+  hasFullTrack?: boolean;
+}
+
+export interface ResultDTOListFavoriteItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: FavoriteItem[];
+}
+
+export interface PurchasedAlbumItem {
+  albumId?: number;
+  title?: string;
+  artist?: string;
+  coverUrl?: string;
+  purchasedAt?: string;
+}
+
+export interface ResultDTOListPurchasedAlbumItem {
+  resultCode?: string;
+  resultMessage?: string;
+  resultObject?: PurchasedAlbumItem[];
+}
+
 export interface PublicHomeResponse {
   videos?: ContentListItem[];
   musics?: ContentListItem[];
@@ -3393,6 +3623,7 @@ export interface ChurchNearbyItem {
   thumbnailKey?: string;
   thumbnailUrl?: string;
   dataSource?: string;
+  externalUrl?: string;
   distanceKm?: number;
 }
 
@@ -3443,12 +3674,21 @@ export type AlbumUploadBody = {
   file: Blob;
 };
 
+export type AlbumHLSAdminAlbumTracksAudioCreateBody = {
+  file: Blob;
+};
+
 export type StatisticsTopContentsParams = {
   limit?: number;
 };
 
 export type StatisticsMemberTrendParams = {
   days?: number;
+};
+
+export type SecurityEventSecurityEventsParams = {
+  pageNumber?: number;
+  pageSize?: number;
 };
 
 export type PointMemberDetailParams = {
@@ -3515,6 +3755,20 @@ export const PublicChurchesDenomination = {
   GOSPEL: "GOSPEL",
   BAPTIST: "BAPTIST",
   ETC: "ETC",
+} as const;
+
+export type PublicBannersParams = {
+  target?: PublicBannersTarget;
+};
+
+export type PublicBannersTarget =
+  (typeof PublicBannersTarget)[keyof typeof PublicBannersTarget];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const PublicBannersTarget = {
+  VIDEO: "VIDEO",
+  SOUND: "SOUND",
+  ALL: "ALL",
 } as const;
 
 export type PublicAlbumsParams = {

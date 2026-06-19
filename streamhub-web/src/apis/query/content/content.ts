@@ -496,7 +496,7 @@ export const useContentUpload = <TError = unknown, TContext = unknown>(
   return useMutation(mutationOptions, queryClient);
 };
 /**
- * 검색/필터/페이지네이션된 콘텐츠 목록.
+ * 검색/필터/페이지네이션된 콘텐츠 목록. CHURCH_MANAGER는 자기 교회로 스코핑.
  * @summary 콘텐츠 목록
  */
 export const contentList = (
@@ -579,7 +579,7 @@ export const useContentList = <TError = unknown, TContext = unknown>(
   return useMutation(mutationOptions, queryClient);
 };
 /**
- * 콘텐츠 등록 폼의 채널 선택용.
+ * 콘텐츠 등록 폼의 채널 선택용. CHURCH_MANAGER는 자기 교회 채널만.
  * @summary 채널 목록
  */
 export const contentChannels = (signal?: AbortSignal) => {
