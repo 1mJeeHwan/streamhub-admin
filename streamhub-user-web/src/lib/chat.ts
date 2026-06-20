@@ -177,6 +177,8 @@ export function mockReply(message: string): ChatReply {
 /** A summarising fetch over a member endpoint (logged-in "check my …" answers). */
 interface StatusCheck {
   keys: string[];
+  /** Display label for the login-needed prompt (correct subject particle is added automatically). */
+  label: string;
   /** Returns a one-line summary string. */
   summarise: (token: string) => Promise<string>;
 }
@@ -184,6 +186,7 @@ interface StatusCheck {
 const STATUS_CHECKS: StatusCheck[] = [
   {
     keys: ["포인트"],
+    label: "포인트",
     summarise: async (token) => {
       const p = await meApi.points(token, 0, 1);
       return `현재 보유 포인트는 ${p.balance.toLocaleString()}P 입니다. 자세한 적립·사용 내역은 마이페이지 '포인트'에서 볼 수 있어요.`;
@@ -191,6 +194,7 @@ const STATUS_CHECKS: StatusCheck[] = [
   },
   {
     keys: ["쿠폰"],
+    label: "쿠폰",
     summarise: async (token) => {
       const list = await meApi.coupons(token);
       const usable = list.filter((c) => !c.used).length;
@@ -198,7 +202,8 @@ const STATUS_CHECKS: StatusCheck[] = [
     },
   },
   {
-    keys: ["주문", "구매내역", "배송"],
+    keys: ["주문", "구매내역", "구매 내역", "배송"],
+    label: "구매 내역",
     summarise: async (token) => {
       const page = await orderApi.list(token, 0, 1);
       if (page.totalCount === 0) return "아직 주문 내역이 없어요. 음반을 둘러보고 구매해 보세요!";
@@ -209,6 +214,7 @@ const STATUS_CHECKS: StatusCheck[] = [
   },
   {
     keys: ["후원", "구독", "정기"],
+    label: "정기후원·구독",
     summarise: async (token) => {
       const list = await meApi.donations(token);
       const active = list.filter((d) => d.status === "ACTIVE").length;
@@ -219,6 +225,7 @@ const STATUS_CHECKS: StatusCheck[] = [
   },
   {
     keys: ["알림"],
+    label: "알림",
     summarise: async (token) => {
       const page = await meApi.notifications(token, 0, 1);
       return `받은 알림이 ${page.totalCount}건 있어요. 마이페이지 '알림'에서 확인하세요.`;
@@ -226,6 +233,7 @@ const STATUS_CHECKS: StatusCheck[] = [
   },
   {
     keys: ["찜", "재생목록", "플레이리스트"],
+    label: "찜한 곡",
     summarise: async (token) => {
       const list = await meApi.favorites(token);
       return `찜한 곡이 ${list.length}곡 있어요. 마이페이지 '내 재생목록'에서 모아 들을 수 있어요.`;
@@ -233,6 +241,7 @@ const STATUS_CHECKS: StatusCheck[] = [
   },
   {
     keys: ["시청", "본 영상", "시청기록"],
+    label: "시청 기록",
     summarise: async (token) => {
       const page = await meApi.history(token, 0, 1);
       return `시청 기록이 ${page.totalCount}건 있어요. 마이페이지 '시청 기록'에서 이어보세요.`;
@@ -240,6 +249,7 @@ const STATUS_CHECKS: StatusCheck[] = [
   },
   {
     keys: ["문의", "후기", "리뷰"],
+    label: "내 문의·후기",
     summarise: async (token) => {
       const [inq, rev] = await Promise.all([meApi.inquiries(token), meApi.reviews(token)]);
       const answered = inq.filter((i) => i.status === "ANSWERED").length;
@@ -248,14 +258,27 @@ const STATUS_CHECKS: StatusCheck[] = [
   },
 ];
 
-const CHECK_TRIGGERS = ["내", "확인", "얼마", "몇", "현황", "남은", "조회", "있어", "있나"];
+// A "check my data" intent must look personal — an explicit first-person possessive OR a clear
+// check verb. (We deliberately avoid loose substrings like bare "내", which falsely matches "구매내역".)
+const POSSESSIVE = /(^|\s)(내|제|나의|내\s?거|내\s?꺼)\s*/;
+const CHECK_VERBS = ["얼마", "몇", "남은", "현황", "확인", "조회", "보여", "알려"];
+// Location / "어디서" questions are NOT personal fetches — the backend (catalog + LLM site map)
+// answers them, so a navigation question never gets a login wall.
+const NAV_MARKERS = ["어디", "위치", "어느 메뉴", "어느 탭", "어느 화면"];
 
 /** Quick replies shown alongside a personal-status answer. */
 const GUIDE_QUICK = ["내 포인트 확인", "쿠폰함 보여줘", "주문 조회", "어떤 기능이 있나요?"];
 
-function loginNeeded(what: string): ChatReply {
+/** Appends the correct Korean subject particle (은/는) from the last character's final consonant. */
+function withTopicParticle(word: string): string {
+  const code = word.charCodeAt(word.length - 1);
+  const hasFinal = code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 !== 0;
+  return word + (hasFinal ? "은" : "는");
+}
+
+function loginNeeded(label: string): ChatReply {
   return {
-    text: `${what}은(는) 로그인 후 확인할 수 있어요. 하단 'MY' 탭에서 로그인한 뒤 다시 물어봐 주세요.`,
+    text: `${withTopicParticle(label)} 로그인 후 확인할 수 있어요. 하단 'MY' 탭에서 로그인한 뒤 다시 물어봐 주세요.`,
     intent: "FALLBACK",
     quickReplies: ["어떤 기능이 있나요?", ...QUICK_DEFAULT.slice(0, 2)],
     testMode: true,
@@ -264,28 +287,29 @@ function loginNeeded(what: string): ChatReply {
 }
 
 /**
- * Client-side resolver for logged-in "check my …" questions only (points/coupons/orders/…), which
- * need the member token and so can't be answered by the public backend chatbot. Returns null for
- * everything else — feature guidance, FAQ, order lookup and product search all fall through to the
- * backend (single source of truth).
+ * Client-side resolver for logged-in "check my …" questions ONLY (my points/coupons/orders/…),
+ * which need the member token and so can't be answered by the public backend chatbot. Everything
+ * else — location ("어디서?"), feature how-to, FAQ, order/product lookup and any follow-up — returns
+ * null and is answered by the backend (single brain, single memory), so multi-turn context holds.
  */
 export async function answerLocally(message: string, token: string | null): Promise<ChatReply | null> {
   const text = message.toLowerCase().trim();
 
-  // "내 포인트/쿠폰/주문 …" → check the member's own data (login-gated).
+  // Location/where questions → backend (never a login wall).
+  if (NAV_MARKERS.some((m) => text.includes(m))) return null;
+
+  // A bare order number → guest order-lookup (backend lookupOrder, no login needed), not a fetch.
+  const hasOrderNo = /\d{8}-\d{3,6}/.test(message);
+  // Personal data fetch — only on a clear possessive or check verb, and a matching data area.
   const check = STATUS_CHECKS.find((c) => c.keys.some((k) => text.includes(k)));
-  if (check) {
-    const isCheck = CHECK_TRIGGERS.some((t) => text.includes(t)) || text.length <= 8;
-    // An order number present → let the backend order-lookup handle it instead.
-    const hasOrderNo = /\d{8}-\d{3,6}/.test(message);
-    if (isCheck && !hasOrderNo) {
-      if (!token) return loginNeeded(check.keys[0]);
-      try {
-        const summary = await check.summarise(token);
-        return { text: summary, intent: "FAQ", quickReplies: GUIDE_QUICK, testMode: true, mocked: true };
-      } catch {
-        return { text: "정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.", intent: "FALLBACK", quickReplies: GUIDE_QUICK, testMode: true, mocked: true };
-      }
+  const isPersonalFetch = POSSESSIVE.test(message) || CHECK_VERBS.some((v) => text.includes(v));
+  if (check && isPersonalFetch && !hasOrderNo) {
+    if (!token) return loginNeeded(check.label);
+    try {
+      const summary = await check.summarise(token);
+      return { text: summary, intent: "FAQ", quickReplies: GUIDE_QUICK, testMode: true, mocked: true };
+    } catch {
+      return { text: "정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.", intent: "FALLBACK", quickReplies: GUIDE_QUICK, testMode: true, mocked: true };
     }
   }
 

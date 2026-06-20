@@ -117,7 +117,7 @@ app:
     provider: ${CHAT_PROVIDER:rule}        # rule(기본) | llm(Gemini)
     llm:
       api-key: ${CHAT_LLM_API_KEY:}        # Gemini API key(무료 티어). 빈 값이면 rule 폴백
-      model: ${CHAT_LLM_MODEL:gemini-1.5-flash}
+      model: ${CHAT_LLM_MODEL:gemini-2.5-flash}
       base-url: ${CHAT_LLM_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
   # Music preview (C3) source seam. seed = SoundHelix demo samples, no external call;
   # external = real music-provider key injection point (@ConditionalOnProperty-gated stub).

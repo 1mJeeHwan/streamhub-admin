@@ -24,10 +24,14 @@ public class IntentClassifier {
             List.of("상품", "가격", "재고", "구매", "앨범", "굿즈", "product", "price", "stock");
     private static final List<String> FAQ_KEYWORDS =
             List.of("배송비", "환불", "교환", "반품", "회원", "예배", "시간", "포인트", "쿠폰", "faq");
-    /** Feature existence / how-to markers. Last before fallback (broadest), so specific intents win. */
+    /**
+     * Feature existence / how-to / location markers. Last before fallback (broadest), so specific
+     * intents win. Includes "어디/위치" so a "○○ 어디서 하나요?" navigation question is answered from
+     * the catalog (and, with the LLM, the site map) instead of falling back.
+     */
     private static final List<String> FEATURE_KEYWORDS =
             List.of("기능", "사용법", "어떻게", "방법", "메뉴", "있나요", "있어", "가능", "지원",
-                    "뭐가", "무슨", "어떤", "feature", "how");
+                    "뭐가", "무슨", "어떤", "어디", "위치", "feature", "how");
 
     /** Classifies a user message into a {@link ChatIntent}. Null/blank ⇒ {@code FALLBACK}. */
     public ChatIntent classify(String message) {
