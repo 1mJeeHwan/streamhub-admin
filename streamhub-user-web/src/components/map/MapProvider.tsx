@@ -1,8 +1,9 @@
 "use client";
 
-// Single point where the map implementation is chosen. Today: Leaflet + OpenStreetMap
-// (no API key). To swap to Kakao Maps later, implement KakaoMap.tsx with the SAME
-// MapViewProps contract and change only the import below — callers stay untouched.
+// Single point where the map implementation is chosen. Today: Kakao Maps (needs a
+// JavaScript app key in NEXT_PUBLIC_KAKAO_MAP_KEY and the domain registered in the
+// Kakao Developers console). LeafletMap.tsx is kept as a no-key fallback — both
+// implement the same MapViewProps contract, so switching is a one-line import change.
 
 import dynamic from "next/dynamic";
 
@@ -22,13 +23,13 @@ export interface MapViewProps {
   heightClass?: string;
 }
 
-// Leaflet touches `window`, so it must be client-only (no SSR) — same as the admin
-// app's AG Grid dynamic import.
-const LeafletMap = dynamic(() => import("./LeafletMap"), {
+// The Kakao SDK touches `window`, so the map must be client-only (no SSR) — same as
+// the admin app's AG Grid dynamic import.
+const KakaoMap = dynamic(() => import("./KakaoMap"), {
   ssr: false,
   loading: () => <div className="skeleton h-full w-full rounded-card" />,
 });
 
 export default function MapProvider(props: MapViewProps) {
-  return <LeafletMap {...props} />;
+  return <KakaoMap {...props} />;
 }
