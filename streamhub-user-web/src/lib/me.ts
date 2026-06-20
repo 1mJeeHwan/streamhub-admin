@@ -177,9 +177,15 @@ export const meApi = {
       `/pub/v1/me/notifications${query({ pageNumber, pageSize })}`,
       { token },
     ),
+  /** Count of the member's unread notifications (badge). */
+  notificationsUnreadCount: (token: string) =>
+    request<number>("/pub/v1/me/notifications/unread-count", { token }),
   /** Mark one notification read. */
   markNotificationRead: (id: number, token: string) =>
     request<void>(`/pub/v1/me/notifications/${id}/read`, { method: "POST", token }),
+  /** Mark all of the member's notifications read. */
+  markAllNotificationsRead: (token: string) =>
+    request<void>("/pub/v1/me/notifications/read-all", { method: "POST", token }),
   /** The member's recurring donations / subscriptions. */
   donations: (token: string) => request<MyDonationItem[]>("/pub/v1/me/donations", { token }),
 };
@@ -193,6 +199,7 @@ export const meKeys = {
   points: (pageNumber: number) => ["me", "points", pageNumber] as const,
   coupons: ["me", "coupons"] as const,
   notifications: (pageNumber: number) => ["me", "notifications", pageNumber] as const,
+  notificationsUnread: ["me", "notifications", "unread"] as const,
   donations: ["me", "donations"] as const,
 };
 
@@ -272,6 +279,15 @@ export function useMyNotifications(token: string | null, pageNumber: number, pag
   });
 }
 
+/** Unread notification count — enabled only when a member token is present. */
+export function useMyNotificationsUnread(token: string | null) {
+  return useQuery({
+    queryKey: meKeys.notificationsUnread,
+    queryFn: () => meApi.notificationsUnreadCount(token as string),
+    enabled: token != null,
+  });
+}
+
 /** Recurring donations — enabled only when a member token is present. */
 export function useMyDonations(token: string | null) {
   return useQuery({
@@ -308,11 +324,20 @@ export function useCreateReview(token: string) {
   });
 }
 
-/** Mark a notification read, then refresh the (first page of the) notification list. */
+/** Mark a notification read, then refresh the notification list + unread count. */
 export function useMarkNotificationRead(token: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => meApi.markNotificationRead(id, token),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me", "notifications"] }),
+  });
+}
+
+/** Mark all notifications read, then refresh the notification list + unread count. */
+export function useMarkAllNotificationsRead(token: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => meApi.markAllNotificationsRead(token),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["me", "notifications"] }),
   });
 }
