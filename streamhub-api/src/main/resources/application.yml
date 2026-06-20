@@ -110,12 +110,15 @@ app:
     solapi:
       api-key: ${SMS_SOLAPI_API_KEY:}
       api-secret: ${SMS_SOLAPI_API_SECRET:}
-  # Chatbot (C6) provider seam. rule = static keyword FAQ, no external call; llm = real LLM
-  # key injection point (@ConditionalOnProperty-gated, currently a stub).
+  # Chatbot (C6) provider seam. rule = keyword FAQ + DB조회 + 기능 카탈로그 안내, 외부호출 없음(기본);
+  # llm = Google Gemini function-calling 실연동. Gemini 무료 티어는 비용 없이 키만 필요
+  # (CHAT_LLM_API_KEY). 키가 비었거나 호출 실패 시 rule로 자동 폴백하므로 위젯은 항상 동작한다.
   chat:
-    provider: ${CHAT_PROVIDER:rule}
+    provider: ${CHAT_PROVIDER:rule}        # rule(기본) | llm(Gemini)
     llm:
-      api-key: ${CHAT_LLM_API_KEY:}
+      api-key: ${CHAT_LLM_API_KEY:}        # Gemini API key(무료 티어). 빈 값이면 rule 폴백
+      model: ${CHAT_LLM_MODEL:gemini-1.5-flash}
+      base-url: ${CHAT_LLM_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
   # Music preview (C3) source seam. seed = SoundHelix demo samples, no external call;
   # external = real music-provider key injection point (@ConditionalOnProperty-gated stub).
   music:

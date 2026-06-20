@@ -40,10 +40,13 @@ public class RuleChatProvider implements ChatProvider {
 
     private final IntentClassifier intentClassifier;
     private final ChatMapper chatMapper;
+    private final ChatToolExecutor toolExecutor;
 
-    public RuleChatProvider(IntentClassifier intentClassifier, ChatMapper chatMapper) {
+    public RuleChatProvider(IntentClassifier intentClassifier, ChatMapper chatMapper,
+                            ChatToolExecutor toolExecutor) {
         this.intentClassifier = intentClassifier;
         this.chatMapper = chatMapper;
+        this.toolExecutor = toolExecutor;
     }
 
     @Override
@@ -58,8 +61,19 @@ public class RuleChatProvider implements ChatProvider {
             case ORDER_LOOKUP -> replyOrderLookup(message);
             case PRODUCT_INQUIRY -> replyProductInquiry(message);
             case FAQ -> replyFaq(message);
+            case FEATURE_GUIDE -> replyFeatureGuide(message);
             case FALLBACK -> replyFallback();
         };
+    }
+
+    /**
+     * Answers a "이 기능 있나요?/어떻게 쓰나요?" question from the feature catalog (existence + how-to).
+     * Keyword-searches the catalog; when nothing matches, the tool's "없음" line is returned so the
+     * bot honestly says the feature is not offered.
+     */
+    private ChatReply replyFeatureGuide(String message) {
+        String body = toolExecutor.searchFeatures(message);
+        return new ChatReply(body, ChatIntent.FEATURE_GUIDE, FALLBACK_QUICK_REPLIES);
     }
 
     private ChatReply replyOrderLookup(String message) {

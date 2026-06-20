@@ -6,9 +6,12 @@ import org.springframework.stereotype.Component;
 import org.streamhub.api.v1.chat.entity.ChatIntent;
 
 /**
- * Rule-based intent classifier (C5). Lower-cases the message and matches keyword sets in
- * priority order: {@code FAQ} → {@code ORDER_LOOKUP} → {@code PRODUCT_INQUIRY} → {@code FALLBACK}.
- * FAQ is checked first so a specific phrase like "배송비" wins over the broader order keyword "배송".
+ * Rule-based intent classifier (C5). Lower-cases the message and matches keyword sets in priority
+ * order: {@code FAQ} → {@code ORDER_LOOKUP} → {@code PRODUCT_INQUIRY} → {@code FEATURE_GUIDE} →
+ * {@code FALLBACK}. FAQ is checked first so a specific phrase like "배송비" wins over the broader
+ * order keyword "배송"; {@code FEATURE_GUIDE} sits just before fallback (broadest markers) so a
+ * "이 기능 있어요?/어떻게 쓰나요?" question that doesn't hit a more specific intent is answered from
+ * the feature catalog instead of a generic fallback.
  *
  * <p>This is the core branch of the rule chatbot, so it is covered by a table-based unit test.
  */
@@ -21,6 +24,10 @@ public class IntentClassifier {
             List.of("상품", "가격", "재고", "구매", "앨범", "굿즈", "product", "price", "stock");
     private static final List<String> FAQ_KEYWORDS =
             List.of("배송비", "환불", "교환", "반품", "회원", "예배", "시간", "포인트", "쿠폰", "faq");
+    /** Feature existence / how-to markers. Last before fallback (broadest), so specific intents win. */
+    private static final List<String> FEATURE_KEYWORDS =
+            List.of("기능", "사용법", "어떻게", "방법", "메뉴", "있나요", "있어", "가능", "지원",
+                    "뭐가", "무슨", "어떤", "feature", "how");
 
     /** Classifies a user message into a {@link ChatIntent}. Null/blank ⇒ {@code FALLBACK}. */
     public ChatIntent classify(String message) {
@@ -36,6 +43,9 @@ public class IntentClassifier {
         }
         if (containsAny(lower, PRODUCT_KEYWORDS)) {
             return ChatIntent.PRODUCT_INQUIRY;
+        }
+        if (containsAny(lower, FEATURE_KEYWORDS)) {
+            return ChatIntent.FEATURE_GUIDE;
         }
         return ChatIntent.FALLBACK;
     }

@@ -8,6 +8,8 @@ public enum ChatIntent {
     ORDER_LOOKUP,
     /** 자주 묻는 질문(배송비/환불/회원 등). */
     FAQ,
+    /** 기능 유무·사용법 안내(기능 카탈로그 기반). */
+    FEATURE_GUIDE,
     /** 미분류 — 안내 + 빠른답변. */
     FALLBACK
 }

@@ -1,0 +1,284 @@
+{
+  "_comment": "Chatbot knowledge source — StreamHub 기능 카탈로그. streamhub-web/src/lib/features.catalog.ts 와 동기화. status: live(실동작)·demo(데모)·external(외부키 대기). howTo 는 챗봇이 사용법을 안내할 때 쓰는 1~3문장 가이드.",
+  "features": [
+    {
+      "id": "dashboard",
+      "domain": "support",
+      "title": "통합 운영 대시보드",
+      "summary": "후원·매출·회원 KPI를 한 화면에 집계",
+      "status": "live",
+      "href": "/dashboard",
+      "howTo": "관리자 콘솔 로그인 후 좌측 메뉴 '대시보드'에서 후원·매출·회원 KPI 카드와 ApexCharts 그래프를 확인합니다. 채널별 시청시간은 실제 트래킹 이벤트를 Redis로 집계해 보여줍니다."
+    },
+    {
+      "id": "members",
+      "domain": "member",
+      "title": "회원 관리",
+      "summary": "동적 검색·일괄 승인/거부가 가능한 회원 목록",
+      "status": "live",
+      "href": "/member",
+      "howTo": "관리자 콘솔 '회원 관리'에서 이름·이메일·상태로 동적 검색하고, 체크박스로 여러 회원을 선택해 일괄 승인/거부합니다."
+    },
+    {
+      "id": "contents",
+      "domain": "content",
+      "title": "설교·음원 관리",
+      "summary": "업로드·해시태그·복합 조인을 갖춘 콘텐츠 관리",
+      "status": "live",
+      "href": "/content",
+      "howTo": "'설교·음원 관리'에서 영상/음원을 등록하고 썸네일을 업로드(S3/MinIO)하며 해시태그를 달아 분류합니다. 등록한 콘텐츠는 사용자 사이트에 공개됩니다."
+    },
+    {
+      "id": "action-log",
+      "domain": "settings",
+      "title": "감사 로그",
+      "summary": "SQS 비동기 적재 기반 운영자 감사 로그",
+      "status": "live",
+      "href": "/action-log",
+      "howTo": "SYSTEM 권한으로 '감사 로그'에 들어가 운영자의 주요 액션 이력을 조회합니다. 액션은 SQS로 비동기 적재되어 본 트랜잭션에 영향을 주지 않습니다."
+    },
+    {
+      "id": "churches",
+      "domain": "member",
+      "title": "교회 찾기·관리",
+      "summary": "교단·지역 검색과 좌표·예배시간을 갖춘 교회 마스터",
+      "status": "live",
+      "href": "/churches",
+      "howTo": "사용자 사이트의 '내 주변 교회'에서 현위치 기준으로 가까운 교회를 거리순으로 찾고 지도 마커·예배시간·길찾기를 봅니다. 관리자는 '교회 관리'에서 교단·좌표·예배시간을 등록/수정합니다(본인 교회 범위)."
+    },
+    {
+      "id": "albums",
+      "domain": "shop",
+      "title": "CCM 음반 관리",
+      "summary": "장르·트랙·미리듣기를 갖춘 음반과 굿즈 연동",
+      "status": "live",
+      "href": "/albums",
+      "howTo": "사용자 사이트에서 CCM 음반을 둘러보고 트랙별 30초 미리듣기를 들을 수 있습니다. 관리자는 '음반 관리'에서 장르·트랙·커버를 등록하고 굿즈와 연동합니다."
+    },
+    {
+      "id": "store",
+      "domain": "shop",
+      "title": "오프라인 매장 관리",
+      "summary": "음반 판매 매장의 위치·운영시간 마스터",
+      "status": "live",
+      "href": "/stores",
+      "howTo": "사용자 사이트 '매장찾기'에서 현위치 기준 가까운 음반 판매 매장을 찾습니다. 관리자는 '매장 관리'에서 매장 위치·운영시간을 등록합니다."
+    },
+    {
+      "id": "worship",
+      "domain": "support",
+      "title": "예배(새가족) 신청 관리",
+      "summary": "접수→연락→완료 상태머신을 갖춘 신청 접수함",
+      "status": "live",
+      "href": "/worship",
+      "howTo": "사용자가 교회 상세에서 새가족/예배 신청 폼(인적사항·동반가족 최대 5명)을 제출하면, 관리자가 '예배 신청 관리'에서 접수→연락→완료 상태로 처리합니다."
+    },
+    {
+      "id": "sms",
+      "domain": "marketing",
+      "title": "문자 발송·이력",
+      "summary": "SMS/LMS 자동 분기와 발송 이력 (게이트웨이 키 대기 — 데모 발송)",
+      "status": "external",
+      "href": "/sms",
+      "howTo": "'문자 발송'에서 내용 길이에 따라 SMS/LMS가 자동 분기되어 발송되고 이력이 남습니다. 실제 발송은 Aligo/Solapi 게이트웨이 키를 주입해야 동작하며, 키가 없으면 데모(미발송)로 기록만 됩니다."
+    },
+    {
+      "id": "payment-seam",
+      "domain": "shop",
+      "title": "결제 내역 관리",
+      "summary": "결제·환불 영수증을 주문·회원과 조인해 조회하는 결제 원장",
+      "status": "live",
+      "href": "/payment",
+      "howTo": "'결제 내역'에서 결제/환불 영수증을 주문·회원과 조인해 기간·수단으로 조회합니다. 토스 결제는 키를 주입하면 실제 샌드박스 승인/환불이 동작합니다."
+    },
+    {
+      "id": "chat-bot",
+      "domain": "community",
+      "title": "챗봇 상담",
+      "summary": "FAQ·주문/상품 조회·기능 안내 챗봇 (LLM 어댑터 seam)",
+      "status": "demo",
+      "href": "/chat",
+      "howTo": "사용자 사이트 우측 하단 챗봇 위젯에서 FAQ, 주문/배송 조회(주문번호+주문자명), 상품 검색, 그리고 '어떤 기능이 있는지/어떻게 쓰는지'를 물어볼 수 있습니다. 기본은 룰베이스이며 Gemini 키를 주입하면 자연어 LLM 응답으로 전환됩니다."
+    },
+    {
+      "id": "subscription",
+      "domain": "support",
+      "title": "정기후원·구독 현황",
+      "summary": "빌링키·회차·상태를 추적하는 정기결제 현황",
+      "status": "live",
+      "href": "/subscription",
+      "howTo": "'정기후원·구독 현황'에서 회원별 빌링키(마스킹)·청구 회차·ACTIVE/PAUSED 상태를 추적합니다."
+    },
+    {
+      "id": "subscription-plans",
+      "domain": "support",
+      "title": "멤버십 플랜 관리",
+      "summary": "등급별 혜택과 가격 정책을 정의",
+      "status": "live",
+      "href": "/subscription-plan",
+      "howTo": "'멤버십 플랜 관리'에서 등급별 혜택(JSON)과 가격 정책을 정의하면, 정기구독에서 이 플랜을 선택합니다."
+    },
+    {
+      "id": "subscription-calendar",
+      "domain": "support",
+      "title": "정기결제 일정",
+      "summary": "CRON 청구 시뮬레이션과 캘린더 뷰",
+      "status": "live",
+      "href": "/billing-calendar",
+      "howTo": "'정기결제 일정' 캘린더에서 다가오는 청구일을 CRON 시뮬레이션으로 미리 보고, 공휴일이면 영업일로 이동된 일정을 확인합니다."
+    },
+    {
+      "id": "donation",
+      "domain": "support",
+      "title": "후원 내역",
+      "summary": "단건·정기 후원과 캠페인 연동, 영수증 발행",
+      "status": "live",
+      "href": "/donation",
+      "howTo": "'후원 내역'에서 단건/정기 후원을 구분해 조회하고 캠페인과 연동하며 기부금 영수증을 발행합니다."
+    },
+    {
+      "id": "orders",
+      "domain": "shop",
+      "title": "주문 관리",
+      "summary": "주문 상태머신과 합계 재계산을 갖춘 주문 목록",
+      "status": "live",
+      "href": "/order",
+      "howTo": "'주문 관리'(AG Grid)에서 주문을 PLACED→DONE 상태머신으로 처리하고, 환불/취소 시 합계·쿠폰·재고가 재계산됩니다."
+    },
+    {
+      "id": "goods",
+      "domain": "shop",
+      "title": "굿즈 관리",
+      "summary": "옵션·이미지·인라인 일괄수정이 가능한 상품 관리",
+      "status": "live",
+      "href": "/goods",
+      "howTo": "'굿즈 관리'에서 상품의 옵션·이미지를 등록하고 목록에서 인라인으로 여러 건을 일괄 수정합니다."
+    },
+    {
+      "id": "goods-category",
+      "domain": "shop",
+      "title": "카테고리 관리",
+      "summary": "계층 코드 기반 3단 트리와 드래그 정렬",
+      "status": "live",
+      "href": "/goods/category",
+      "howTo": "'카테고리 관리'에서 3단 트리를 드래그로 정렬하고 계층 코드를 부여해 굿즈를 분류합니다."
+    },
+    {
+      "id": "goods-stock",
+      "domain": "shop",
+      "title": "옵션·재고 관리",
+      "summary": "재고·통보수량 인라인 편집과 재입고 알림",
+      "status": "live",
+      "href": "/goods/stock",
+      "howTo": "'옵션·재고 관리'에서 재고/통보수량을 인라인 편집하고 품절을 토글하며, 재입고 시 알림 신청자에게 통보합니다."
+    },
+    {
+      "id": "goods-inquiry",
+      "domain": "shop",
+      "title": "굿즈 문의",
+      "summary": "답변 상태와 미답변 SLA를 추적",
+      "status": "live",
+      "href": "/goods/inquiry",
+      "howTo": "'굿즈 문의'에서 상품 문의에 답변하고, 미답변 건은 SLA 강조로 표시되어 우선 처리합니다."
+    },
+    {
+      "id": "goods-review",
+      "domain": "shop",
+      "title": "굿즈 후기",
+      "summary": "평점 인라인 편집과 노출 승인 토글",
+      "status": "live",
+      "href": "/goods/review",
+      "howTo": "'굿즈 후기'에서 평점을 인라인 편집하고 노출 승인 토글로 후기 게시 여부를 관리합니다."
+    },
+    {
+      "id": "coupons",
+      "domain": "shop",
+      "title": "쿠폰 관리",
+      "summary": "주문에 실제 적용되는 정액·정률 할인 — 사용한도·기간·최소주문 검증",
+      "status": "live",
+      "href": "/coupons",
+      "howTo": "'쿠폰 관리'에서 정액/정률 쿠폰을 발급하고 사용한도·기간·최소주문·최대할인·절사단위를 설정합니다. 사용자는 결제 시 쿠폰을 적용하며 환불 시 자동 환원됩니다."
+    },
+    {
+      "id": "points",
+      "domain": "member",
+      "title": "포인트(은혜) 원장",
+      "summary": "증감 원장과 누적 동기화·만료 배치",
+      "status": "live",
+      "href": "/point",
+      "howTo": "'포인트 원장'에서 회원별 적립/사용 증감 내역을 보고 수동 지급/차감합니다. 잔액은 원장 합계와 원자적으로 동기화되며 만료 배치가 자동 소멸 처리합니다."
+    },
+    {
+      "id": "visits",
+      "domain": "member",
+      "title": "접속 통계",
+      "summary": "기간 검색과 IP/UA 파싱, 일별 집계",
+      "status": "live",
+      "href": "/visits",
+      "howTo": "'접속 통계'에서 기간으로 검색해 IP/User-Agent가 파싱된 접속 로그와 일별 집계를 확인합니다."
+    },
+    {
+      "id": "content-stats",
+      "domain": "content",
+      "title": "콘텐츠 통계",
+      "summary": "조회수 Top N과 실 트래킹 이벤트 기반 채널별 시청시간 집계",
+      "status": "live",
+      "href": "/content/stats",
+      "howTo": "'콘텐츠 통계'에서 조회수 Top N과, 사용자 사이트의 실제 시청 이벤트(ANALYTICS_EVENT)로 집계한 채널별 시청시간을 봅니다."
+    },
+    {
+      "id": "boards",
+      "domain": "community",
+      "title": "게시판 관리",
+      "summary": "레벨 권한과 그룹/전체 적용 전파",
+      "status": "live",
+      "href": "/boards",
+      "howTo": "'게시판 관리'에서 게시판을 만들고 읽기/쓰기 레벨 권한(1~10)을 설정하며, 그룹/전체 적용으로 설정을 전파합니다."
+    },
+    {
+      "id": "posts",
+      "domain": "community",
+      "title": "공지·나눔·기도제목",
+      "summary": "카테고리·비밀글·추천/조회를 갖춘 글 관리",
+      "status": "live",
+      "href": "/posts",
+      "howTo": "'공지·나눔·기도제목'에서 카테고리별로 글을 작성하고 비밀글·추천/조회를 관리합니다. 공지는 사용자 사이트 첫 방문 모달로 노출할 수 있습니다."
+    },
+    {
+      "id": "inquiry",
+      "domain": "community",
+      "title": "1:1 문의",
+      "summary": "답변 상태머신과 미답변 큐",
+      "status": "live",
+      "href": "/inquiry",
+      "howTo": "사용자가 1:1 문의를 남기면 관리자가 '1:1 문의'에서 OPEN→ANSWERED 상태로 답변하며, 미답변 큐로 밀린 문의를 추적합니다."
+    },
+    {
+      "id": "banners",
+      "domain": "marketing",
+      "title": "배너 관리",
+      "summary": "위치·디바이스·노출기간 필터와 순서 정렬",
+      "status": "live",
+      "href": "/banners",
+      "howTo": "'배너 관리'에서 노출 위치·디바이스·노출기간을 지정하고 순서를 정렬해 사용자 사이트 탭 배너로 노출합니다."
+    },
+    {
+      "id": "campaigns",
+      "domain": "marketing",
+      "title": "캠페인·이벤트",
+      "summary": "캠페인 정의·상태머신 관리 (대상 발송 실행엔진 없음 — 정의 카탈로그)",
+      "status": "demo",
+      "href": "/campaigns",
+      "howTo": "'캠페인·이벤트'에서 캠페인을 DRAFT→ACTIVE→ENDED 상태로 정의하고 연결상품·기간을 설정합니다. 대상 자동 발송 실행엔진은 데모 범위로 미구현입니다."
+    },
+    {
+      "id": "notifications",
+      "domain": "marketing",
+      "title": "알림센터(발송 로그)",
+      "summary": "채널별 발송 로그 조회 (FCM/SMTP 미연동 — 실발송 없음)",
+      "status": "external",
+      "href": "/notifications",
+      "howTo": "'알림센터'에서 전체(BROADCAST) 또는 특정 회원(TARGETED) 대상 알림을 발송 기록하고 채널별(SMS/PUSH/EMAIL) 로그를 조회합니다. 회원은 마이페이지 알림 피드에서 확인하며, 실발송은 FCM/SMTP 키 주입이 필요합니다."
+    }
+  ]
+}
