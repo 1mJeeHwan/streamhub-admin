@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { MapPin } from "lucide-react";
+import { Info, MapPin } from "lucide-react";
 import MapProvider, { type MapMarker } from "@/components/map/MapProvider";
 import { ChurchCard } from "@/components/ChurchCard";
 import { SearchBar } from "@/components/SearchBar";
@@ -107,6 +107,14 @@ export function ChurchFinderView() {
             ))}
           </select>
         </div>
+        {/* Picking a denomination drops live Kakao POIs (they carry no denomination), so the
+            list narrows to registered churches only — flag that so the shrink doesn't read as a bug. */}
+        {denomination && (
+          <p className="flex items-center gap-1 text-[11px] text-inactive">
+            <Info className="h-3 w-3 shrink-0" />
+            교단을 선택하면 등록된 교회만 표시됩니다. (주변 실시간 검색 결과는 제외)
+          </p>
+        )}
       </div>
 
       {/* Map */}
