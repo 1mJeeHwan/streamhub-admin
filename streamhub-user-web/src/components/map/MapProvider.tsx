@@ -23,8 +23,12 @@ export interface MapViewProps {
   markers: MapMarker[];
   selectedId?: number;
   onSelect?: (id: number) => void;
-  /** Fired when the user pans the map and taps the "search this area" button. */
-  onSearchHere?: (center: { lat: number; lng: number }) => void;
+  /**
+   * Fired when the user pans the map and taps "search this area". Carries the new
+   * centre and a radius derived from the current viewport (so the search matches
+   * what the user is looking at, not a fixed radius).
+   */
+  onSearchHere?: (area: { lat: number; lng: number; radiusKm: number }) => void;
   /** Tailwind height utility, e.g. "h-64". */
   heightClass?: string;
 }

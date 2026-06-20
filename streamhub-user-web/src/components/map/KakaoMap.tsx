@@ -1,31 +1,36 @@
 "use client";
 
-// Kakao Maps implementation of the MapProvider contract (MapViewProps). Drop-in
-// replacement for LeafletMap: same props plus an info bubble on marker hover/click
-// and a "search this area" button that appears when the user pans the map. The
-// Kakao Maps JS SDK is loaded once from dapi.kakao.com with autoload=false; it
-// needs a JavaScript app key in NEXT_PUBLIC_KAKAO_MAP_KEY and the serving domain
-// registered in the Kakao Developers console. Missing key / blocked domain
+// Kakao Maps implementation of the MapProvider contract (MapViewProps). Beyond a
+// plain marker map it adds: an info bubble on marker hover/click, and a "search
+// this area" button that re-searches the *currently visible* map area (radius
+// derived from the viewport, not a fixed value). The map is created once and only
+// its markers are refreshed, so a re-search keeps the zoom/center the user set
+// instead of snapping back to fit results.
+//
+// Needs a Kakao JavaScript app key in NEXT_PUBLIC_KAKAO_MAP_KEY and the serving
+// domain registered in the Kakao Developers console; missing key / blocked domain
 // degrades gracefully to an empty container (no crash).
 
 import { useEffect, useRef, useState } from "react";
 import { RotateCw } from "lucide-react";
 import type { MapMarker, MapViewProps } from "./MapProvider";
 
-// Minimal shape of the Kakao Maps runtime we touch (global `window.kakao`).
 interface KakaoLatLng {
   getLat: () => number;
   getLng: () => number;
 }
+interface KakaoBounds {
+  extend: (latlng: KakaoLatLng) => void;
+  getSouthWest: () => KakaoLatLng;
+  getNorthEast: () => KakaoLatLng;
+}
 interface KakaoMapInstance {
-  setBounds: (bounds: unknown, ...padding: number[]) => void;
+  setBounds: (bounds: KakaoBounds, ...padding: number[]) => void;
   setCenter: (latlng: KakaoLatLng) => void;
   setLevel: (level: number) => void;
   getCenter: () => KakaoLatLng;
+  getBounds: () => KakaoBounds;
   relayout: () => void;
-}
-interface KakaoBounds {
-  extend: (latlng: KakaoLatLng) => void;
 }
 interface KakaoOverlay {
   setMap: (map: KakaoMapInstance | null) => void;
@@ -133,6 +138,17 @@ function bubbleElement(m: MapMarker): HTMLElement {
   return wrap;
 }
 
+/** Great-circle distance in km (for deriving the search radius from the viewport). */
+function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const s =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
+
 export default function KakaoMap({
   center,
   markers,
@@ -144,9 +160,82 @@ export default function KakaoMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
-  // The map center where the user panned to; drives the "search this area" button.
+  const onSearchHereRef = useRef(onSearchHere);
+  onSearchHereRef.current = onSearchHere;
+  const markersRef = useRef(markers);
+  markersRef.current = markers;
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
+  const initialCenterRef = useRef(center); // only used to place the map on first create
+
+  const mapRef = useRef<KakaoMapInstance | null>(null);
+  const overlaysRef = useRef<KakaoOverlay[]>([]);
+  const bubbleRef = useRef<KakaoOverlay | null>(null);
+  const pinnedRef = useRef<number | undefined>(undefined);
+  const baselineRef = useRef<{ lat: number; lng: number } | null>(null);
+  const didFitRef = useRef(false);
   const [movedCenter, setMovedCenter] = useState<{ lat: number; lng: number } | null>(null);
 
+  // Rebuild the marker overlays (+ info bubble) for the current marker set. Fits the
+  // viewport only on the very first render; later refreshes keep the user's view.
+  const renderMarkers = (kakao: KakaoNamespace, map: KakaoMapInstance) => {
+    for (const o of overlaysRef.current) o.setMap(null);
+    overlaysRef.current = [];
+    pinnedRef.current = undefined;
+    bubbleRef.current?.setMap(null);
+
+    const bubble =
+      bubbleRef.current ?? new kakao.maps.CustomOverlay({ yAnchor: 1, xAnchor: 0.5, zIndex: 10 });
+    bubbleRef.current = bubble;
+    const byId = new Map<number, { pos: KakaoLatLng; data: MapMarker }>();
+    const show = (id: number) => {
+      const hit = byId.get(id);
+      if (!hit) return;
+      bubble.setContent(bubbleElement(hit.data));
+      bubble.setPosition(hit.pos);
+      bubble.setMap(map);
+    };
+    const settle = () => (pinnedRef.current != null ? show(pinnedRef.current) : bubble.setMap(null));
+
+    const list = markersRef.current;
+    const bounds = new kakao.maps.LatLngBounds();
+    for (const m of list) {
+      const position = new kakao.maps.LatLng(m.lat, m.lng);
+      byId.set(m.id, { pos: position, data: m });
+      const content = pinElement(m.id === selectedIdRef.current);
+      content.addEventListener("mouseover", () => show(m.id));
+      content.addEventListener("mouseout", settle);
+      content.addEventListener("click", () => {
+        pinnedRef.current = m.id;
+        onSelectRef.current?.(m.id);
+        show(m.id);
+      });
+      const overlay = new kakao.maps.CustomOverlay({
+        position,
+        content,
+        yAnchor: 1,
+        xAnchor: 0.5,
+        clickable: true,
+      });
+      overlay.setMap(map);
+      overlaysRef.current.push(overlay);
+      bounds.extend(position);
+    }
+
+    if (!didFitRef.current && list.length) {
+      if (list.length > 1) {
+        map.setBounds(bounds, 40, 40, 40, 40);
+      } else {
+        map.setCenter(new kakao.maps.LatLng(list[0].lat, list[0].lng));
+        map.setLevel(4);
+      }
+      didFitRef.current = true;
+      const c = map.getCenter();
+      baselineRef.current = { lat: c.getLat(), lng: c.getLng() };
+    }
+  };
+
+  // Create the map once, wire up map-level listeners, render the first markers.
   useEffect(() => {
     const appKey = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
     if (!appKey) {
@@ -154,86 +243,39 @@ export default function KakaoMap({
       console.error("Missing NEXT_PUBLIC_KAKAO_MAP_KEY — map disabled");
       return;
     }
-
-    setMovedCenter(null);
     let cancelled = false;
-    const overlays: KakaoOverlay[] = [];
 
     loadKakao(appKey)
       .then((kakao) => {
         kakao.maps.load(() => {
-          if (cancelled || !containerRef.current) return;
+          if (cancelled || !containerRef.current || mapRef.current) return;
           const map = new kakao.maps.Map(containerRef.current, {
-            center: new kakao.maps.LatLng(center.lat, center.lng),
+            center: new kakao.maps.LatLng(initialCenterRef.current.lat, initialCenterRef.current.lng),
             level: 3,
           });
+          mapRef.current = map;
 
-          // One shared info bubble, repositioned per hovered/clicked marker.
-          const bubble = new kakao.maps.CustomOverlay({ yAnchor: 1, xAnchor: 0.5, zIndex: 10 });
-          let pinnedId: number | undefined;
-          const byId = new Map<number, { pos: KakaoLatLng; data: MapMarker }>();
-          const showBubble = (id: number) => {
-            const hit = byId.get(id);
-            if (!hit) return;
-            bubble.setContent(bubbleElement(hit.data));
-            bubble.setPosition(hit.pos);
-            bubble.setMap(map);
-          };
-          const settle = () => (pinnedId != null ? showBubble(pinnedId) : bubble.setMap(null));
-
-          const bounds = new kakao.maps.LatLngBounds();
-          for (const m of markers) {
-            const position = new kakao.maps.LatLng(m.lat, m.lng);
-            byId.set(m.id, { pos: position, data: m });
-            const content = pinElement(m.id === selectedId);
-            content.addEventListener("mouseover", () => showBubble(m.id));
-            content.addEventListener("mouseout", settle);
-            content.addEventListener("click", () => {
-              pinnedId = m.id;
-              onSelectRef.current?.(m.id);
-              showBubble(m.id);
-            });
-            const overlay = new kakao.maps.CustomOverlay({
-              position,
-              content,
-              yAnchor: 1,
-              xAnchor: 0.5,
-              clickable: true,
-            });
-            overlay.setMap(map);
-            overlays.push(overlay);
-            bounds.extend(position);
-          }
-
-          if (markers.length > 1) {
-            map.setBounds(bounds, 40, 40, 40, 40);
-          } else if (markers.length === 1) {
-            map.setCenter(new kakao.maps.LatLng(markers[0].lat, markers[0].lng));
-            map.setLevel(4);
-          }
-
-          // Clicking empty map space unpins the bubble.
           kakao.maps.event.addListener(map, "click", () => {
-            pinnedId = undefined;
-            bubble.setMap(null);
+            pinnedRef.current = undefined;
+            bubbleRef.current?.setMap(null);
           });
-
-          // Show the "search this area" button once the user pans away from where
-          // the current results are centred. The first idle (post setBounds) is the
-          // baseline, so a programmatic re-centre doesn't trigger the button.
-          let baseline: { lat: number; lng: number } | null = null;
+          // The first idle (post initial fit) sets the baseline; panning past a small
+          // threshold from it reveals the "search this area" button.
           kakao.maps.event.addListener(map, "idle", () => {
             if (cancelled) return;
             const c = map.getCenter();
             const here = { lat: c.getLat(), lng: c.getLng() };
-            if (!baseline) {
-              baseline = here;
+            if (!baselineRef.current) {
+              baselineRef.current = here;
               return;
             }
-            const moved = Math.abs(here.lat - baseline.lat) > 8e-4 || Math.abs(here.lng - baseline.lng) > 8e-4;
+            const moved =
+              Math.abs(here.lat - baselineRef.current.lat) > 5e-4 ||
+              Math.abs(here.lng - baselineRef.current.lng) > 5e-4;
             setMovedCenter(moved ? here : null);
           });
 
+          renderMarkers(kakao, map);
           setTimeout(() => map.relayout(), 0);
         });
       })
@@ -243,11 +285,34 @@ export default function KakaoMap({
 
     return () => {
       cancelled = true;
-      for (const o of overlays) o.setMap(null);
+      for (const o of overlaysRef.current) o.setMap(null);
+      overlaysRef.current = [];
+      bubbleRef.current?.setMap(null);
+      bubbleRef.current = null;
+      mapRef.current = null;
+      baselineRef.current = null;
+      didFitRef.current = false;
     };
-    // Rebuild when the marker set or center changes; selectedId-only changes don't rebuild.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [center.lat, center.lng, markers.map((m) => `${m.id}:${m.lat}:${m.lng}`).join("|")]);
+  }, []);
+
+  // Refresh markers in place when the set changes (keeps the user's pan/zoom).
+  useEffect(() => {
+    const kakao = window.kakao;
+    if (kakao?.maps && mapRef.current) renderMarkers(kakao, mapRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markers.map((m) => `${m.id}:${m.lat}:${m.lng}`).join("|")]);
+
+  const onSearchClick = () => {
+    const map = mapRef.current;
+    if (!map || !movedCenter) return;
+    const ne = map.getBounds().getNorthEast();
+    // Radius = centre → viewport corner, so the search covers what the user sees.
+    const radiusKm = Math.min(20, Math.max(0.1, haversineKm(movedCenter.lat, movedCenter.lng, ne.getLat(), ne.getLng())));
+    baselineRef.current = movedCenter; // searched here — hide the button until the next pan
+    onSearchHereRef.current?.({ lat: movedCenter.lat, lng: movedCenter.lng, radiusKm });
+    setMovedCenter(null);
+  };
 
   return (
     <div className={`relative ${heightClass} w-full`}>
@@ -260,10 +325,7 @@ export default function KakaoMap({
       {movedCenter && onSearchHere && (
         <button
           type="button"
-          onClick={() => {
-            onSearchHere(movedCenter);
-            setMovedCenter(null);
-          }}
+          onClick={onSearchClick}
           className="absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border/60 bg-bg/90 px-3.5 py-2 text-xs font-bold text-active shadow-lg backdrop-blur-md transition-colors hover:bg-surface"
         >
           <RotateCw className="h-3.5 w-3.5 text-primary" />이 지역에서 재검색

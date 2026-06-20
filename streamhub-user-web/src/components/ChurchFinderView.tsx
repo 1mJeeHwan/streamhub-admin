@@ -13,16 +13,17 @@ import { useDebounce } from "@/lib/useDebounce";
 import { denominationLabel } from "@/lib/churchTypes";
 import { formatDistance } from "@/lib/format";
 
-// Fixed 500m radius — the map is the primary control: pan it and tap "search this
-// area" to look elsewhere, instead of widening a radius.
-const RADIUS_KM = 0.5;
+// Initial radius (500m). After the user pans/zooms and taps "search this area",
+// the radius follows the visible map extent instead of staying fixed.
+const INITIAL_RADIUS_KM = 0.5;
 
 /** Client-side church finder: geolocation → 500m search, map-driven re-search. */
 export function ChurchFinderView() {
   const [usingFallback, setUsingFallback] = useState(false);
-  // Where we search from: starts at the resolved location, then follows the map
-  // when the user taps "search this area".
+  // Where + how wide we search: starts at the resolved location / 500m, then both
+  // follow the map when the user taps "search this area".
   const [searchCenter, setSearchCenter] = useState<Coords | null>(null);
+  const [searchRadius, setSearchRadius] = useState(INITIAL_RADIUS_KM);
   const [keywordDraft, setKeywordDraft] = useState("");
   const keyword = useDebounce(keywordDraft, 350);
   const [hoveredId, setHoveredId] = useState<number | undefined>();
@@ -44,11 +45,11 @@ export function ChurchFinderView() {
     () => ({
       lat: searchCenter?.lat,
       lng: searchCenter?.lng,
-      radiusKm: RADIUS_KM,
+      radiusKm: searchRadius,
       keyword: keyword || undefined,
       pageSize: 50,
     }),
-    [searchCenter, keyword],
+    [searchCenter, searchRadius, keyword],
   );
 
   const { data, isLoading, isError, error, refetch } = useNearbyChurches(params, searchCenter != null);
@@ -100,7 +101,10 @@ export function ChurchFinderView() {
             markers={markers}
             selectedId={hoveredId}
             onSelect={setHoveredId}
-            onSearchHere={(c) => setSearchCenter(c)}
+            onSearchHere={({ lat, lng, radiusKm }) => {
+              setSearchCenter({ lat, lng });
+              setSearchRadius(radiusKm);
+            }}
             heightClass="h-72"
           />
         ) : (
@@ -121,11 +125,11 @@ export function ChurchFinderView() {
         ) : isError ? (
           <ErrorState message={(error as Error)?.message} onRetry={() => refetch()} />
         ) : churches.length === 0 ? (
-          <EmptyState message="이 주변 500m에 표시할 교회가 없습니다. 지도를 옮겨 다시 검색해보세요." />
+          <EmptyState message="이 주변에 표시할 교회가 없습니다. 지도를 옮겨 다시 검색해보세요." />
         ) : (
           <>
             <p className="mb-2 text-xs text-inactive">
-              {churches.length}곳 · 반경 500m · 가까운 순
+              {churches.length}곳 · 반경 {formatDistance(searchRadius)} · 가까운 순
             </p>
             <div className="space-y-2.5">
               {churches.map((c) => (
