@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Info, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import MapProvider, { type MapMarker } from "@/components/map/MapProvider";
 import { ChurchCard } from "@/components/ChurchCard";
 import { SearchBar } from "@/components/SearchBar";
@@ -10,7 +10,6 @@ import { CardSkeletonGrid, EmptyState, ErrorState } from "@/components/States";
 import { useNearbyChurches } from "@/lib/churches";
 import { getCurrentPosition, type Coords } from "@/lib/geolocation";
 import { useDebounce } from "@/lib/useDebounce";
-import { DENOMINATION_LABELS } from "@/lib/churchTypes";
 
 const RADIUS_OPTIONS = [3, 5, 10, 20];
 
@@ -18,7 +17,6 @@ const RADIUS_OPTIONS = [3, 5, 10, 20];
 export function ChurchFinderView() {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [usingFallback, setUsingFallback] = useState(false);
-  const [denomination, setDenomination] = useState("");
   const [radiusKm, setRadiusKm] = useState(5);
   const [keywordDraft, setKeywordDraft] = useState("");
   const keyword = useDebounce(keywordDraft, 350);
@@ -42,11 +40,10 @@ export function ChurchFinderView() {
       lat: coords?.lat,
       lng: coords?.lng,
       radiusKm,
-      denomination: denomination || undefined,
       keyword: keyword || undefined,
       pageSize: 50,
     }),
-    [coords, radiusKm, denomination, keyword],
+    [coords, radiusKm, keyword],
   );
 
   const { data, isLoading, isError, error, refetch } = useNearbyChurches(params, coords != null);
@@ -80,41 +77,18 @@ export function ChurchFinderView() {
       {/* Filters */}
       <div className="mt-4 space-y-2.5">
         <SearchBar value={keywordDraft} onChange={setKeywordDraft} placeholder="교회명·지역 검색" />
-        <div className="flex gap-2">
-          <select
-            value={denomination}
-            onChange={(e) => setDenomination(e.target.value)}
-            aria-label="교단 선택"
-            className="input !pl-3 flex-1"
-          >
-            <option value="">전체 교단</option>
-            {Object.entries(DENOMINATION_LABELS).map(([code, label]) => (
-              <option key={code} value={code}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={radiusKm}
-            onChange={(e) => setRadiusKm(Number(e.target.value))}
-            aria-label="반경 선택"
-            className="input !pl-3 w-28"
-          >
-            {RADIUS_OPTIONS.map((r) => (
-              <option key={r} value={r}>
-                반경 {r}km
-              </option>
-            ))}
-          </select>
-        </div>
-        {/* Picking a denomination drops live Kakao POIs (they carry no denomination), so the
-            list narrows to registered churches only — flag that so the shrink doesn't read as a bug. */}
-        {denomination && (
-          <p className="flex items-center gap-1 text-[11px] text-inactive">
-            <Info className="h-3 w-3 shrink-0" />
-            교단을 선택하면 등록된 교회만 표시됩니다. (주변 실시간 검색 결과는 제외)
-          </p>
-        )}
+        <select
+          value={radiusKm}
+          onChange={(e) => setRadiusKm(Number(e.target.value))}
+          aria-label="반경 선택"
+          className="input !pl-3 w-full"
+        >
+          {RADIUS_OPTIONS.map((r) => (
+            <option key={r} value={r}>
+              반경 {r}km
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Map */}
