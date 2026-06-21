@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { Ticket } from "lucide-react";
 import clsx from "clsx";
 import { useMyCoupons, type MyCouponItem } from "@/lib/me";
 import { formatDate } from "@/lib/format";
+import { Pagination } from "@/components/Pagination";
 import { SectionShell } from "./SectionShell";
+
+const COUPONS_PAGE_SIZE = 4;
 
 /** Human discount, e.g. "3,000원 할인" or "10% 할인". */
 function discountLabel(c: MyCouponItem): string {
@@ -17,11 +21,16 @@ function discountLabel(c: MyCouponItem): string {
 export function CouponsSection({ token }: { token: string }) {
   const { data, isLoading, isError } = useMyCoupons(token);
   const coupons = data ?? [];
+  const [page, setPage] = useState(0);
+  const totalPage = Math.max(1, Math.ceil(coupons.length / COUPONS_PAGE_SIZE));
+  const safePage = Math.min(page, totalPage - 1);
+  const pageItems = coupons.slice(safePage * COUPONS_PAGE_SIZE, safePage * COUPONS_PAGE_SIZE + COUPONS_PAGE_SIZE);
 
   return (
     <SectionShell
       icon={Ticket}
       title="쿠폰함"
+      count={coupons.length > 0 ? `${coupons.length}장` : undefined}
       isLoading={isLoading}
       isError={isError}
       isEmpty={coupons.length === 0}
@@ -30,7 +39,7 @@ export function CouponsSection({ token }: { token: string }) {
       emptyMessage="사용 가능한 쿠폰이 없습니다."
     >
       <ul className="space-y-2.5">
-        {coupons.map((c) => (
+        {pageItems.map((c) => (
           <li
             key={c.id}
             className={clsx(
@@ -57,6 +66,7 @@ export function CouponsSection({ token }: { token: string }) {
           </li>
         ))}
       </ul>
+      <Pagination pageNumber={safePage} totalPage={totalPage} onChange={setPage} />
     </SectionShell>
   );
 }

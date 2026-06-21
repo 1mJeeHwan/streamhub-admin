@@ -26,6 +26,7 @@ export function WatchHistorySection({ token }: { token: string }) {
     <SectionShell
       icon={History}
       title="시청 기록"
+      count={data && data.totalCount > 0 ? `${data.totalCount}개` : undefined}
       isLoading={isLoading}
       isError={isError}
       isEmpty={history.length === 0}

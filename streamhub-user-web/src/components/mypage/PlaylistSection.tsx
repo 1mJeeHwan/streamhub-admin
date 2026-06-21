@@ -15,6 +15,7 @@ export function PlaylistSection({ token }: { token: string }) {
     <SectionShell
       icon={ListMusic}
       title="내 재생목록 (찜)"
+      count={favorites.length > 0 ? `${favorites.length}곡` : undefined}
       isLoading={isLoading}
       isError={isError}
       isEmpty={favorites.length === 0}

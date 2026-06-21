@@ -128,6 +128,7 @@ export function ReviewsInquiriesSection({ token }: { token: string }) {
       <SectionShell
         icon={MessageSquare}
         title="내 후기"
+        count={reviewList.length > 0 ? `${reviewList.length}건` : undefined}
         isLoading={reviews.isLoading}
         isError={reviews.isError}
         isEmpty={reviewList.length === 0}
@@ -145,6 +146,7 @@ export function ReviewsInquiriesSection({ token }: { token: string }) {
       <SectionShell
         icon={MessagesSquare}
         title="내 문의"
+        count={inquiryList.length > 0 ? `${inquiryList.length}건` : undefined}
         isLoading={inquiries.isLoading}
         isError={inquiries.isError}
         isEmpty={inquiryList.length === 0}

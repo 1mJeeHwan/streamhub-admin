@@ -21,6 +21,7 @@ export function PurchasedAlbumsSection({ token }: { token: string }) {
     <SectionShell
       icon={Disc}
       title="구매한 음반"
+      count={data && data.totalCount > 0 ? `${data.totalCount}장` : undefined}
       isLoading={isLoading}
       isError={isError}
       isEmpty={albums.length === 0}

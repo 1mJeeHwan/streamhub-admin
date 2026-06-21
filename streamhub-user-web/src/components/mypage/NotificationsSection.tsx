@@ -62,18 +62,20 @@ export function NotificationsSection({ token }: { token: string }) {
   const unreadCount = unread.data ?? 0;
 
   return (
-    <section className="mt-7">
-      <div className="flex items-center justify-between pb-3">
-        <h2 className="flex items-center gap-2 text-base font-bold text-active">
-          <Bell className="h-4.5 w-4.5 text-primary" />
-          알림
-          {unreadCount > 0 && (
-            <span className="rounded-full bg-point px-1.5 py-0.5 text-[10px] font-bold text-white">
-              {unreadCount}
-            </span>
-          )}
-        </h2>
-        {unreadCount > 0 && (
+    <SectionShell
+      icon={Bell}
+      title="알림"
+      count={unreadCount > 0 ? `${unreadCount}` : undefined}
+      countTone="danger"
+      isLoading={isLoading}
+      isError={isError}
+      isEmpty={items.length === 0}
+      errorMessage="알림을 불러오지 못했습니다."
+      emptyIcon={Bell}
+      emptyMessage="받은 알림이 없습니다."
+    >
+      {unreadCount > 0 && (
+        <div className="mb-2.5 flex justify-end">
           <button
             type="button"
             onClick={() => markAll.mutate()}
@@ -83,34 +85,14 @@ export function NotificationsSection({ token }: { token: string }) {
             <CheckCheck className="h-3.5 w-3.5" />
             모두 읽음
           </button>
-        )}
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-2.5">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="skeleton h-[68px] rounded-card" />
-          ))}
         </div>
-      ) : isError ? (
-        <p className="rounded-card border border-border bg-surface px-4 py-5 text-center text-sm text-inactive">
-          알림을 불러오지 못했습니다.
-        </p>
-      ) : items.length === 0 ? (
-        <div className="rounded-card border border-border bg-surface px-4 py-7 text-center">
-          <Bell className="mx-auto h-7 w-7 text-inactive" />
-          <p className="mt-2 text-sm text-inactive">받은 알림이 없습니다.</p>
-        </div>
-      ) : (
-        <>
-          <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/70 bg-surface">
-            {items.map((n) => (
-              <Row key={n.id} n={n} onRead={(id) => markRead.mutate(id)} />
-            ))}
-          </ul>
-          <Pagination pageNumber={page} totalPage={data?.totalPage ?? 1} onChange={setPage} />
-        </>
       )}
-    </section>
+      <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/70 bg-surface">
+        {items.map((n) => (
+          <Row key={n.id} n={n} onRead={(id) => markRead.mutate(id)} />
+        ))}
+      </ul>
+      <Pagination pageNumber={page} totalPage={data?.totalPage ?? 1} onChange={setPage} />
+    </SectionShell>
   );
 }

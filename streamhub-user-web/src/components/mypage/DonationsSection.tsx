@@ -57,6 +57,7 @@ export function DonationsSection({ token }: { token: string }) {
     <SectionShell
       icon={HeartHandshake}
       title="정기후원·구독"
+      count={donations.length > 0 ? `${donations.length}건` : undefined}
       isLoading={isLoading}
       isError={isError}
       isEmpty={donations.length === 0}

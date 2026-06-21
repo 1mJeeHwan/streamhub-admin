@@ -23,8 +23,9 @@ import {
 } from "@/lib/orders";
 import { formatDate } from "@/lib/format";
 import { Pagination } from "@/components/Pagination";
+import { SectionShell } from "@/components/mypage/SectionShell";
 import { ReceiptModal } from "@/components/mypage/ReceiptModal";
-import { NearbyChurchesSection } from "@/components/NearbyChurchesSection";
+import { NearbyChurchesCta } from "@/components/NearbyChurchesCta";
 import { PurchasedAlbumsSection } from "@/components/mypage/PurchasedAlbumsSection";
 import { PlaylistSection } from "@/components/mypage/PlaylistSection";
 import { WatchHistorySection } from "@/components/mypage/WatchHistorySection";
@@ -61,41 +62,29 @@ function OrderHistorySection({ token }: { token: string }) {
   const orders = data?.contents ?? [];
 
   return (
-    <section className="mt-7">
-      <h2 className="flex items-center gap-2 pb-3 text-base font-bold text-active">
-        <ShoppingBag className="h-4.5 w-4.5 text-primary" />
-        구매 내역
-      </h2>
-
-      {isLoading ? (
-        <div className="space-y-2.5">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="skeleton h-[68px] rounded-card" />
+    <>
+      <SectionShell
+        icon={ShoppingBag}
+        title="구매 내역"
+        count={data && data.totalCount > 0 ? `${data.totalCount}건` : undefined}
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={orders.length === 0}
+        errorMessage="구매 내역을 불러오지 못했습니다."
+        emptyIcon={Receipt}
+        emptyMessage="아직 구매한 음반이 없습니다."
+      >
+        <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/70 bg-surface">
+          {orders.map((order) => (
+            <OrderRow
+              key={order.orderNo}
+              order={order}
+              onOpen={() => setReceiptOrderNo(order.orderNo)}
+            />
           ))}
-        </div>
-      ) : isError ? (
-        <p className="rounded-card border border-border bg-surface px-4 py-5 text-center text-sm text-inactive">
-          구매 내역을 불러오지 못했습니다.
-        </p>
-      ) : orders.length === 0 ? (
-        <div className="rounded-card border border-border bg-surface px-4 py-7 text-center">
-          <Receipt className="mx-auto h-7 w-7 text-inactive" />
-          <p className="mt-2 text-sm text-inactive">아직 구매한 음반이 없습니다.</p>
-        </div>
-      ) : (
-        <>
-          <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/70 bg-surface">
-            {orders.map((order) => (
-              <OrderRow
-                key={order.orderNo}
-                order={order}
-                onOpen={() => setReceiptOrderNo(order.orderNo)}
-              />
-            ))}
-          </ul>
-          <Pagination pageNumber={page} totalPage={data?.totalPage ?? 1} onChange={setPage} />
-        </>
-      )}
+        </ul>
+        <Pagination pageNumber={page} totalPage={data?.totalPage ?? 1} onChange={setPage} />
+      </SectionShell>
 
       {receiptOrderNo && (
         <ReceiptModal
@@ -104,7 +93,7 @@ function OrderHistorySection({ token }: { token: string }) {
           onClose={() => setReceiptOrderNo(null)}
         />
       )}
-    </section>
+    </>
   );
 }
 
@@ -189,9 +178,10 @@ export default function MyPage() {
         로그아웃
       </button>
 
-      {/* Token is guaranteed non-null here (member is set); each section is token-gated. */}
+      {/* Token guaranteed non-null here (member is set). Collapsible feature menu — each row is a
+          token-gated section that expands in place; counts show on the collapsed row. */}
       {token && (
-        <>
+        <div className="mt-7 divide-y divide-border/60 overflow-hidden rounded-card border border-border/70 bg-surface">
           <OrderHistorySection token={token} />
           <PointsSection token={token} />
           <CouponsSection token={token} />
@@ -201,12 +191,12 @@ export default function MyPage() {
           <WatchHistorySection token={token} />
           <ReviewsInquiriesSection token={token} />
           <NotificationsSection token={token} />
-        </>
+        </div>
       )}
 
-      {/* Near-me churches widget — parent already pads px-5, so cancel it here. */}
+      {/* Near-me churches → navigate to the finder tab (parent pads px-5, so cancel it here). */}
       <div className="-mx-5 mt-2">
-        <NearbyChurchesSection />
+        <NearbyChurchesCta />
       </div>
     </section>
   );

@@ -20,6 +20,7 @@ export function PointsSection({ token }: { token: string }) {
     <SectionShell
       icon={Coins}
       title="포인트"
+      count={data ? `${data.balance.toLocaleString()}P` : undefined}
       isLoading={isLoading}
       isError={isError}
       isEmpty={false}
