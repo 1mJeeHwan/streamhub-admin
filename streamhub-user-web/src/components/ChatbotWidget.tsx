@@ -48,6 +48,9 @@ export function ChatbotWidget() {
   const [quickReplies, setQuickReplies] = useState<string[]>(INITIAL_QUICK_REPLIES);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  // Whether the backend answered with the real LLM (testMode=false). null until the first
+  // backend-backed reply arrives; client-side mock answers don't change it.
+  const [llmActive, setLlmActive] = useState<boolean | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // Lift the launcher above the mini player when a track is loaded, so they never overlap.
@@ -84,6 +87,8 @@ export function ChatbotWidget() {
         { id: nextId(), role: "BOT", content: reply.text, intent: reply.intent },
       ]);
       setQuickReplies(reply.quickReplies ?? []);
+      // Only a real backend reply tells us the provider; client mock answers (mocked) don't.
+      if (!reply.mocked) setLlmActive(!reply.testMode);
       setSending(false);
     },
     [sending, token],
@@ -230,11 +235,15 @@ export function ChatbotWidget() {
                     <div className="flex items-center gap-1.5">
                       <h2 className="text-sm font-bold text-active">StreamHub 도우미</h2>
                       <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                        AI 데모
+                        {llmActive ? "AI" : "AI 데모"}
                       </span>
                     </div>
                     <p className="mt-0.5 text-[11px] leading-tight text-inactive">
-                      데모 챗봇 · 룰베이스(실 LLM 미연동)
+                      {llmActive === null
+                        ? "AI 챗봇 · 기능 안내·주문/상품 조회"
+                        : llmActive
+                          ? "AI 챗봇 · 자연어 응답(Gemini)"
+                          : "데모 챗봇 · 룰 기반"}
                     </p>
                   </div>
                 </div>
