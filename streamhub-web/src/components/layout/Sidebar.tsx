@@ -54,13 +54,14 @@ interface NavSection {
   items: NavItem[];
 }
 
-const NAV_SECTIONS: NavSection[] = [
+export const NAV_SECTIONS: NavSection[] = [
   {
     title: "운영",
     items: [
       { label: "통합 운영 대시보드", href: "/admin-ops", icon: Gauge },
       { label: "대시보드", href: "/dashboard", icon: LayoutDashboard },
       { label: "기능 카탈로그", href: "/catalog", icon: LayoutGrid },
+      { label: "전체 기능도", href: "/feature-map", icon: FolderTree },
       { label: "접속 통계", href: "/visits", icon: Activity },
       { label: "콘텐츠 분석", href: "/analytics", icon: TrendingUp },
     ],
