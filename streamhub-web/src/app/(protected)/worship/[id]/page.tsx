@@ -178,7 +178,22 @@ export default function WorshipDetailPage() {
               />
               <ReadonlyField label="연락처" value={detail.phone ?? "-"} />
               <ReadonlyField label="이메일" value={detail.email ?? "-"} />
-              <ReadonlyField label="교회" value={detail.churchName ?? "-"} />
+              <ReadonlyField
+                label="교회"
+                value={
+                  detail.churchId != null ? (
+                    <Link
+                      href={`/churches/${detail.churchId}`}
+                      className="text-brand hover:underline"
+                      title="교회 상세로 이동"
+                    >
+                      {detail.churchName ?? "-"}
+                    </Link>
+                  ) : (
+                    (detail.churchName ?? "-")
+                  )
+                }
+              />
               <ReadonlyField
                 label="개인정보 동의"
                 value={yesNo(detail.privacyAgreed)}

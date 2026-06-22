@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   AllCommunityModule,
   ModuleRegistry,
   themeQuartz,
   type ColDef,
   type ICellRendererParams,
+  type RowClickedEvent,
   type SortChangedEvent,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
@@ -39,8 +41,20 @@ interface DonationGridProps {
 /**
  * DonationGrid renders the donation history result set with AG Grid (v33).
  * Every paid row is in test mode (no real PG), surfaced via the 결제구분 column.
+ * A row click drills into the related subscription (recurring) or member (one-off).
  */
 export default function DonationGrid({ rows, onSortChange }: DonationGridProps) {
+  const router = useRouter();
+
+  const handleRowClicked = (event: RowClickedEvent<DonationListItem>) => {
+    const row = event.data;
+    if (row?.subscriptionId != null) {
+      router.push(`/subscription/${row.subscriptionId}`);
+    } else if (row?.memberId != null) {
+      router.push(`/member/${row.memberId}`);
+    }
+  };
+
   const columnDefs = useMemo<ColDef<DonationListItem>[]>(
     () => [
       { field: "memberName", headerName: "회원", minWidth: 120, flex: 1 },
@@ -131,6 +145,8 @@ export default function DonationGrid({ rows, onSortChange }: DonationGridProps) 
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
         suppressCellFocus
+        rowClass="cursor-pointer"
+        onRowClicked={handleRowClicked}
         onGridReady={(event) => event.api.sizeColumnsToFit()}
         onSortChanged={handleSortChanged}
         overlayNoRowsTemplate="조회된 후원 내역이 없습니다."

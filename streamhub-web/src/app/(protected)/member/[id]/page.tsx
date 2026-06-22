@@ -154,7 +154,30 @@ export default function MemberDetailPage() {
               label="상태"
               value={<StatusBadge status={detail.userStatus} />}
             />
-            <ReadonlyField label="교회" value={detail.churchName ?? "-"} />
+            <ReadonlyField
+              label="포인트 잔액"
+              value={
+                detail.pointBalance != null
+                  ? `${detail.pointBalance.toLocaleString()} P`
+                  : "-"
+              }
+            />
+            <ReadonlyField
+              label="교회"
+              value={
+                detail.churchId != null ? (
+                  <Link
+                    href={`/churches/${detail.churchId}`}
+                    className="text-brand hover:underline"
+                    title="교회 상세로 이동"
+                  >
+                    {detail.churchName ?? "-"}
+                  </Link>
+                ) : (
+                  (detail.churchName ?? "-")
+                )
+              }
+            />
             <ReadonlyField label="지역" value={detail.regionName ?? "-"} />
             <ReadonlyField label="국가" value={detail.countryName ?? "-"} />
             <ReadonlyField

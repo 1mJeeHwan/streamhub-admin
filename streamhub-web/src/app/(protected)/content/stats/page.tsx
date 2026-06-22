@@ -209,7 +209,17 @@ export default function ContentStatsPage() {
                           {index + 1}
                         </td>
                         <td className="px-4 py-3 font-medium text-slate-900">
-                          {item.title ?? "-"}
+                          {item.id != null ? (
+                            <Link
+                              href={`/content/${item.id}`}
+                              className="text-brand hover:underline"
+                              title="콘텐츠 상세로 이동"
+                            >
+                              {item.title ?? "-"}
+                            </Link>
+                          ) : (
+                            (item.title ?? "-")
+                          )}
                         </td>
                         <td className="px-4 py-3 text-slate-700">
                           {item.channelName ?? "-"}

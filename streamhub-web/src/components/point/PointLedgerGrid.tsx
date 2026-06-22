@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   AllCommunityModule,
   ModuleRegistry,
@@ -53,12 +54,14 @@ function formatDelta(value?: number | null): string {
 
 /**
  * PointLedgerGrid renders the point-ledger result set with AG Grid
- * (community, v33). Ledger rows are read-only — no navigation on click.
+ * (community, v33). The 회원 column links to that member's detail page; other
+ * cells are read-only.
  */
 export default function PointLedgerGrid({
   rows,
   onSortChange,
 }: PointLedgerGridProps) {
+  const router = useRouter();
   const columnDefs = useMemo<ColDef<PointLedgerListItem>[]>(
     () => [
       {
@@ -71,7 +74,23 @@ export default function PointLedgerGrid({
         field: "memberName",
         headerName: "회원",
         minWidth: 110,
-        valueFormatter: (params) => params.value ?? "-",
+        cellRenderer: (params: ICellRendererParams<PointLedgerListItem>) => {
+          const memberId = params.data?.memberId;
+          const name = (params.value as string | undefined) ?? "-";
+          if (memberId == null) {
+            return name;
+          }
+          return (
+            <button
+              type="button"
+              onClick={() => router.push(`/member/${memberId}`)}
+              className="text-brand hover:underline"
+              title="회원 상세로 이동"
+            >
+              {name}
+            </button>
+          );
+        },
       },
       {
         field: "memberEmail",
@@ -135,7 +154,7 @@ export default function PointLedgerGrid({
           params.value ? formatDate(params.value) : "무기한",
       },
     ],
-    [],
+    [router],
   );
 
   const defaultColDef = useMemo<ColDef<PointLedgerListItem>>(
