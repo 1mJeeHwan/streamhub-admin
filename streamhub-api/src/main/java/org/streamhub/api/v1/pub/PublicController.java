@@ -165,15 +165,19 @@ public class PublicController {
         return ResultDTO.ok(churchService.getPublicDetail(id));
     }
 
-    @Operation(summary = "공개 앨범 목록", description = "ON_SALE 음반 목록(장르 필터·검색·페이지네이션).")
+    @Operation(summary = "공개 앨범 목록",
+            description = "ON_SALE 음반 목록(장르 필터·검색·페이지네이션·정렬). "
+                    + "sortBy=viewCount(인기)/releaseDate(최신)/createdAt 등, sortDir=asc/desc.")
     @GetMapping("/albums")
     public ResultDTO<ResInfinityList<AlbumListItem>> albums(
             @RequestParam(required = false) AlbumGenre genre,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer pageNumber,
-            @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) Integer pageSize,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         AlbumSearchRequest request =
-                new AlbumSearchRequest(pageNumber, pageSize, keyword, genre, null);
+                new AlbumSearchRequest(pageNumber, pageSize, keyword, genre, null, sortBy, sortDir);
         return ResultDTO.ok(albumService.listPublic(request));
     }
 

@@ -53,6 +53,8 @@ export interface AlbumListItem {
   trackCount: number;
   goodsItemId: number | null;
   price: number | null;
+  /** Play count — drives the 인기 앨범 (popular) carousel ordering. */
+  viewCount: number | null;
   releaseDate: string | null;
   createdAt: string;
 }
@@ -116,6 +118,9 @@ export interface StoreDto {
   createdAt: string;
 }
 
+/** Public album sort keys — mirror AlbumService.ALBUM_SORT_COLUMNS (server whitelist). */
+export type AlbumSortBy = "viewCount" | "releaseDate" | "createdAt" | "title" | "artist";
+
 export interface AlbumListParams {
   genre?: AlbumGenre;
   keyword?: string;
@@ -123,6 +128,8 @@ export interface AlbumListParams {
   // page/size silently fell back to page 0 on the server — the broken-pagination bug.
   pageNumber?: number;
   pageSize?: number;
+  sortBy?: AlbumSortBy;
+  sortDir?: "asc" | "desc";
 }
 
 export interface StoreListParams {

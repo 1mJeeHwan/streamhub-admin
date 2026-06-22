@@ -29,12 +29,13 @@
             a.track_count   AS track_count,
             a.goods_item_id AS goods_item_id,
             gi.price        AS price,
+            a.view_count    AS view_count,
             a.release_date  AS release_date,
             a.created_at    AS created_at
         FROM ALBUM a
             LEFT JOIN GOODS_ITEM gi ON a.goods_item_id = gi.id
         <include refid="searchWhere"/>
-        ORDER BY a.created_at DESC, a.id DESC
+        ORDER BY ${orderBy}
         LIMIT #{offset}, #{size}
     </select>
 

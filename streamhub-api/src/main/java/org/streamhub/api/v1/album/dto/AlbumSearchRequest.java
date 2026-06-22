@@ -13,7 +13,9 @@ public record AlbumSearchRequest(
         Integer pageSize,
         String keyword,
         AlbumGenre genre,
-        AlbumStatus status) {
+        AlbumStatus status,
+        String sortBy,
+        String sortDir) {
 
     public int pageSizeOrDefault() {
         return pageSize == null || pageSize <= 0 ? 12 : pageSize;

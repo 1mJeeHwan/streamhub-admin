@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useContents } from "@/lib/queries";
-import { useAlbums, GENRE_LABELS, type AlbumGenre } from "@/lib/albums";
+import { useAlbums, GENRE_LABELS, type AlbumGenre, type AlbumSortBy } from "@/lib/albums";
 import { useUrlSearch } from "@/lib/useUrlSearch";
 import type { ContentSortBy } from "@/lib/api";
 import type { ContentType } from "@/lib/types";
@@ -62,6 +62,47 @@ function ContentRow({
         {items.map((item) => (
           <ItemCarousel.ItemWrapper key={item.id}>
             <ContentCard item={item} size="md" />
+          </ItemCarousel.ItemWrapper>
+        ))}
+      </ItemCarousel>
+    </ContentContainer>
+  );
+}
+
+/** A row of albums for one sort (인기/최신), linking to the sorted full list via 더보기. */
+function AlbumSortRow({
+  title,
+  sortBy,
+}: {
+  title: string;
+  sortBy: AlbumSortBy;
+}) {
+  const { data, isLoading } = useAlbums({ sortBy, sortDir: "desc", pageNumber: 0, pageSize: ROW_SIZE });
+  const items = data?.contents ?? [];
+  const moreHref = `/albums?sort=${sortBy}`;
+
+  if (isLoading) {
+    return (
+      <ContentContainer title={title} moreHref={moreHref}>
+        <ItemCarousel>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <ItemCarousel.ItemWrapper key={i} width={152}>
+              <div className="skeleton aspect-square rounded-card" />
+              <div className="skeleton mt-10px h-4 w-4/5 rounded" />
+            </ItemCarousel.ItemWrapper>
+          ))}
+        </ItemCarousel>
+      </ContentContainer>
+    );
+  }
+  if (items.length === 0) return null;
+
+  return (
+    <ContentContainer title={title} moreHref={moreHref}>
+      <ItemCarousel>
+        {items.map((album) => (
+          <ItemCarousel.ItemWrapper key={album.id}>
+            <AlbumCard item={album} size="md" />
           </ItemCarousel.ItemWrapper>
         ))}
       </ItemCarousel>
@@ -172,8 +213,15 @@ export function MediaBrowse({
         <>
           <ContentRow title="베스트" type={type} sortBy="viewCount" />
           <ContentRow title="최신" type={type} sortBy="createdAt" />
-          {showAlbumGenres &&
-            MUSIC_GENRE_ROWS.map((genre) => <AlbumGenreRow key={genre} genre={genre} />)}
+          {showAlbumGenres && (
+            <>
+              <AlbumSortRow title="인기 앨범" sortBy="viewCount" />
+              <AlbumSortRow title="최신 앨범" sortBy="releaseDate" />
+              {MUSIC_GENRE_ROWS.map((genre) => (
+                <AlbumGenreRow key={genre} genre={genre} />
+              ))}
+            </>
+          )}
         </>
       )}
     </section>

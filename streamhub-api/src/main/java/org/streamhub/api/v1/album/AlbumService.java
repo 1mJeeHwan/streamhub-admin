@@ -1,6 +1,7 @@
 package org.streamhub.api.v1.album;
 
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -8,6 +9,7 @@ import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.base.storage.StorageService;
+import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.album.dto.AlbumCreateRequest;
 import org.streamhub.api.v1.album.dto.AlbumDetail;
@@ -39,6 +41,15 @@ public class AlbumService {
 
     private static final String GOODS_BRIDGE_CATEGORY = "음반";
     private static final int DEFAULT_NOTI_QTY = 5;
+
+    /** Client sort key → safe column expression. Drives the public 인기/최신 album carousels. */
+    private static final Map<String, String> ALBUM_SORT_COLUMNS = Map.of(
+            "title", "a.title",
+            "artist", "a.artist",
+            "genre", "a.genre",
+            "viewCount", "a.view_count",
+            "releaseDate", "a.release_date",
+            "createdAt", "a.created_at");
 
     private final AlbumMapper albumMapper;
     private final AlbumRepository albumRepository;
@@ -74,9 +85,11 @@ public class AlbumService {
         String status = request.status() == null ? null : request.status().name();
         String keyword = blankToNull(request.keyword());
         int size = request.pageSizeOrDefault();
+        String orderBy = SortResolver.resolve(request.sortBy(), request.sortDir(),
+                ALBUM_SORT_COLUMNS, "a.id", "a.created_at DESC, a.id DESC");
 
         List<AlbumListItem> items =
-                albumMapper.selectList(keyword, genre, status, request.offset(), size);
+                albumMapper.selectList(keyword, genre, status, orderBy, request.offset(), size);
         items.forEach(item -> item.setCoverUrl(storageService.publicUrl(item.getCoverKey())));
         long total = albumMapper.countList(keyword, genre, status);
         return ResInfinityList.of(items, total, size);
@@ -87,7 +100,8 @@ public class AlbumService {
     public ResInfinityList<AlbumListItem> listPublic(AlbumSearchRequest request) {
         AlbumSearchRequest forced = new AlbumSearchRequest(
                 request.pageNumber(), request.pageSize(), request.keyword(),
-                request.genre(), AlbumStatus.ON_SALE);
+                request.genre(), AlbumStatus.ON_SALE,
+                request.sortBy(), request.sortDir());
         return list(forced);
     }
 

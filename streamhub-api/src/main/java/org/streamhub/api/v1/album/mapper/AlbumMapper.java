@@ -18,6 +18,7 @@ public interface AlbumMapper {
             @Param("keyword") String keyword,
             @Param("genre") String genre,
             @Param("status") String status,
+            @Param("orderBy") String orderBy,
             @Param("offset") int offset,
             @Param("size") int size);
 

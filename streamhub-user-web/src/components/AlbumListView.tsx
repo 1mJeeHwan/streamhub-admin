@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Disc3 } from "lucide-react";
 import clsx from "clsx";
-import { GENRE_LABELS, GENRE_ORDER, useAlbums, type AlbumGenre } from "@/lib/albums";
+import { GENRE_LABELS, GENRE_ORDER, useAlbums, type AlbumGenre, type AlbumSortBy } from "@/lib/albums";
 import { useUrlSearch } from "@/lib/useUrlSearch";
 import { AlbumGrid } from "./AlbumGrid";
 import { SearchBar } from "./SearchBar";
@@ -20,6 +20,17 @@ function genreFromParam(value: string | null): AlbumGenre | undefined {
     : undefined;
 }
 
+/** Sort label + key for the 인기/최신 album 더보기 drill-in (?sort=). Default order = 최신. */
+const ALBUM_SORTS: { key: AlbumSortBy; label: string }[] = [
+  { key: "createdAt", label: "최신순" },
+  { key: "viewCount", label: "인기순" },
+  { key: "releaseDate", label: "발매일순" },
+];
+
+function sortFromParam(value: string | null): AlbumSortBy {
+  return ALBUM_SORTS.some((s) => s.key === value) ? (value as AlbumSortBy) : "createdAt";
+}
+
 /** Album list page: genre filter chips + URL-synced keyword search + cover grid + pagination. */
 export function AlbumListView() {
   const { keyword, setKeyword, debounced } = useUrlSearch();
@@ -27,14 +38,22 @@ export function AlbumListView() {
   const [genre, setGenre] = useState<AlbumGenre | undefined>(
     () => genreFromParam(searchParams.get("genre")),
   );
+  const [sortBy, setSortBy] = useState<AlbumSortBy>(() => sortFromParam(searchParams.get("sort")));
   const [page, setPage] = useState(0);
 
-  // A new search or genre change always restarts at the first page.
+  // A new search, genre, or sort change always restarts at the first page.
   useEffect(() => {
     setPage(0);
-  }, [debounced, genre]);
+  }, [debounced, genre, sortBy]);
 
-  const params = { genre, keyword: debounced || undefined, pageNumber: page, pageSize: PAGE_SIZE };
+  const params = {
+    genre,
+    keyword: debounced || undefined,
+    sortBy,
+    sortDir: "desc" as const,
+    pageNumber: page,
+    pageSize: PAGE_SIZE,
+  };
   const { data, isLoading, isError, error, isPlaceholderData, refetch } = useAlbums(params);
 
   return (
@@ -67,6 +86,20 @@ export function AlbumListView() {
             onClick={() => setGenre(g)}
           >
             {GENRE_LABELS[g]}
+          </button>
+        ))}
+      </div>
+
+      <div className="hrow px-5 pb-3" role="group" aria-label="정렬">
+        {ALBUM_SORTS.map((s) => (
+          <button
+            key={s.key}
+            className="pill"
+            data-active={sortBy === s.key}
+            aria-pressed={sortBy === s.key}
+            onClick={() => setSortBy(s.key)}
+          >
+            {s.label}
           </button>
         ))}
       </div>

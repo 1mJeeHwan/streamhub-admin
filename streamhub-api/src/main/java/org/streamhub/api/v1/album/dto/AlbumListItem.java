@@ -23,6 +23,7 @@ public class AlbumListItem {
     private Integer trackCount;
     private Long goodsItemId;
     private Long price; // filled by the service from the bridge GOODS_ITEM
+    private Long viewCount;
     private LocalDate releaseDate;
     private LocalDateTime createdAt;
 }
