@@ -32,6 +32,8 @@ import org.streamhub.api.v1.church.mapper.ChurchMapper;
 import org.streamhub.api.v1.church.repository.WorshipTimeRepository;
 import org.streamhub.api.v1.member.entity.Church;
 import org.streamhub.api.v1.member.repository.ChurchRepository;
+import org.streamhub.api.v1.member.repository.MemberRepository;
+import org.streamhub.api.v1.worship.repository.WorshipRegistrationRepository;
 
 /**
  * Church management: admin search/CRUD (JPA + MyBatis), worship-time replacement, and
@@ -54,6 +56,8 @@ public class ChurchService {
     private final ChurchMapper churchMapper;
     private final ChurchRepository churchRepository;
     private final WorshipTimeRepository worshipTimeRepository;
+    private final MemberRepository memberRepository;
+    private final WorshipRegistrationRepository worshipRegistrationRepository;
     private final StorageService storageService;
     private final GeocodeProvider geocodeProvider;
     private final ChurchDiscoveryProvider discoveryProvider;
@@ -63,6 +67,8 @@ public class ChurchService {
             ChurchMapper churchMapper,
             ChurchRepository churchRepository,
             WorshipTimeRepository worshipTimeRepository,
+            MemberRepository memberRepository,
+            WorshipRegistrationRepository worshipRegistrationRepository,
             StorageService storageService,
             GeocodeProvider geocodeProvider,
             ChurchDiscoveryProvider discoveryProvider,
@@ -70,6 +76,8 @@ public class ChurchService {
         this.churchMapper = churchMapper;
         this.churchRepository = churchRepository;
         this.worshipTimeRepository = worshipTimeRepository;
+        this.memberRepository = memberRepository;
+        this.worshipRegistrationRepository = worshipRegistrationRepository;
         this.storageService = storageService;
         this.geocodeProvider = geocodeProvider;
         this.discoveryProvider = discoveryProvider;
@@ -111,6 +119,8 @@ public class ChurchService {
         detail.setThumbnailUrl(storageService.publicUrl(detail.getThumbnailKey()));
         detail.setDemoData(SEED_SOURCE.equals(detail.getDataSource()));
         detail.setWorshipTimes(loadWorshipTimes(id));
+        detail.setMemberCount(memberRepository.countByChurchId(id));
+        detail.setWorshipRegistrationCount(worshipRegistrationRepository.countByChurchId(id));
         return detail;
     }
 

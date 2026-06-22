@@ -37,6 +37,10 @@ public class ChurchDetail {
     private String openYn;
     private String useYn;
     private boolean demoData;
+    /** Members whose home church is this one (drill-down → 회원 목록). Set by the service. */
+    private long memberCount;
+    /** Worship-service registrations for this church (drill-down → 예배신청 목록). Set by the service. */
+    private long worshipRegistrationCount;
     private List<WorshipTimeDto> worshipTimes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

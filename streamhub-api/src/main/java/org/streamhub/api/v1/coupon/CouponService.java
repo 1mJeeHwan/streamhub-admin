@@ -11,6 +11,7 @@ import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResultCode;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.coupon.dto.CouponDto;
+import org.streamhub.api.v1.coupon.dto.CouponRedemptionItem;
 import org.streamhub.api.v1.coupon.dto.CouponSearchRequest;
 import org.streamhub.api.v1.coupon.entity.Coupon;
 import org.streamhub.api.v1.coupon.entity.CouponRedemption;
@@ -59,6 +60,15 @@ public class CouponService {
         Coupon coupon = couponRepository.findById(id)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
         return CouponDto.from(coupon);
+    }
+
+    /** Usage history of one coupon (who redeemed it and when, newest first). 404 if the coupon is unknown. */
+    @Transactional(readOnly = true)
+    public List<CouponRedemptionItem> redemptions(Long id) {
+        if (!couponRepository.existsById(id)) {
+            throw new ApiException(ResultCode.NOT_FOUND);
+        }
+        return couponRedemptionRepository.findRedemptions(id);
     }
 
     @Transactional

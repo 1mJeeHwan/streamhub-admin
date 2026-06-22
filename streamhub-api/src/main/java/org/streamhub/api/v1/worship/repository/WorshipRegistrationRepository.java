@@ -7,4 +7,7 @@ import org.streamhub.api.v1.worship.entity.WorshipRegistration;
 public interface WorshipRegistrationRepository extends JpaRepository<WorshipRegistration, Long> {
 
     boolean existsByRegNo(String regNo);
+
+    /** Number of worship-service registrations for a church — drives the church-detail count. */
+    long countByChurchId(Long churchId);
 }

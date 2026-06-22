@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.streamhub.api.v1.coupon.dto.CouponRedemptionItem;
 import org.streamhub.api.v1.coupon.entity.CouponRedemption;
 
 /**
@@ -27,4 +28,15 @@ public interface CouponRedemptionRepository extends JpaRepository<CouponRedempti
     /** Coupon ids this member has already redeemed — used to flag {@code used} in the coupon box. */
     @Query("SELECT r.couponId FROM CouponRedemption r WHERE r.memberId = :memberId")
     List<Long> findCouponIdsByMemberId(@Param("memberId") Long memberId);
+
+    /**
+     * Usage history for one coupon — who redeemed it and when, newest first. Joins {@code MEMBER} to
+     * carry the redeeming member's name so the admin drill-down (사용수 → 사용 내역) needs no extra
+     * lookup. An ad-hoc entity join (no mapped relation between the two entities).
+     */
+    @Query("SELECT new org.streamhub.api.v1.coupon.dto.CouponRedemptionItem("
+            + "r.id, r.memberId, m.name, r.redeemedAt) "
+            + "FROM CouponRedemption r JOIN Member m ON m.id = r.memberId "
+            + "WHERE r.couponId = :couponId ORDER BY r.redeemedAt DESC")
+    List<CouponRedemptionItem> findRedemptions(@Param("couponId") Long couponId);
 }

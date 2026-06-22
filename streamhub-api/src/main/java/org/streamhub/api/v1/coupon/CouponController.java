@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.streamhub.api.base.response.ResultDTO;
 import org.streamhub.api.v1.coupon.dto.CouponDto;
+import org.streamhub.api.v1.coupon.dto.CouponRedemptionItem;
 import org.streamhub.api.v1.coupon.dto.CouponSearchRequest;
 
 /**
@@ -42,6 +43,12 @@ public class CouponController {
     @GetMapping("/{id}")
     public ResultDTO<CouponDto> detail(@PathVariable Long id) {
         return ResultDTO.ok(couponService.detail(id));
+    }
+
+    @Operation(summary = "쿠폰 사용 내역", description = "해당 쿠폰을 사용한 회원/시각 목록(최신순).")
+    @GetMapping("/{id}/redemptions")
+    public ResultDTO<List<CouponRedemptionItem>> redemptions(@PathVariable Long id) {
+        return ResultDTO.ok(couponService.redemptions(id));
     }
 
     @Operation(summary = "쿠폰 등록")
