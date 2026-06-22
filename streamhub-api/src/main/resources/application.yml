@@ -95,6 +95,11 @@ app:
     action-log-queue: ${SQS_ACTION_LOG_QUEUE:streamhub-action-log}
   kafka:
     action-log-topic: ${KAFKA_ACTION_LOG_TOPIC:streamhub-action-log}
+  # 감사 로그 읽기 소스. local(기본) = 모놀리스 ACTION_LOG 직조회(MyBatis).
+  # remote = 추출된 streamhub-audit-service의 /v1/action-logs read API 호출(DB-per-service, MSA).
+  actionlog:
+    source: ${ACTIONLOG_SOURCE:local}                       # local | remote
+    audit-service-url: ${AUDIT_SERVICE_URL:http://localhost:8090}
   # Worship (C2) external-integration seams. Defaults are demo/test no-ops; switch to a real
   # provider by overriding these (e.g. postcode.provider=kakao, sms.provider=aligo) + adding
   # the matching @ConditionalOnProperty bean. No real external call is made in mock/noop mode.

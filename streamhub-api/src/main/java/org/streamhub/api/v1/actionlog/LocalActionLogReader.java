@@ -1,6 +1,7 @@
 package org.streamhub.api.v1.actionlog;
 
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.response.ResInfinityList;
@@ -8,16 +9,22 @@ import org.streamhub.api.v1.actionlog.dto.ActionLogItem;
 import org.streamhub.api.v1.actionlog.dto.ActionLogSearchRequest;
 import org.streamhub.api.v1.actionlog.mapper.ActionLogMapper;
 
-/** Read side of the audit log: paginated, filterable list. */
+/**
+ * Default audit-log reader — paginated, filterable list straight from the monolith's own
+ * {@code ACTION_LOG} table (MyBatis). Active unless {@code app.actionlog.source=remote}, in which
+ * case {@link RemoteActionLogReader} calls the extracted audit service instead.
+ */
 @Service
-public class ActionLogService {
+@ConditionalOnProperty(name = "app.actionlog.source", havingValue = "local", matchIfMissing = true)
+public class LocalActionLogReader implements ActionLogReader {
 
     private final ActionLogMapper actionLogMapper;
 
-    public ActionLogService(ActionLogMapper actionLogMapper) {
+    public LocalActionLogReader(ActionLogMapper actionLogMapper) {
         this.actionLogMapper = actionLogMapper;
     }
 
+    @Override
     @Transactional(readOnly = true)
     public ResInfinityList<ActionLogItem> list(ActionLogSearchRequest request) {
         String action = blankToNull(request.action());

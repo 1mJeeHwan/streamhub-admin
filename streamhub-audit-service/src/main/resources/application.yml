@@ -2,14 +2,16 @@ spring:
   application:
     name: streamhub-audit-service
   datasource:
-    # Shared DB for the demo (ACTION_LOG). DB-per-service is the principled next step — see docs.
-    url: jdbc:mysql://${DB_HOST:localhost}:3306/streamhub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&useSSL=false
+    # DB-per-service: this service OWNS the audit store in its own schema (streamhub_audit), separate
+    # from the monolith's `streamhub` DB. The monolith no longer reads ACTION_LOG directly — it calls
+    # this service's /v1/action-logs read API (ACTIONLOG_SOURCE=remote). See docs/msa-split.md.
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/${DB_NAME:streamhub_audit}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&useSSL=false
     username: ${DB_USER:streamhub}
     password: ${DB_PASSWORD:streamhub}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: update          # table is shared/idempotent; entity matches the monolith's
+      ddl-auto: update          # this service creates/owns ACTION_LOG in its own schema
     open-in-view: false
     properties:
       hibernate:

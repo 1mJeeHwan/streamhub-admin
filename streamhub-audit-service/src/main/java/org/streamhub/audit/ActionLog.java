@@ -14,9 +14,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * Persisted audit-log entry owned by this service. Mapped to the same {@code ACTION_LOG} table the
- * monolith reads (shared DB — a transitional step; the principled MSA end-state is a DB-per-service
- * audit store + a read API. See docs/msa-split.md §trade-offs).
+ * Persisted audit-log entry owned by this service. Lives in this service's own schema
+ * ({@code streamhub_audit}, DB-per-service) — the monolith reaches it through the
+ * {@code /v1/action-logs} read API, never by touching the table. See docs/msa-split.md.
  */
 @Entity
 @Table(name = "ACTION_LOG", indexes = {

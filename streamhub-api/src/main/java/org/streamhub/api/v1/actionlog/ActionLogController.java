@@ -21,15 +21,15 @@ import org.streamhub.api.v1.actionlog.dto.ActionLogSearchRequest;
 @PreAuthorize("hasAuthority('actionlog:read')") // SYSTEM-only resource; read-only controller (POST /list is search)
 public class ActionLogController {
 
-    private final ActionLogService actionLogService;
+    private final ActionLogReader actionLogReader;
 
-    public ActionLogController(ActionLogService actionLogService) {
-        this.actionLogService = actionLogService;
+    public ActionLogController(ActionLogReader actionLogReader) {
+        this.actionLogReader = actionLogReader;
     }
 
     @Operation(summary = "감사 로그 목록", description = "관리자 액션 기록을 검색/페이지네이션 조회한다.")
     @PostMapping("/list")
     public ResultDTO<ResInfinityList<ActionLogItem>> list(@RequestBody ActionLogSearchRequest request) {
-        return ResultDTO.ok(actionLogService.list(request));
+        return ResultDTO.ok(actionLogReader.list(request));
     }
 }
