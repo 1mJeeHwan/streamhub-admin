@@ -26,12 +26,12 @@ export default function DashboardPage() {
       <SummaryCards />
 
       <div className="mt-4 grid grid-cols-1 gap-4">
-        <MemberTrendChart />
+        <MemberTrendChart onSelect={() => router.push("/member")} />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <TopContentsChart
             onSelect={(id) => router.push(`/content/${id}`)}
           />
-          <WatchByChannelChart />
+          <WatchByChannelChart onSelect={() => router.push("/content")} />
         </div>
       </div>
     </div>

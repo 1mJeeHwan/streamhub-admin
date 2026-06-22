@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -218,7 +219,17 @@ export default function VisitsPage() {
                         {formatDateTime(visit.visitedAt)}
                       </td>
                       <td className="px-5 py-3 font-mono text-xs text-slate-600">
-                        {visit.ipMasked ?? "-"}
+                        {visit.memberId != null ? (
+                          <Link
+                            href={`/member/${visit.memberId}`}
+                            className="text-brand hover:underline"
+                            title="회원 상세로 이동"
+                          >
+                            {visit.ipMasked ?? "-"}
+                          </Link>
+                        ) : (
+                          (visit.ipMasked ?? "-")
+                        )}
                       </td>
                       <td className="px-5 py-3 text-slate-700">
                         {visit.browser ?? "-"}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
 import KpiStrip from "@/components/dashboard/KpiStrip";
 import MembershipDonutChart from "@/components/dashboard/MembershipDonutChart";
@@ -15,6 +17,8 @@ import TodoQueue from "@/components/dashboard/TodoQueue";
  * screens for action.
  */
 export default function AdminOpsPage() {
+  const router = useRouter();
+
   return (
     <div>
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -34,13 +38,16 @@ export default function AdminOpsPage() {
       <KpiStrip />
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <RevenueTrendChart className="lg:col-span-2" />
+        <RevenueTrendChart
+          className="lg:col-span-2"
+          onSelect={() => router.push("/donation")}
+        />
         <ActivityFeed />
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TopContentsChart />
-        <MembershipDonutChart />
+        <TopContentsChart onSelect={(id) => router.push(`/content/${id}`)} />
+        <MembershipDonutChart onSelect={(href) => router.push(href)} />
       </div>
 
       <div className="mt-4">

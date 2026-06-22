@@ -44,7 +44,10 @@ export default function PostsPage() {
 
   const deleteMutation = usePostCommunityPostDelete();
 
-  const boards: BoardDto[] = boardsQuery.data?.resultObject ?? [];
+  const boards = useMemo<BoardDto[]>(
+    () => boardsQuery.data?.resultObject ?? [],
+    [boardsQuery.data],
+  );
   const posts: CommunityPostDto[] = listQuery.data?.resultObject ?? [];
 
   const boardNameById = useMemo(() => {
@@ -235,12 +238,25 @@ export default function PostsPage() {
                         : "-"}
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-900">
-                      <span className="inline-flex items-center gap-1.5">
-                        {post.secretYn === "Y" && (
-                          <Lock className="h-3.5 w-3.5 text-slate-400" />
-                        )}
-                        {post.title ?? "-"}
-                      </span>
+                      {post.id != null ? (
+                        <button
+                          type="button"
+                          onClick={() => setDetailId(post.id as number)}
+                          className="inline-flex items-center gap-1.5 text-left transition hover:text-brand hover:underline"
+                        >
+                          {post.secretYn === "Y" && (
+                            <Lock className="h-3.5 w-3.5 text-slate-400" />
+                          )}
+                          {post.title ?? "-"}
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5">
+                          {post.secretYn === "Y" && (
+                            <Lock className="h-3.5 w-3.5 text-slate-400" />
+                          )}
+                          {post.title ?? "-"}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-slate-700">
                       {post.writerName ?? "-"}

@@ -291,7 +291,13 @@ export default function CampaignsPage() {
                 <div className="flex flex-1 flex-col p-4">
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">
-                      {campaign.title ?? "-"}
+                      <button
+                        type="button"
+                        onClick={() => openEdit(campaign)}
+                        className="text-left transition hover:text-brand hover:underline"
+                      >
+                        {campaign.title ?? "-"}
+                      </button>
                     </h3>
                     {status && (
                       <span

@@ -19,11 +19,22 @@ const CHANNEL_COLORS = [
   "#bfdbfe",
 ];
 
+interface WatchByChannelChartProps {
+  /**
+   * Invoked when a channel slice is clicked (drill-down to the content domain).
+   * The watch endpoint exposes no channel id, so the channel name is passed for
+   * the caller to use if/when a channel filter exists; otherwise it is ignored.
+   */
+  onSelect?: (channelName: string) => void;
+}
+
 /**
  * WatchByChannelChart renders a donut chart of total watch time per channel,
  * converting the endpoint's seconds into hours for display.
  */
-export default function WatchByChannelChart() {
+export default function WatchByChannelChart({
+  onSelect,
+}: WatchByChannelChartProps) {
   const { data, isPending, isError } = useStatisticsWatchByChannel();
 
   const items = data?.resultObject ?? [];
@@ -31,7 +42,22 @@ export default function WatchByChannelChart() {
   const hours = items.map((item) => secondsToHours(item.totalSeconds));
 
   const options: ApexOptions = {
-    chart: { type: "donut", fontFamily: "inherit" },
+    chart: {
+      type: "donut",
+      fontFamily: "inherit",
+      events: {
+        dataPointSelection: (
+          _event: unknown,
+          _chartContext: unknown,
+          config: { dataPointIndex: number },
+        ) => {
+          const item = items[config.dataPointIndex];
+          if (item?.channelName != null) {
+            onSelect?.(item.channelName);
+          }
+        },
+      },
+    },
     labels,
     colors: CHANNEL_COLORS,
     legend: {

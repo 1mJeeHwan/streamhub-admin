@@ -102,6 +102,25 @@ export default function GoodsGrid({
         minWidth: 180,
         flex: 1.4,
         editable: false,
+        cellRenderer: (params: ICellRendererParams<GoodsListItem>) => {
+          const id = params.data?.id;
+          const name = params.value ?? "-";
+          if (id == null) {
+            return name;
+          }
+          return (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                router.push(`/goods/${id}`);
+              }}
+              className="font-medium text-brand hover:underline"
+            >
+              {name}
+            </button>
+          );
+        },
       },
       {
         field: "categoryName",

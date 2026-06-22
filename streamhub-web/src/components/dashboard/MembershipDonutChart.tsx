@@ -11,6 +11,14 @@ import ChartCard from "./ChartCard";
 // 멤버십/구독 구성 도넛. 브랜드 블루 셰이드.
 const SLICE_COLORS = ["#2563eb", "#10b981", "#0ea5e9"];
 
+// 슬라이스 인덱스 → 드릴다운 도메인 경로. slices/labels 배열 순서와 일치해야 한다.
+const SLICE_HREFS = ["/subscription", "/subscription", "/order"];
+
+interface MembershipDonutChartProps {
+  /** Invoked with the destination path when a slice is clicked. */
+  onSelect?: (href: string) => void;
+}
+
 /**
  * MembershipDonutChart renders the membership/subscription composition as a
  * donut. The generated dashboard client exposes only summary/timeseries/feed,
@@ -18,7 +26,9 @@ const SLICE_COLORS = ["#2563eb", "#10b981", "#0ea5e9"];
  * already on screen (active subscribers, new subscriptions, open orders) rather
  * than a dedicated membership endpoint.
  */
-export default function MembershipDonutChart() {
+export default function MembershipDonutChart({
+  onSelect,
+}: MembershipDonutChartProps) {
   const { data, isPending, isError } = useDashboardSummary();
   const summary = data?.resultObject;
 
@@ -33,7 +43,22 @@ export default function MembershipDonutChart() {
   const isEmpty = series.every((value) => value === 0);
 
   const options: ApexOptions = {
-    chart: { type: "donut", fontFamily: "inherit" },
+    chart: {
+      type: "donut",
+      fontFamily: "inherit",
+      events: {
+        dataPointSelection: (
+          _event: unknown,
+          _chartContext: unknown,
+          config: { dataPointIndex: number },
+        ) => {
+          const href = SLICE_HREFS[config.dataPointIndex];
+          if (href != null) {
+            onSelect?.(href);
+          }
+        },
+      },
+    },
     labels,
     colors: SLICE_COLORS,
     legend: {

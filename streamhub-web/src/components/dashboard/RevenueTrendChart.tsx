@@ -15,6 +15,11 @@ const SERIES_COLORS = ["#2563eb", "#60a5fa", "#bfdbfe"];
 
 interface RevenueTrendChartProps {
   className?: string;
+  /**
+   * Invoked when a bar is clicked (drill-down to the donation/revenue domain).
+   * The donation list has no date filter, so no date is passed.
+   */
+  onSelect?: () => void;
 }
 
 /**
@@ -24,6 +29,7 @@ interface RevenueTrendChartProps {
  */
 export default function RevenueTrendChart({
   className,
+  onSelect,
 }: RevenueTrendChartProps) {
   const { data, isPending, isError } = useDashboardTimeseries({ days: TREND_DAYS });
 
@@ -41,6 +47,11 @@ export default function RevenueTrendChart({
       stacked: true,
       toolbar: { show: false },
       fontFamily: "inherit",
+      events: {
+        dataPointSelection: () => {
+          onSelect?.();
+        },
+      },
     },
     colors: SERIES_COLORS,
     plotOptions: {

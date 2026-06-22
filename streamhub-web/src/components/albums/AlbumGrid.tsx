@@ -85,7 +85,31 @@ export default function AlbumGrid({ rows }: AlbumGridProps) {
           <CoverCell url={params.value ?? undefined} />
         ),
       },
-      { field: "title", headerName: "앨범명", minWidth: 180, flex: 1.4 },
+      {
+        field: "title",
+        headerName: "앨범명",
+        minWidth: 180,
+        flex: 1.4,
+        cellRenderer: (params: ICellRendererParams<AlbumListItem>) => {
+          const id = params.data?.id;
+          const title = params.value ?? "-";
+          if (id == null) {
+            return title;
+          }
+          return (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                router.push(`/albums/${id}`);
+              }}
+              className="font-medium text-brand hover:underline"
+            >
+              {title}
+            </button>
+          );
+        },
+      },
       { field: "artist", headerName: "아티스트", minWidth: 140, flex: 1 },
       {
         field: "genre",

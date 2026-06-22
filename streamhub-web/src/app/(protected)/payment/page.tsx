@@ -7,10 +7,12 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { paymentList, usePaymentRefundCreate } from "@/apis/query/payment/payment";
 import {
+  PaymentListItemPayStatus,
   PaymentSearchRequestKind,
   type PaymentListItem,
   type PaymentSearchRequest,
 } from "@/apis/query/streamHubAdminAPI.schemas";
+import { PAY_STATUS_META } from "@/lib/payment-status";
 import { SUCCESS_CODE } from "@/types/api";
 
 const PaymentGrid = dynamic(() => import("@/components/payment/PaymentGrid"), {
@@ -27,6 +29,17 @@ const PAGE_SIZE = 10;
 type KindFilter = "ALL" | PaymentSearchRequestKind;
 type MethodFilter = "ALL" | "BANK" | "CARD";
 type SearchField = "orderNo" | "memberName" | "txnId";
+type PayStatusFilter = "ALL" | PaymentListItemPayStatus;
+
+// Pay-status chips for the in-page drilldown. The backend PaymentSearchRequest
+// has no payStatus field, so this narrows the current page client-side.
+const PAY_STATUS_CHIPS: { value: PayStatusFilter; label: string }[] = [
+  { value: "ALL", label: "전체" },
+  ...Object.values(PaymentListItemPayStatus).map((value) => ({
+    value,
+    label: PAY_STATUS_META[value].label,
+  })),
+];
 
 const SEARCH_FIELD_OPTIONS: { value: SearchField; label: string }[] = [
   { value: "orderNo", label: "주문번호" },
@@ -59,6 +72,9 @@ export default function PaymentPage() {
   const [toDate, setToDate] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
   const [sort, setSort] = useState<{ by: string; dir: "asc" | "desc" } | null>(null);
+
+  // Pay-status drilldown chip — applied client-side to the current page rows.
+  const [payStatusFilter, setPayStatusFilter] = useState<PayStatusFilter>("ALL");
 
   // Draft inputs (not yet applied to the query).
   const [searchFieldDraft, setSearchFieldDraft] = useState<SearchField>("orderNo");
@@ -102,9 +118,29 @@ export default function PaymentPage() {
   });
 
   const result = listQuery.data?.resultObject;
-  const rows: PaymentListItem[] = result?.contents ?? [];
+  const rows = useMemo<PaymentListItem[]>(() => result?.contents ?? [], [result]);
   const totalCount = result?.totalCount ?? 0;
   const totalPage = result?.totalPage ?? 0;
+
+  // Pay-status drilldown narrows the current page rows (no server-side payStatus filter).
+  const visibleRows = useMemo(
+    () =>
+      payStatusFilter === "ALL"
+        ? rows
+        : rows.filter((row) => row.payStatus === payStatusFilter),
+    [rows, payStatusFilter],
+  );
+
+  // Per-status counts on the current page so each chip can show how many it matches.
+  const payStatusCounts = useMemo(() => {
+    const counts = new Map<PaymentListItemPayStatus, number>();
+    for (const row of rows) {
+      if (row.payStatus != null) {
+        counts.set(row.payStatus, (counts.get(row.payStatus) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [rows]);
 
   const handleSearch = () => {
     setSearchField(searchFieldDraft);
@@ -114,6 +150,8 @@ export default function PaymentPage() {
     setFromDate(fromDateDraft);
     setToDate(toDateDraft);
     setPageNumber(1);
+    // A fresh result set invalidates the page-scoped status drilldown.
+    setPayStatusFilter("ALL");
   };
 
   const goToPage = (next: number) => {
@@ -121,6 +159,8 @@ export default function PaymentPage() {
       return;
     }
     setPageNumber(next);
+    // The chip counts a single page, so reset it when the page changes.
+    setPayStatusFilter("ALL");
   };
 
   // Sorting changes the whole result set, so jump back to the first page.
@@ -321,11 +361,42 @@ export default function PaymentPage() {
         </button>
       </div>
 
-      {/* Summary */}
+      {/* Summary + pay-status drilldown chips (page-scoped) */}
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <span className="text-sm text-slate-600">
           총 {totalCount.toLocaleString()}건
+          {payStatusFilter !== "ALL" && (
+            <span className="ml-1 text-slate-400">
+              (현재 페이지 {visibleRows.length.toLocaleString()}건 표시)
+            </span>
+          )}
         </span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {PAY_STATUS_CHIPS.map((chip) => {
+            const active = payStatusFilter === chip.value;
+            const chipCount =
+              chip.value === "ALL"
+                ? rows.length
+                : (payStatusCounts.get(chip.value) ?? 0);
+            return (
+              <button
+                key={chip.value}
+                type="button"
+                onClick={() => setPayStatusFilter(chip.value)}
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                  active
+                    ? "border-brand bg-brand text-white"
+                    : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {chip.label}
+                <span className={active ? "ml-1 text-white/80" : "ml-1 text-slate-400"}>
+                  {chipCount.toLocaleString()}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {refundMessage && (
@@ -345,7 +416,7 @@ export default function PaymentPage() {
         </div>
       ) : (
         <PaymentGrid
-          rows={rows}
+          rows={visibleRows}
           onRefund={openRefund}
           onSortChange={handleSortChange}
         />

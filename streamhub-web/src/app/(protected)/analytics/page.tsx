@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -158,7 +159,18 @@ function ContentTable({
                     <ContentTypeBadge type={row.contentType} />
                   </td>
                   <td className="max-w-[240px] truncate px-4 py-3 font-medium text-slate-900">
-                    {row.title ?? "-"}
+                    {row.contentType === ContentStatDtoContentType.VIDEO &&
+                    row.targetId != null ? (
+                      <Link
+                        href={`/content/${row.targetId}`}
+                        className="text-brand hover:underline"
+                        title="콘텐츠 상세로 이동"
+                      >
+                        {row.title ?? "-"}
+                      </Link>
+                    ) : (
+                      (row.title ?? "-")
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-700">
                     {formatNumber(row.views)}

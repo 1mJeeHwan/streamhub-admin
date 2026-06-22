@@ -9,11 +9,19 @@ import ChartCard from "./ChartCard";
 
 const TREND_DAYS = 30;
 
+interface MemberTrendChartProps {
+  /**
+   * Invoked when a data point is clicked (drill-down to the member list).
+   * The member list has no date filter, so no date is passed.
+   */
+  onSelect?: () => void;
+}
+
 /**
  * MemberTrendChart renders an area chart of daily new-member counts over the
  * last 30 days using the member-trend statistics endpoint.
  */
-export default function MemberTrendChart() {
+export default function MemberTrendChart({ onSelect }: MemberTrendChartProps) {
   const { data, isPending, isError } = useStatisticsMemberTrend({ days: TREND_DAYS });
 
   const points = data?.resultObject ?? [];
@@ -25,6 +33,11 @@ export default function MemberTrendChart() {
       type: "area",
       toolbar: { show: false },
       fontFamily: "inherit",
+      events: {
+        dataPointSelection: () => {
+          onSelect?.();
+        },
+      },
     },
     colors: ["#2563eb"],
     dataLabels: { enabled: false },
