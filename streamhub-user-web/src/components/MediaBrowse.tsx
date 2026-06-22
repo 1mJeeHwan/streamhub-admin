@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useContents } from "@/lib/queries";
+import { ChevronLeft } from "lucide-react";
+import { useChannels, useContents } from "@/lib/queries";
 import { useAlbums, GENRE_LABELS, type AlbumGenre, type AlbumSortBy } from "@/lib/albums";
 import { useUrlSearch } from "@/lib/useUrlSearch";
-import type { ContentSortBy } from "@/lib/api";
+import type { ContentSortBy, PublicChannel } from "@/lib/api";
 import type { ContentType } from "@/lib/types";
 import { ContentContainer } from "./ContentContainer";
 import { ItemCarousel } from "./ItemCarousel";
 import { ContentCard } from "./ContentCard";
 import { AlbumCard } from "./AlbumCard";
+import { ChannelCard } from "./ChannelCard";
 import { ContentGrid } from "./ContentGrid";
 import { SearchBar } from "./SearchBar";
 import { Pagination } from "./Pagination";
@@ -144,6 +146,107 @@ function AlbumGenreRow({ genre }: { genre: AlbumGenre }) {
   );
 }
 
+/** Channel-browse carousel: tap a channel tile to filter the list to that channel. */
+function ChannelDirectoryRow({
+  type,
+  selectedId,
+  onSelect,
+}: {
+  type: ContentType;
+  selectedId: number | null;
+  onSelect: (channel: PublicChannel) => void;
+}) {
+  const { data, isLoading } = useChannels({ type, limit: 12 });
+  const channels = data ?? [];
+
+  if (isLoading) {
+    return (
+      <ContentContainer title="채널">
+        <ItemCarousel>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <ItemCarousel.ItemWrapper key={i} width={132}>
+              <div className="skeleton aspect-square rounded-card" />
+              <div className="skeleton mt-10px h-4 w-4/5 rounded" />
+            </ItemCarousel.ItemWrapper>
+          ))}
+        </ItemCarousel>
+      </ContentContainer>
+    );
+  }
+  if (channels.length === 0) return null;
+
+  return (
+    <ContentContainer title="채널">
+      <ItemCarousel>
+        {channels.map((channel) => (
+          <ItemCarousel.ItemWrapper key={channel.id}>
+            <ChannelCard
+              channel={channel}
+              active={channel.id === selectedId}
+              onSelect={() => onSelect(channel)}
+            />
+          </ItemCarousel.ItemWrapper>
+        ))}
+      </ItemCarousel>
+    </ContentContainer>
+  );
+}
+
+/** Paginated grid of one channel's content, with a header to return to all channels. */
+function ChannelContentList({
+  type,
+  channel,
+  onReset,
+}: {
+  type: ContentType;
+  channel: PublicChannel;
+  onReset: () => void;
+}) {
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    setPage(0);
+  }, [channel.id]);
+
+  const { data, isLoading, isError, error, isPlaceholderData, refetch } = useContents({
+    type,
+    channelId: channel.id,
+    pageNumber: page,
+    pageSize: PAGE_SIZE,
+  });
+
+  return (
+    <div className="pt-2">
+      <button
+        type="button"
+        onClick={onReset}
+        className="mx-5 mb-1 inline-flex items-center gap-1 text-13px font-medium text-inactive hover:text-active"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        전체 채널
+      </button>
+      <h2 className="px-5 pb-2 text-20px font-bold leading-tight text-active">{channel.name}</h2>
+
+      {isLoading ? (
+        <div className="px-5 pt-1">
+          <CardSkeletonGrid square={type === "SOUND"} count={PAGE_SIZE} />
+        </div>
+      ) : isError ? (
+        <ErrorState message={(error as Error)?.message} onRetry={() => refetch()} />
+      ) : !data || data.contents.length === 0 ? (
+        <EmptyState message="이 채널의 콘텐츠가 없습니다." />
+      ) : (
+        <div className={isPlaceholderData ? "opacity-60 transition-opacity" : "transition-opacity"}>
+          <p className="px-5 pb-3 text-sm text-inactive">
+            <span className="font-bold text-active">{data.totalCount}</span>개의 콘텐츠
+          </p>
+          <ContentGrid items={data.contents} />
+          <Pagination pageNumber={page} totalPage={data.totalPage} onChange={setPage} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Flat, paginated search results (shown only while a keyword is active). */
 function SearchResults({ type, keyword }: { type: ContentType; keyword: string }) {
   const [page, setPage] = useState(0);
@@ -184,21 +287,25 @@ function SearchResults({ type, keyword }: { type: ContentType; keyword: string }
 
 /**
  * Sectioned media browse for music (SOUND) and video (VIDEO). With no search keyword it shows
- * discovery sections (베스트/최신 + 음악은 장르별 앨범 캐러셀); typing a keyword switches to a
- * flat, paginated grid. Sections reuse the ng-front-ported ContentContainer/ItemCarousel pattern.
+ * discovery sections (베스트/최신 + 음악은 장르별 앨범 캐러셀, 영상은 채널 캐러셀); typing a keyword
+ * switches to a flat grid, and selecting a channel filters to that channel. Sections reuse the
+ * ng-front-ported ContentContainer/ItemCarousel pattern.
  */
 export function MediaBrowse({
   type,
   title,
   searchPlaceholder,
   showAlbumGenres = false,
+  showChannels = false,
 }: {
   type: ContentType;
   title: string;
   searchPlaceholder: string;
   showAlbumGenres?: boolean;
+  showChannels?: boolean;
 }) {
   const { keyword, setKeyword, debounced } = useUrlSearch();
+  const [channel, setChannel] = useState<PublicChannel | null>(null);
 
   return (
     <section className="animate-fade-up pt-4">
@@ -209,10 +316,15 @@ export function MediaBrowse({
 
       {debounced ? (
         <SearchResults type={type} keyword={debounced} />
+      ) : channel ? (
+        <ChannelContentList type={type} channel={channel} onReset={() => setChannel(null)} />
       ) : (
         <>
           <ContentRow title="베스트" type={type} sortBy="viewCount" />
           <ContentRow title="최신" type={type} sortBy="createdAt" />
+          {showChannels && (
+            <ChannelDirectoryRow type={type} selectedId={null} onSelect={setChannel} />
+          )}
           {showAlbumGenres && (
             <>
               <AlbumSortRow title="인기 앨범" sortBy="viewCount" />

@@ -61,6 +61,24 @@
         <include refid="searchWhere"/>
     </select>
 
+    <select id="selectPublicChannels" resultType="org.streamhub.api.v1.content.dto.PublicChannelItem">
+        SELECT
+            ch.id        AS id,
+            ch.name      AS name,
+            chu.name     AS church_name,
+            COUNT(c.id)  AS content_count
+        FROM CHANNEL ch
+            JOIN CHURCH chu ON chu.id = ch.church_id
+            JOIN CONTENT c  ON c.channel_id = ch.id
+                AND c.status = 'PUBLISHED'
+                <if test="type != null and type != ''">
+                    AND c.type = #{type}
+                </if>
+        GROUP BY ch.id, ch.name, chu.name
+        ORDER BY content_count DESC, ch.id ASC
+        LIMIT #{limit}
+    </select>
+
     <select id="selectDetail" resultType="org.streamhub.api.v1.content.dto.ContentDetail">
         SELECT
             c.id            AS id,

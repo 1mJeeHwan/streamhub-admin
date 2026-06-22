@@ -1,13 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { api, type ContentListParams, type PostListParams } from "./api";
+import { api, type ChannelListParams, type ContentListParams, type PostListParams } from "./api";
 import type { BannerTarget } from "./types";
 
 export const queryKeys = {
   home: ["home"] as const,
   contents: (p: ContentListParams) => ["contents", p] as const,
   content: (id: number) => ["content", id] as const,
+  channels: (p: ChannelListParams) => ["channels", p] as const,
   posts: (p: PostListParams) => ["posts", p] as const,
   post: (id: number) => ["post", id] as const,
   banners: (target: BannerTarget) => ["banners", target] as const,
@@ -31,6 +32,15 @@ export function useContents(params: ContentListParams) {
     queryKey: queryKeys.contents(params),
     queryFn: () => api.contents(params),
     placeholderData: (prev) => prev, // keep prior page visible while the next loads (no flicker)
+  });
+}
+
+/** Active channel directory for a content tab (channels with PUBLISHED content). */
+export function useChannels(params: ChannelListParams) {
+  return useQuery({
+    queryKey: queryKeys.channels(params),
+    queryFn: () => api.channels(params),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

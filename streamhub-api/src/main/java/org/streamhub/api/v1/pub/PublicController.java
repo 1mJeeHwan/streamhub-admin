@@ -33,6 +33,7 @@ import org.streamhub.api.v1.content.ContentService;
 import org.streamhub.api.v1.content.dto.ContentDetail;
 import org.streamhub.api.v1.content.dto.ContentListItem;
 import org.streamhub.api.v1.content.dto.ContentSearchRequest;
+import org.streamhub.api.v1.content.dto.PublicChannelItem;
 import org.streamhub.api.v1.content.entity.ContentType;
 import org.streamhub.api.v1.analytics.PublicIngestRateLimiter;
 import org.streamhub.api.v1.post.PostService;
@@ -105,16 +106,29 @@ public class PublicController {
         return ResultDTO.ok(bannerService.listPublic(target));
     }
 
-    @Operation(summary = "공개 콘텐츠 목록", description = "PUBLISHED 영상/음악 목록(검색·페이지네이션).")
+    @Operation(summary = "공개 콘텐츠 목록",
+            description = "PUBLISHED 영상/음악 목록(검색·채널 필터·페이지네이션·정렬).")
     @GetMapping("/contents")
     public ResultDTO<ResInfinityList<ContentListItem>> contents(
             @RequestParam(required = false) ContentType type,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long channelId,
             @RequestParam(required = false) Integer pageNumber,
-            @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) Integer pageSize,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         ContentSearchRequest request =
-                new ContentSearchRequest(pageNumber, pageSize, keyword, type, null, null, null, null);
+                new ContentSearchRequest(pageNumber, pageSize, keyword, type, null, channelId, sortBy, sortDir);
         return ResultDTO.ok(contentService.listPublic(request));
+    }
+
+    @Operation(summary = "공개 채널 목록",
+            description = "PUBLISHED 콘텐츠를 가진 채널을 활동순으로 반환(type=VIDEO/SOUND). 채널 브라우징용.")
+    @GetMapping("/channels")
+    public ResultDTO<List<PublicChannelItem>> channels(
+            @RequestParam(required = false) ContentType type,
+            @RequestParam(required = false) Integer limit) {
+        return ResultDTO.ok(contentService.listPublicChannels(type, limit == null ? 12 : limit));
     }
 
     @Operation(summary = "공개 콘텐츠 상세", description = "PUBLISHED만 반환하며 조회수를 1 증가시킨다.")

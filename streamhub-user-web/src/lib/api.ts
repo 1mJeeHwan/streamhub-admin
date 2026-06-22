@@ -83,11 +83,26 @@ export type ContentSortBy = "viewCount" | "createdAt";
 export interface ContentListParams {
   type?: ContentType;
   keyword?: string;
+  /** Filter to a single channel (channel-browse on the video page). */
+  channelId?: number;
   /** "viewCount" = 인기(베스트), "createdAt" = 최신. Omitted = backend default (newest). */
   sortBy?: ContentSortBy;
   sortDir?: "asc" | "desc";
   pageNumber?: number;
   pageSize?: number;
+}
+
+/** One channel in the public channel directory (GET /pub/v1/channels). */
+export interface PublicChannel {
+  id: number;
+  name: string;
+  churchName: string;
+  contentCount: number;
+}
+
+export interface ChannelListParams {
+  type?: ContentType;
+  limit?: number;
 }
 
 export interface PostListParams {
@@ -101,6 +116,8 @@ export const api = {
   contents: (p: ContentListParams = {}) =>
     request<InfinityList<ContentListItem>>(`/pub/v1/contents${query({ ...p })}`),
   content: (id: number) => request<ContentDetail>(`/pub/v1/contents/${id}`),
+  channels: (p: ChannelListParams = {}) =>
+    request<PublicChannel[]>(`/pub/v1/channels${query({ ...p })}`),
   posts: (p: PostListParams = {}) =>
     request<InfinityList<PostListItem>>(`/pub/v1/posts${query({ ...p })}`),
   post: (id: number) => request<PostDetail>(`/pub/v1/posts/${id}`),

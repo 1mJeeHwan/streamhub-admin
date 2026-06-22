@@ -136,14 +136,33 @@ public class ContentService {
         return ResInfinityList.of(contents, total, size);
     }
 
-    /** Public list: forces {@code status=PUBLISHED}, ignores any channel filter, and spans all churches. */
+    /**
+     * Public list: forces {@code status=PUBLISHED} and spans all churches. The channel filter
+     * <em>is</em> honored here (unlike the church scope), so the user site can browse one channel.
+     */
     @Transactional(readOnly = true)
     public ResInfinityList<ContentListItem> listPublic(ContentSearchRequest request) {
         ContentSearchRequest forced = new ContentSearchRequest(
                 request.pageNumber(), request.pageSize(), request.keyword(),
-                request.type(), ContentStatus.PUBLISHED, null,
+                request.type(), ContentStatus.PUBLISHED, request.channelId(),
                 request.sortBy(), request.sortDir());
         return list(forced, SYSTEM_PRINCIPAL);
+    }
+
+    /**
+     * Public channel directory: channels that own at least one PUBLISHED content of the given
+     * type, most-active first. Powers the user site's channel-browse carousel.
+     *
+     * @param type  content type filter ({@code VIDEO}/{@code SOUND}); null spans both
+     * @param limit max channels returned
+     * @return active channels with their published-content counts
+     */
+    @Transactional(readOnly = true)
+    public List<org.streamhub.api.v1.content.dto.PublicChannelItem> listPublicChannels(
+            org.streamhub.api.v1.content.entity.ContentType type, int limit) {
+        String typeName = type == null ? null : type.name();
+        int safeLimit = limit <= 0 ? 12 : Math.min(limit, 50);
+        return contentMapper.selectPublicChannels(typeName, safeLimit);
     }
 
     /** Public detail: 404 unless PUBLISHED, and atomically increments the view count. */
