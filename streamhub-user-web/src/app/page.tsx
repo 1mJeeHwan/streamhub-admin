@@ -3,7 +3,6 @@
 import { useHome } from "@/lib/queries";
 import { useAlbums } from "@/lib/albums";
 import { Hero } from "@/components/Hero";
-import { TabBanner } from "@/components/TabBanner";
 import { ContentContainer } from "@/components/ContentContainer";
 import { ItemCarousel } from "@/components/ItemCarousel";
 import { ContentCard } from "@/components/ContentCard";
@@ -79,7 +78,6 @@ export default function HomePage() {
 
   return (
     <div className="animate-fade-up pb-4">
-      <TabBanner target="ALL" />
       <Hero items={data.videos} />
 
       <ContentContainer title="최신 영상" moreHref="/video">
