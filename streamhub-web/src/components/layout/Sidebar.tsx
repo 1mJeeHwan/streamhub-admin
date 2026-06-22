@@ -24,6 +24,7 @@ import {
   MessageSquare,
   BarChart3,
   Activity,
+  HeartPulse,
   FolderTree,
   Boxes,
   MessageCircleQuestion,
@@ -125,6 +126,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "시스템",
     items: [
+      { label: "시스템 상태", href: "/system", icon: HeartPulse, systemOnly: true },
       {
         label: "감사 로그",
         href: "/action-log",
