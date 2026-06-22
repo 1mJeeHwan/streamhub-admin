@@ -19,6 +19,22 @@ spring:
       hibernate:
         format_sql: true
     show-sql: false
+  # Kafka — only used when app.eventlog.transport=kafka. JSON (de)serialization of ActionLogMessage.
+  # In sqs mode these are inert (no @KafkaListener container starts); KafkaAdmin may log one
+  # harmless "broker not available" warning at boot if no broker is running.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_GROUP_ID:streamhub-action-log}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: org.streamhub.api.v1.actionlog.dto
+        spring.json.value.default.type: org.streamhub.api.v1.actionlog.dto.ActionLogMessage
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 mybatis:
   mapper-locations: classpath:mappers/*.xml
@@ -47,8 +63,14 @@ jwt:
 # 아래 각 블록은 해당 seam의 env 자리. 기본값은 mock/seed/공개 데모키라 키 없이도 동작하고,
 # 실키는 환경변수로만 주입하면 코드 변경 없이 실연동으로 전환된다.
 app:
+  # Async action-log transport seam. sqs(기본) = AWS SQS(@SqsListener, LocalStack 로컬);
+  # kafka = Apache Kafka(@KafkaListener). 빈 교체 + env 플래그만으로 전환, 호출부 무변경.
+  eventlog:
+    transport: ${EVENTLOG_TRANSPORT:sqs}   # sqs | kafka
   sqs:
     action-log-queue: ${SQS_ACTION_LOG_QUEUE:streamhub-action-log}
+  kafka:
+    action-log-topic: ${KAFKA_ACTION_LOG_TOPIC:streamhub-action-log}
   # Worship (C2) external-integration seams. Defaults are demo/test no-ops; switch to a real
   # provider by overriding these (e.g. postcode.provider=kakao, sms.provider=aligo) + adding
   # the matching @ConditionalOnProperty bean. No real external call is made in mock/noop mode.

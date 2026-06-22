@@ -2,53 +2,28 @@ package org.streamhub.api.v1.actionlog;
 
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.streamhub.api.v1.actionlog.dto.ActionLogMessage;
-import org.streamhub.api.v1.actionlog.entity.ActionLog;
-import org.streamhub.api.v1.actionlog.repository.ActionLogRepository;
-import org.streamhub.api.v1.admin.repository.AdminAccountRepository;
 
 /**
- * Consumes action events from SQS and persists them as {@link ActionLog} rows.
- * Enriches the operator name from the admin account when the message omits it.
+ * Consumes action events from SQS and persists them via {@link ActionLogWriter}. Active when
+ * {@code app.eventlog.transport=sqs} or unset ({@code matchIfMissing=true}), so the SQS pipeline is
+ * the default. The Kafka path uses {@link KafkaActionLogConsumer} instead.
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "app.eventlog.transport", havingValue = "sqs", matchIfMissing = true)
 public class ActionLogConsumer {
 
-    private final ActionLogRepository actionLogRepository;
-    private final AdminAccountRepository adminRepository;
+    private final ActionLogWriter writer;
 
-    public ActionLogConsumer(ActionLogRepository actionLogRepository,
-                             AdminAccountRepository adminRepository) {
-        this.actionLogRepository = actionLogRepository;
-        this.adminRepository = adminRepository;
+    public ActionLogConsumer(ActionLogWriter writer) {
+        this.writer = writer;
     }
 
     @SqsListener("${app.sqs.action-log-queue}")
     public void handle(ActionLogMessage message) {
-        String adminName = resolveAdminName(message);
-        actionLogRepository.save(ActionLog.builder()
-                .adminId(message.adminId())
-                .adminName(adminName)
-                .action(message.action())
-                .targetType(message.targetType())
-                .targetId(message.targetId())
-                .detail(message.detail())
-                .ip(message.ip())
-                .build());
-        log.debug("Recorded action log: {} by {}", message.action(), adminName);
-    }
-
-    private String resolveAdminName(ActionLogMessage message) {
-        if (message.adminName() != null) {
-            return message.adminName();
-        }
-        if (message.adminId() == null) {
-            return null;
-        }
-        return adminRepository.findById(message.adminId())
-                .map(a -> a.getName())
-                .orElse(null);
+        writer.write(message);
     }
 }

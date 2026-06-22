@@ -90,6 +90,12 @@
             <artifactId>spring-cloud-aws-starter-sqs</artifactId>
         </dependency>
 
+        <!-- Messaging (alt transport): Apache Kafka. Active when app.eventlog.transport=kafka. -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
         <!-- API docs -->
         <dependency>
             <groupId>org.springdoc</groupId>
