@@ -8,13 +8,41 @@ import {
   useBannerCreate,
   useBannerUpdate,
 } from "@/apis/query/banner/banner";
+import { contentList } from "@/apis/query/content/content";
 import {
   BannerDtoDevice,
   BannerDtoPosition,
   BannerDtoTargetType,
+  ContentSearchRequestType,
   type BannerDto,
 } from "@/apis/query/streamHubAdminAPI.schemas";
 import { SUCCESS_CODE } from "@/types/api";
+
+/**
+ * Banner link target type. Content types (VIDEO/MUSIC/POST) store the referenced id; the backend
+ * resolves the public path. URL = a raw external/internal url. "" = no link.
+ */
+type LinkType = "" | "VIDEO" | "MUSIC" | "POST" | "URL";
+
+const LINK_TYPE_LABELS: Record<LinkType, string> = {
+  "": "없음",
+  VIDEO: "영상",
+  MUSIC: "음악",
+  POST: "게시글",
+  URL: "직접 URL",
+};
+
+/** BannerDto plus the structured-link fields (not yet in the generated type until `npm run gen`). */
+type BannerWithLink = BannerDto & {
+  linkType?: LinkType;
+  linkRefId?: number;
+  linkLabel?: string;
+};
+
+interface LinkSearchResult {
+  id: number;
+  title: string;
+}
 
 const FIELD_CLASS =
   "w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand";
@@ -56,6 +84,13 @@ interface BannerFormState {
   /** "" = not a content-tab banner. */
   targetType: "" | BannerDtoTargetType;
   imageUrl: string;
+  /** Structured link target. */
+  linkType: LinkType;
+  /** Referenced content/post id for content link types. */
+  linkRefId: number | null;
+  /** Selected content title (display). */
+  linkLabel: string;
+  /** Raw URL — used only when linkType === "URL". */
   linkUrl: string;
   startAt: string;
   endAt: string;
@@ -63,19 +98,28 @@ interface BannerFormState {
   useYn: string;
 }
 
-const buildFormState = (banner?: BannerDto | null): BannerFormState => ({
-  title: banner?.title ?? "",
-  subtitle: banner?.subtitle ?? "",
-  position: banner?.position ?? BannerDtoPosition.MAIN_TOP,
-  device: banner?.device ?? BannerDtoDevice.ALL,
-  targetType: banner?.targetType ?? "",
-  imageUrl: banner?.imageUrl ?? "",
-  linkUrl: banner?.linkUrl ?? "",
-  startAt: banner?.startAt ?? "",
-  endAt: banner?.endAt ?? "",
-  sortOrder: banner?.sortOrder != null ? String(banner.sortOrder) : "0",
-  useYn: banner?.useYn ?? "Y",
-});
+const buildFormState = (banner?: BannerDto | null): BannerFormState => {
+  const b = banner as BannerWithLink | null | undefined;
+  // Edit: prefer the stored linkType; legacy banners (no type but a url) edit as a raw URL.
+  const linkType: LinkType = b?.linkType ?? (b?.linkUrl ? "URL" : "");
+  return {
+    title: b?.title ?? "",
+    subtitle: b?.subtitle ?? "",
+    position: b?.position ?? BannerDtoPosition.MAIN_TOP,
+    device: b?.device ?? BannerDtoDevice.ALL,
+    targetType: b?.targetType ?? "",
+    imageUrl: b?.imageUrl ?? "",
+    linkType,
+    linkRefId: b?.linkRefId ?? null,
+    linkLabel: b?.linkLabel ?? "",
+    // For content types the response linkUrl is the resolved path — don't show it in the URL box.
+    linkUrl: linkType === "URL" ? (b?.linkUrl ?? "") : "",
+    startAt: b?.startAt ?? "",
+    endAt: b?.endAt ?? "",
+    sortOrder: b?.sortOrder != null ? String(b.sortOrder) : "0",
+    useYn: b?.useYn ?? "Y",
+  };
+};
 
 /**
  * BannerFormDialog is a modal create/edit form for a banner. When `banner` has
@@ -105,6 +149,63 @@ export default function BannerFormDialog({
     value: BannerFormState[K],
   ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // --- Link target picker (search & select real content/posts) ---
+  const [linkKeyword, setLinkKeyword] = useState("");
+  const [linkResults, setLinkResults] = useState<LinkSearchResult[]>([]);
+  const [linkSearching, setLinkSearching] = useState(false);
+
+  const changeLinkType = (next: LinkType) => {
+    // Switching type clears any prior selection/url so we never send a stale ref.
+    setForm((prev) => ({ ...prev, linkType: next, linkRefId: null, linkLabel: "", linkUrl: "" }));
+    setLinkResults([]);
+    setLinkKeyword("");
+  };
+
+  const runLinkSearch = async () => {
+    const keyword = linkKeyword.trim() || undefined;
+    setLinkSearching(true);
+    setLinkResults([]);
+    try {
+      if (form.linkType === "VIDEO" || form.linkType === "MUSIC") {
+        const res = await contentList({
+          keyword,
+          type:
+            form.linkType === "MUSIC"
+              ? ContentSearchRequestType.SOUND
+              : ContentSearchRequestType.VIDEO,
+          pageNumber: 1,
+          pageSize: 8,
+        });
+        setLinkResults(
+          (res.resultObject?.contents ?? []).map((c) => ({
+            id: c.id ?? 0,
+            title: c.title ?? `#${c.id}`,
+          })),
+        );
+      } else if (form.linkType === "POST") {
+        // Home posts have no admin endpoint — search the public feed (no auth needed).
+        const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+        const qs = new URLSearchParams({ pageNumber: "1", pageSize: "8" });
+        if (keyword) qs.set("keyword", keyword);
+        const r = await fetch(`${base}/pub/v1/posts?${qs.toString()}`);
+        const j = await r.json();
+        const items: Array<{ id?: number; title?: string }> =
+          j?.resultObject?.contents ?? j?.resultObject ?? [];
+        setLinkResults(items.map((p) => ({ id: p.id ?? 0, title: p.title ?? `#${p.id}` })));
+      }
+    } catch {
+      setMessage("콘텐츠 검색에 실패했습니다.");
+    } finally {
+      setLinkSearching(false);
+    }
+  };
+
+  const selectLink = (item: LinkSearchResult) => {
+    setForm((prev) => ({ ...prev, linkRefId: item.id, linkLabel: item.title }));
+    setLinkResults([]);
+    setLinkKeyword("");
   };
 
   const handleImageUpload = async (file: File | undefined) => {
@@ -151,15 +252,27 @@ export default function BannerFormDialog({
       return;
     }
 
+    const isContentLink =
+      form.linkType === "VIDEO" || form.linkType === "MUSIC" || form.linkType === "POST";
+    if (isContentLink && form.linkRefId == null) {
+      setMessage(`링크할 ${LINK_TYPE_LABELS[form.linkType]} 콘텐츠를 검색해서 선택해 주세요.`);
+      return;
+    }
+
     const parsedSort = Number(form.sortOrder);
-    const payload: BannerDto = {
+    const payload: BannerWithLink = {
       title: form.title.trim(),
       subtitle: form.subtitle.trim() || undefined,
       position: form.position,
       device: form.device,
       targetType: form.targetType || undefined,
       imageUrl: form.imageUrl.trim() || undefined,
-      linkUrl: form.linkUrl.trim() || undefined,
+      // Structured link: content types send type+refId+label (linkUrl resolved server-side);
+      // URL type sends the raw url; "" clears everything.
+      linkType: form.linkType || undefined,
+      linkRefId: isContentLink ? form.linkRefId ?? undefined : undefined,
+      linkLabel: isContentLink ? form.linkLabel || undefined : undefined,
+      linkUrl: form.linkType === "URL" ? form.linkUrl.trim() || undefined : undefined,
       startAt: form.startAt.trim() || undefined,
       endAt: form.endAt.trim() || undefined,
       sortOrder: Number.isFinite(parsedSort) ? parsedSort : 0,
@@ -367,22 +480,115 @@ export default function BannerFormDialog({
               )}
             </div>
 
-            {/* Link URL */}
+            {/* Link target — pick real content/post, or a raw URL */}
             <div className="sm:col-span-2">
               <label
-                htmlFor="banner-link"
+                htmlFor="banner-linktype"
                 className="mb-1 block text-xs font-medium text-slate-500"
               >
-                링크 URL
+                링크 대상
               </label>
-              <input
-                id="banner-link"
-                type="text"
-                placeholder="https://..."
+              <select
+                id="banner-linktype"
                 className={FIELD_CLASS}
-                value={form.linkUrl}
-                onChange={(event) => update("linkUrl", event.target.value)}
-              />
+                value={form.linkType}
+                onChange={(event) => changeLinkType(event.target.value as LinkType)}
+              >
+                {(Object.keys(LINK_TYPE_LABELS) as LinkType[]).map((t) => (
+                  <option key={t || "none"} value={t}>
+                    {LINK_TYPE_LABELS[t]}
+                  </option>
+                ))}
+              </select>
+
+              {form.linkType === "URL" && (
+                <input
+                  type="text"
+                  placeholder="https://... 또는 /내부경로"
+                  className={`${FIELD_CLASS} mt-2`}
+                  value={form.linkUrl}
+                  onChange={(event) => update("linkUrl", event.target.value)}
+                />
+              )}
+
+              {(form.linkType === "VIDEO" ||
+                form.linkType === "MUSIC" ||
+                form.linkType === "POST") && (
+                <div className="mt-2 space-y-2">
+                  {form.linkRefId != null ? (
+                    <div className="flex items-center justify-between rounded-md border border-brand/40 bg-brand/5 px-3 py-2 text-sm">
+                      <span className="truncate text-slate-800">
+                        선택됨: {form.linkLabel || `#${form.linkRefId}`}{" "}
+                        <span className="text-slate-400">(#{form.linkRefId})</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((p) => ({ ...p, linkRefId: null, linkLabel: "" }))
+                        }
+                        className="ml-2 shrink-0 text-xs text-slate-500 hover:text-red-600"
+                      >
+                        제거
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder={`${LINK_TYPE_LABELS[form.linkType]} 제목 검색`}
+                          className={FIELD_CLASS}
+                          value={linkKeyword}
+                          onChange={(event) => setLinkKeyword(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              void runLinkSearch();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void runLinkSearch()}
+                          disabled={linkSearching}
+                          className="inline-flex shrink-0 items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          {linkSearching ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            "검색"
+                          )}
+                        </button>
+                      </div>
+                      {linkResults.length > 0 && (
+                        <ul className="max-h-44 overflow-y-auto rounded-md border border-slate-200">
+                          {linkResults.map((r) => (
+                            <li key={r.id}>
+                              <button
+                                type="button"
+                                onClick={() => selectLink(r)}
+                                className="block w-full truncate px-3 py-2 text-left text-sm hover:bg-slate-50"
+                              >
+                                {r.title}{" "}
+                                <span className="text-slate-400">(#{r.id})</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                  <p className="text-[11px] text-slate-400">
+                    선택한 콘텐츠로 자동 이동합니다 (클릭 시{" "}
+                    {form.linkType === "POST"
+                      ? "/posts"
+                      : form.linkType === "MUSIC"
+                        ? "/music"
+                        : "/video"}
+                    /&lt;id&gt;).
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Start at */}
