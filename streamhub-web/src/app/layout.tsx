@@ -5,8 +5,8 @@ import Providers from "@/components/common/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "StreamHub Admin",
-  description: "StreamHub 관리자 콘솔",
+  title: "은혜온 관리자",
+  description: "은혜온 관리자 콘솔",
 };
 
 export default function RootLayout({

@@ -189,13 +189,13 @@ export default function RoadmapPage() {
               <Sparkles className="h-3.5 w-3.5" /> 풀스택 포트폴리오 · 라이브 운영 중
             </span>
             <h1 className="mt-6 text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-7xl">
-              Stream
+              Grace
               <span className="bg-gradient-to-r from-cyan-400 via-sky-400 to-violet-500 bg-clip-text text-transparent">
-                Hub
+                On
               </span>
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-slate-300 sm:text-xl">
-              교회 · 스트리밍 플랫폼을 <span className="font-semibold text-white">실제 운영 서비스의 프로덕션 스택 그대로</span>{" "}
+              교회 · 예배 미디어 플랫폼을 <span className="font-semibold text-white">실제 운영 서비스의 프로덕션 스택 그대로</span>{" "}
               재현했습니다. 하나의 Spring Boot 백엔드 위에 관리자 콘솔과 공개 사용자 사이트, 그리고
               클라우드 배포 파이프라인까지 — 직접 만든 모든 것의 로드맵입니다.
             </p>
@@ -341,7 +341,7 @@ export default function RoadmapPage() {
         </section>
 
         <footer className="mt-16 text-center text-xs text-slate-500">
-          StreamHub — 풀스택 포트폴리오 · Spring Boot · Next.js · AWS
+          GraceOn — 풀스택 포트폴리오 · Spring Boot · Next.js · AWS
         </footer>
       </div>
     </div>

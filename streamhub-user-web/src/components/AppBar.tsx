@@ -12,7 +12,7 @@ import { Logo } from "./Logo";
 export function AppBar() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border/60 bg-bg/85 px-5 backdrop-blur-md">
-      <Link href="/" aria-label="StreamHub 홈">
+      <Link href="/" aria-label="은혜온 홈">
         <Logo />
       </Link>
       <nav className="flex items-center gap-4">

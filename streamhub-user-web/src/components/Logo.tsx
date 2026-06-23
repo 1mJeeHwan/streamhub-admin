@@ -1,7 +1,7 @@
 /**
- * StreamHub brand lockup: cyan gradient tile + play mark + live dot, then the wordmark.
+ * GraceOn brand lockup: cyan gradient tile + play mark + live dot, then the wordmark.
  * The tile is fixed cyan (reads on both themes); the wordmark inherits the theme text color
- * (text-active) with a primary "Hub", so it adapts to dark/light automatically.
+ * (text-active) with a primary "On", so it adapts to dark/light automatically.
  */
 export function Logo({ className }: { className?: string }) {
   return (
@@ -28,7 +28,7 @@ export function Logo({ className }: { className?: string }) {
         <circle cx="24.5" cy="8" r="2.4" fill="#fff" />
       </svg>
       <span className="text-18px font-bold tracking-tight text-active">
-        Stream<span className="text-primary">Hub</span>
+        Grace<span className="text-primary">On</span>
       </span>
     </span>
   );

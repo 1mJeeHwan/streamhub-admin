@@ -162,7 +162,7 @@ export default function Sidebar() {
     <aside className="flex h-screen w-60 flex-col border-r border-slate-200 bg-white">
       <div className="flex h-14 items-center border-b border-slate-200 px-5">
         <span className="text-base font-semibold text-slate-900">
-          StreamHub
+          GraceOn
         </span>
       </div>
       <nav className="flex-1 space-y-4 overflow-y-auto p-3">

@@ -9,7 +9,7 @@ import { AnnouncementGate } from "@/components/AnnouncementGate";
 import { AnalyticsTracker } from "@/components/AnalyticsTracker";
 
 export const metadata: Metadata = {
-  title: "StreamHub — 함께 드리는 예배",
+  title: "은혜온 — 함께 드리는 예배",
   description: "예배 영상, 찬양 음악, 그리고 소식을 한 곳에서. 로그인 없이 자유롭게 둘러보세요.",
 };
 

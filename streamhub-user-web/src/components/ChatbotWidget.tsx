@@ -233,7 +233,7 @@ export function ChatbotWidget() {
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <h2 className="text-sm font-bold text-active">StreamHub 도우미</h2>
+                      <h2 className="text-sm font-bold text-active">은혜온 도우미</h2>
                       <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
                         AI
                       </span>

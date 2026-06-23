@@ -52,7 +52,7 @@ function LoginForm() {
           <LogIn className="h-6 w-6" />
         </div>
         <h1 className="text-2xl font-bold">로그인</h1>
-        <p className="mt-1 text-sm text-inactive">스트림허브 회원으로 로그인하세요.</p>
+        <p className="mt-1 text-sm text-inactive">은혜온 회원으로 로그인하세요.</p>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-3">
