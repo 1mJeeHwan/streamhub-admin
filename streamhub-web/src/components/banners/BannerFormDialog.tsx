@@ -175,7 +175,7 @@ export default function BannerFormDialog({
             form.linkType === "MUSIC"
               ? ContentSearchRequestType.SOUND
               : ContentSearchRequestType.VIDEO,
-          pageNumber: 1,
+          pageNumber: 0, // backend pagination is 0-based (page 0 = first page)
           pageSize: 8,
         });
         setLinkResults(
@@ -187,7 +187,7 @@ export default function BannerFormDialog({
       } else if (form.linkType === "POST") {
         // Home posts have no admin endpoint — search the public feed (no auth needed).
         const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-        const qs = new URLSearchParams({ pageNumber: "1", pageSize: "8" });
+        const qs = new URLSearchParams({ pageNumber: "0", pageSize: "8" });
         if (keyword) qs.set("keyword", keyword);
         const r = await fetch(`${base}/pub/v1/posts?${qs.toString()}`);
         const j = await r.json();
