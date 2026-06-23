@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import { useChannels, useContents } from "@/lib/queries";
 import { useAlbums, GENRE_LABELS, type AlbumGenre, type AlbumSortBy } from "@/lib/albums";
+import { usePlaylists } from "@/lib/playlists";
 import { useUrlSearch } from "@/lib/useUrlSearch";
 import type { ContentSortBy, PublicChannel } from "@/lib/api";
 import type { BannerTarget, ContentType } from "@/lib/types";
@@ -12,6 +13,7 @@ import { BannerHero } from "./BannerHero";
 import { ItemCarousel } from "./ItemCarousel";
 import { ContentCard } from "./ContentCard";
 import { AlbumCard } from "./AlbumCard";
+import { PlaylistCard } from "./PlaylistCard";
 import { ChannelCard } from "./ChannelCard";
 import { ContentGrid } from "./ContentGrid";
 import { SearchBar } from "./SearchBar";
@@ -65,6 +67,40 @@ function ContentRow({
         {items.map((item) => (
           <ItemCarousel.ItemWrapper key={item.id}>
             <ContentCard item={item} size="md" />
+          </ItemCarousel.ItemWrapper>
+        ))}
+      </ItemCarousel>
+    </ContentContainer>
+  );
+}
+
+/** Curated playlists carousel for the music tab. */
+function PlaylistRow() {
+  const { data, isLoading } = usePlaylists();
+  const items = data ?? [];
+
+  if (isLoading) {
+    return (
+      <ContentContainer title="플레이리스트">
+        <ItemCarousel>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <ItemCarousel.ItemWrapper key={i} width={152}>
+              <div className="skeleton aspect-square rounded-card" />
+              <div className="skeleton mt-10px h-4 w-4/5 rounded" />
+            </ItemCarousel.ItemWrapper>
+          ))}
+        </ItemCarousel>
+      </ContentContainer>
+    );
+  }
+  if (items.length === 0) return null;
+
+  return (
+    <ContentContainer title="플레이리스트">
+      <ItemCarousel>
+        {items.map((playlist) => (
+          <ItemCarousel.ItemWrapper key={playlist.id}>
+            <PlaylistCard item={playlist} size="md" />
           </ItemCarousel.ItemWrapper>
         ))}
       </ItemCarousel>
@@ -331,6 +367,7 @@ export function MediaBrowse({
           )}
           {showAlbumGenres && (
             <>
+              <PlaylistRow />
               <AlbumSortRow title="인기 앨범" sortBy="viewCount" />
               <AlbumSortRow title="최신 앨범" sortBy="releaseDate" />
               {MUSIC_GENRE_ROWS.map((genre) => (

@@ -32,7 +32,7 @@ public final class RolePermissions {
             "order", "payment", "subscription", "member", "point", "content", "album", "goods",
             "coupon", "campaign", "banner", "board", "community", "worship", "visit", "store",
             "church", "sms", "notification", "analytics", "chat", "dashboard", "inquiry", "media",
-            "announcement");
+            "announcement", "playlist");
 
     /**
      * System-only resources (SYSTEM gets read+write; MANAGER/VIEWER get nothing). Mirrors the

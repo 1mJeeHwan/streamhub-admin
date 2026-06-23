@@ -35,6 +35,7 @@ import {
   Bot,
   Image as ImageIcon,
   Images,
+  ListMusic,
   Megaphone,
   Info,
   Bell,
@@ -75,6 +76,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "포인트 원장", href: "/point", icon: Coins },
       { label: "콘텐츠관리", href: "/content", icon: FileVideo },
       { label: "콘텐츠 통계", href: "/content/stats", icon: BarChart3 },
+      { label: "플레이리스트", href: "/playlists", icon: ListMusic },
     ],
   },
   {
