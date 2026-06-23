@@ -9,8 +9,14 @@ import { formatDateTime } from "@/lib/format";
 import { relativeTime } from "@/lib/relative-time";
 
 const FEED_LIMIT = 30;
-const POLL_INTERVAL_MS = 15000;
-const REVEAL_INTERVAL_MS = 1200;
+// Genuine near-real-time: refetch every 5s (+ on window focus), so new activity surfaces within
+// seconds rather than being faked by a staggered reveal of stale data.
+const POLL_INTERVAL_MS = 5000;
+// Re-render every 10s so the relative-time labels keep ticking between fetches (a "5분 전" row
+// becomes "6분 전" without waiting for new data).
+const TICK_MS = 10000;
+// Rows newer than this get the "live" emphasis (pulsing dot + emerald label).
+const RECENT_MS = 60000;
 
 // kind별 좌측 점 색. action-log/page.tsx의 actionColor 분류 철학을 따른다.
 function kindDotColor(kind?: string): string {
@@ -32,71 +38,65 @@ function kindDotColor(kind?: string): string {
   }
 }
 
+function occurredMs(occurredAt?: string): number {
+  if (!occurredAt) return NaN;
+  return new Date(occurredAt).getTime();
+}
+
 /**
- * ActivityFeed renders the real-time operations feed from `/v1/dashboard/feed`.
- * Rows are not all painted at once: on each fetch the items are sorted oldest →
- * newest and revealed one at a time from the top with a slide-in, giving the
- * "control room ticker" feel. The query polls every 15s; relative timestamps
- * are computed client-side against the server's absolute `occurredAt`.
+ * ActivityFeed renders the operations feed from `/v1/dashboard/feed`, newest first. It refetches
+ * every {@link POLL_INTERVAL_MS} (and on window focus), so genuinely new orders/subscriptions/
+ * donations appear within seconds and are flagged "방금 전" with a live dot; everything older shows
+ * an honest relative age ("12분 전", "3시간 전", "5일 전"). Only rows not seen on a previous fetch
+ * animate in — no cosmetic ticker over stale data.
  */
 export default function ActivityFeed() {
-  const { data, isPending, isError } = useDashboardFeed(
+  const { data, isPending, isError, dataUpdatedAt } = useDashboardFeed(
     { limit: FEED_LIMIT },
-    { query: { refetchInterval: POLL_INTERVAL_MS } },
+    { query: { refetchInterval: POLL_INTERVAL_MS, refetchOnWindowFocus: true } },
   );
 
   const items = data?.resultObject ?? [];
-  const [revealCount, setRevealCount] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Newest-first for display.
   const ordered = [...items].sort((a, b) =>
     (b.occurredAt ?? "").localeCompare(a.occurredAt ?? ""),
   );
 
-  // Reveal rows progressively whenever the fetched set grows.
+  // Tick the clock so relative labels (and the "갱신" indicator) stay fresh between fetches.
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (ordered.length === 0) {
-      setRevealCount(0);
-      return;
-    }
+    const id = setInterval(() => setNow(Date.now()), TICK_MS);
+    return () => clearInterval(id);
+  }, []);
 
-    if (timerRef.current !== null) {
-      clearInterval(timerRef.current);
-    }
-
-    timerRef.current = setInterval(() => {
-      setRevealCount((prev) => {
-        if (prev >= ordered.length) {
-          if (timerRef.current !== null) {
-            clearInterval(timerRef.current);
-          }
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, REVEAL_INTERVAL_MS);
-
-    return () => {
-      if (timerRef.current !== null) {
-        clearInterval(timerRef.current);
-      }
-    };
+  // Track ids seen on a previous render so only brand-new rows animate in (not the whole list
+  // on every poll). ponytail: the set is per-session and bounded by the feed's id space.
+  const seenRef = useRef<Set<string>>(new Set());
+  const seen = seenRef.current;
+  const firstLoadRef = useRef(true);
+  useEffect(() => {
+    ordered.forEach((i) => i.id && seen.add(i.id));
+    if (ordered.length > 0) firstLoadRef.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ordered.length]);
+  });
 
-  const visible = ordered.slice(0, revealCount);
+  const updatedSec =
+    dataUpdatedAt > 0 ? Math.max(0, Math.round((now - dataUpdatedAt) / 1000)) : null;
 
   return (
     <section className="flex flex-col rounded-md border border-slate-200 bg-white p-5">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-900">실시간 활동</h2>
-        <span className="flex items-center gap-1.5 text-xs text-slate-400">
+        <span
+          className="flex items-center gap-1.5 text-xs text-slate-400"
+          title={updatedSec !== null ? `${updatedSec}초 전 갱신 · 5초마다 자동 갱신` : undefined}
+        >
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
           </span>
-          실시간
+          {updatedSec !== null && updatedSec < 10 ? "실시간" : `${updatedSec ?? ""}초 전 갱신`}
         </span>
       </div>
 
@@ -115,30 +115,39 @@ export default function ActivityFeed() {
           </div>
         ) : (
           <ul className="space-y-3">
-            {visible.map((item: FeedItem) => (
-              <li
-                key={item.id}
-                className="feed-row flex items-start gap-3 text-sm"
-              >
-                <span
-                  className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${kindDotColor(
-                    item.kind,
-                  )}`}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-slate-800">{item.message ?? "-"}</p>
-                  <p className="mt-0.5 text-xs text-slate-400">
-                    {item.actorName ?? "시스템"}
-                  </p>
-                </div>
-                <time
-                  className="shrink-0 whitespace-nowrap text-xs text-slate-400"
-                  title={formatDateTime(item.occurredAt)}
+            {ordered.map((item: FeedItem) => {
+              const ms = occurredMs(item.occurredAt);
+              const isRecent = !Number.isNaN(ms) && now - ms < RECENT_MS;
+              // Animate only rows that are new since a previous fetch (and not the initial paint).
+              const isNew = !firstLoadRef.current && !!item.id && !seen.has(item.id);
+              return (
+                <li
+                  key={item.id}
+                  className={`flex items-start gap-3 text-sm ${isNew ? "feed-row" : ""}`}
                 >
-                  {relativeTime(item.occurredAt)}
-                </time>
-              </li>
-            ))}
+                  <span className="relative mt-1.5 flex h-2 w-2 shrink-0">
+                    {isRecent && (
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    )}
+                    <span
+                      className={`relative h-2 w-2 rounded-full ${kindDotColor(item.kind)}`}
+                    />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-slate-800">{item.message ?? "-"}</p>
+                    <p className="mt-0.5 text-xs text-slate-400">{item.actorName ?? "시스템"}</p>
+                  </div>
+                  <time
+                    className={`shrink-0 whitespace-nowrap text-xs ${
+                      isRecent ? "font-semibold text-emerald-600" : "text-slate-400"
+                    }`}
+                    title={formatDateTime(item.occurredAt)}
+                  >
+                    {relativeTime(item.occurredAt)}
+                  </time>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
