@@ -152,6 +152,14 @@
                    d.paid_at     AS occurred_at
             FROM DONATION d
             WHERE d.status = 'PAID'
+            UNION ALL
+            SELECT mm.id          AS source_id,
+                   'MEMBER'       AS kind,
+                   mm.user_status AS status,
+                   NULL           AS amount,
+                   mm.id          AS member_id,
+                   mm.created_at  AS occurred_at
+            FROM MEMBER mm
         ) u
         JOIN MEMBER m ON u.member_id = m.id
         <!-- All three sources carry a NOT NULL member_id, so the MEMBER join never drops rows;

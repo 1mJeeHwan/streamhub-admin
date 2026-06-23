@@ -181,6 +181,8 @@ public class DashboardService {
             case "DONATION":
                 String typeLabel = "SUBSCRIPTION".equals(row.getStatus()) ? "정기후원 결제" : "단건후원";
                 return actorName + "님이 " + typeLabel + "(" + formatKrw(row.getAmount()) + ")";
+            case "MEMBER":
+                return actorName + "님이 회원가입";
             default:
                 return actorName + "님의 활동";
         }
