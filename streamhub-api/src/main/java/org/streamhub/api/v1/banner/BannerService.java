@@ -78,6 +78,9 @@ public class BannerService {
                 .targetType(request.getTargetType())
                 .imageUrl(defaultImg(request.getImageUrl()))
                 .linkUrl(request.getLinkUrl())
+                .linkType(request.getLinkType())
+                .linkRefId(request.getLinkRefId())
+                .linkLabel(request.getLinkLabel())
                 .startAt(request.getStartAt())
                 .endAt(request.getEndAt())
                 .sortOrder(request.getSortOrder())
@@ -94,7 +97,8 @@ public class BannerService {
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
         banner.update(
                 request.getTitle(), request.getSubtitle(), request.getPosition(), request.getDevice(),
-                request.getTargetType(), defaultImg(request.getImageUrl()), request.getLinkUrl(), request.getStartAt(),
+                request.getTargetType(), defaultImg(request.getImageUrl()), request.getLinkUrl(),
+                request.getLinkType(), request.getLinkRefId(), request.getLinkLabel(), request.getStartAt(),
                 request.getEndAt(), request.getSortOrder(), defaultYn(request.getUseYn()));
         bannerRepository.saveAndFlush(banner);
         actionLogPublisher.publish("BANNER_UPDATE", "BANNER", String.valueOf(id), request.getTitle());

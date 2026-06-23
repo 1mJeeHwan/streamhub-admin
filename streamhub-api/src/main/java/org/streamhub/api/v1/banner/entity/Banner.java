@@ -59,6 +59,23 @@ public class Banner {
     @Column(name = "link_url", length = 500)
     private String linkUrl;
 
+    /**
+     * Structured link target (nullable for legacy/URL banners). VIDEO/MUSIC/POST pair with
+     * {@link #linkRefId}; the public response resolves them to an internal path. Null = legacy
+     * banner that uses {@link #linkUrl} directly.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "link_type", length = 20)
+    private BannerLinkType linkType;
+
+    /** Referenced content/post id for VIDEO/MUSIC/POST link types. */
+    @Column(name = "link_ref_id")
+    private Long linkRefId;
+
+    /** Title of the selected content captured at edit time, for admin-form display. */
+    @Column(name = "link_label", length = 200)
+    private String linkLabel;
+
     @Column(name = "start_at")
     private LocalDateTime startAt;
 
@@ -76,7 +93,8 @@ public class Banner {
 
     @Builder
     private Banner(String title, String subtitle, BannerPosition position, BannerDevice device,
-                   BannerTarget targetType, String imageUrl, String linkUrl, LocalDateTime startAt,
+                   BannerTarget targetType, String imageUrl, String linkUrl, BannerLinkType linkType,
+                   Long linkRefId, String linkLabel, LocalDateTime startAt,
                    LocalDateTime endAt, int sortOrder, String useYn, LocalDateTime createdAt) {
         this.title = title;
         this.subtitle = subtitle;
@@ -85,6 +103,9 @@ public class Banner {
         this.targetType = targetType;
         this.imageUrl = imageUrl;
         this.linkUrl = linkUrl;
+        this.linkType = linkType;
+        this.linkRefId = linkRefId;
+        this.linkLabel = linkLabel;
         this.startAt = startAt;
         this.endAt = endAt;
         this.sortOrder = sortOrder;
@@ -94,7 +115,8 @@ public class Banner {
 
     /** Updates editable fields. */
     public void update(String title, String subtitle, BannerPosition position, BannerDevice device,
-                       BannerTarget targetType, String imageUrl, String linkUrl, LocalDateTime startAt,
+                       BannerTarget targetType, String imageUrl, String linkUrl, BannerLinkType linkType,
+                       Long linkRefId, String linkLabel, LocalDateTime startAt,
                        LocalDateTime endAt, int sortOrder, String useYn) {
         this.title = title;
         this.subtitle = subtitle;
@@ -103,6 +125,9 @@ public class Banner {
         this.targetType = targetType;
         this.imageUrl = imageUrl;
         this.linkUrl = linkUrl;
+        this.linkType = linkType;
+        this.linkRefId = linkRefId;
+        this.linkLabel = linkLabel;
         this.startAt = startAt;
         this.endAt = endAt;
         this.sortOrder = sortOrder;

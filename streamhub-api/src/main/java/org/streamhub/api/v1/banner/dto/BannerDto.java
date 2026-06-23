@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.streamhub.api.v1.banner.entity.Banner;
 import org.streamhub.api.v1.banner.entity.BannerDevice;
+import org.streamhub.api.v1.banner.entity.BannerLinkType;
 import org.streamhub.api.v1.banner.entity.BannerPosition;
 import org.streamhub.api.v1.banner.entity.BannerTarget;
 
@@ -48,8 +49,22 @@ public class BannerDto {
     @Size(max = 500)
     private String imageUrl;
 
+    /**
+     * On a request: the raw URL for {@link BannerLinkType#URL} (or legacy). On a response: the
+     * resolved click target — an internal path for VIDEO/MUSIC/POST, else the raw URL.
+     */
     @Size(max = 500)
     private String linkUrl;
+
+    /** Structured link target. Null = legacy banner using {@link #linkUrl} directly. */
+    private BannerLinkType linkType;
+
+    /** Referenced content/post id for VIDEO/MUSIC/POST. */
+    private Long linkRefId;
+
+    /** Selected content's title (display only). */
+    @Size(max = 200)
+    private String linkLabel;
 
     private LocalDateTime startAt;
     private LocalDateTime endAt;
@@ -72,12 +87,37 @@ public class BannerDto {
         dto.device = banner.getDevice();
         dto.targetType = banner.getTargetType();
         dto.imageUrl = banner.getImageUrl();
-        dto.linkUrl = banner.getLinkUrl();
+        dto.linkType = banner.getLinkType();
+        dto.linkRefId = banner.getLinkRefId();
+        dto.linkLabel = banner.getLinkLabel();
+        dto.linkUrl = resolveLink(banner);
         dto.startAt = banner.getStartAt();
         dto.endAt = banner.getEndAt();
         dto.sortOrder = banner.getSortOrder();
         dto.useYn = banner.getUseYn();
         dto.createdAt = banner.getCreatedAt();
         return dto;
+    }
+
+    /**
+     * Resolves the public click target: an internal path for content link types, else the raw
+     * {@code linkUrl} (covers {@link BannerLinkType#URL} and legacy banners with a null type).
+     */
+    private static String resolveLink(Banner banner) {
+        BannerLinkType type = banner.getLinkType();
+        Long ref = banner.getLinkRefId();
+        if (type != null && ref != null) {
+            switch (type) {
+                case VIDEO:
+                    return "/video/" + ref;
+                case MUSIC:
+                    return "/music/" + ref;
+                case POST:
+                    return "/posts/" + ref;
+                default:
+                    break;
+            }
+        }
+        return banner.getLinkUrl();
     }
 }
