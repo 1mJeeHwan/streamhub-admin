@@ -182,15 +182,14 @@ public class PaymentService {
      * backfills the receipt with the PG provider/txnId, and triggers the paid-notification SMS via
      * the order service's shared hook.
      *
-     * <p>The transaction id presented here must match the one issued at the request step (stored on
-     * the order); a mismatch is rejected with {@code INVALID_PARAMETER}. Harmless for the mock
-     * provider, this closes the seam so a real PG integration cannot approve against a stale or
-     * forged transaction id.
+     * <p>The order must be in {@link PayStatus#REQUESTED} (so an already-approved order cannot be
+     * re-approved). Binding the completion token to the right order is the adapter's responsibility:
+     * e.g. {@code PortonePaymentProvider} verifies the PG record's {@code merchant_uid} equals this
+     * order's {@code orderNo}, so a paid token cannot be replayed against a different order.
      *
      * @throws ApiException {@code NOT_FOUND} if missing, {@code INVALID_PARAMETER} if the order
-     *                      is not in {@link PayStatus#REQUESTED} or the txnId does not match the
-     *                      request-stage id, or {@code FORBIDDEN} if the order is outside the
-     *                      operator's church
+     *                      is not in {@link PayStatus#REQUESTED} (or the adapter rejects the token),
+     *                      or {@code FORBIDDEN} if the order is outside the operator's church
      */
     @Transactional
     public PaymentResultDto approve(PayApproveCommand command, AdminPrincipal principal) {

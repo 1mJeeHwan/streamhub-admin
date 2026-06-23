@@ -113,8 +113,9 @@ public class MemberMeService {
     /** The member's watch events most recent first, content metadata joined, one page at a time. */
     @Transactional(readOnly = true)
     public ResInfinityList<WatchHistoryItem> history(Long memberId, int pageNumber, int pageSize) {
+        int size = clampPageSize(pageSize);
         Page<WatchHistory> page = watchHistoryRepository
-                .findByMemberIdOrderByWatchedAtDesc(memberId, PageRequest.of(Math.max(0, pageNumber), pageSize));
+                .findByMemberIdOrderByWatchedAtDesc(memberId, PageRequest.of(clampPageNumber(pageNumber), size));
         List<WatchHistory> events = page.getContent();
         Map<Long, Content> contents = contentRepository
                 .findAllById(events.stream().map(WatchHistory::getContentId).distinct().toList())
@@ -123,7 +124,15 @@ public class MemberMeService {
         List<WatchHistoryItem> items = events.stream()
                 .map(e -> toHistoryItem(e, contents.get(e.getContentId())))
                 .toList();
-        return ResInfinityList.of(items, page.getTotalElements(), pageSize);
+        return ResInfinityList.of(items, page.getTotalElements(), size);
+    }
+
+    private static int clampPageNumber(int pageNumber) {
+        return Math.max(pageNumber, 0);
+    }
+
+    private static int clampPageSize(int pageSize) {
+        return Math.min(Math.max(pageSize, 1), 100);
     }
 
     private WatchHistoryItem toHistoryItem(WatchHistory event, Content content) {
@@ -189,12 +198,13 @@ public class MemberMeService {
     /** Albums the member has paid for (deduplicated), one page at a time, cover keys resolved to URLs. */
     @Transactional(readOnly = true)
     public ResInfinityList<PurchasedAlbumItem> purchasedAlbums(Long memberId, int pageNumber, int pageSize) {
-        Pageable pageable = PageRequest.of(Math.max(0, pageNumber), pageSize);
+        int size = clampPageSize(pageSize);
+        Pageable pageable = PageRequest.of(clampPageNumber(pageNumber), size);
         Page<PurchasedAlbumRow> page = albumRepository.findPurchasedAlbums(memberId, pageable);
         List<PurchasedAlbumItem> contents = page.getContent().stream()
                 .map(this::toPurchasedAlbumItem)
                 .toList();
-        return ResInfinityList.of(contents, page.getTotalElements(), pageSize);
+        return ResInfinityList.of(contents, page.getTotalElements(), size);
     }
 
     private PurchasedAlbumItem toPurchasedAlbumItem(PurchasedAlbumRow row) {

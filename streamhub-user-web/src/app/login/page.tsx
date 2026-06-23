@@ -60,6 +60,7 @@ function LoginForm() {
           type="email"
           inputMode="email"
           autoComplete="email"
+          aria-label="이메일"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="이메일"
@@ -69,6 +70,7 @@ function LoginForm() {
         <input
           type="password"
           autoComplete="current-password"
+          aria-label="비밀번호"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="비밀번호"

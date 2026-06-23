@@ -47,15 +47,24 @@ public class MemberPointService {
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
 
         long totalCount = pointLedgerRepository.countByMemberId(memberId);
-        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        int size = clampPageSize(pageSize);
+        Pageable pageable = PageRequest.of(clampPageNumber(pageNumber), size);
         List<PointLedgerItem> items = pointLedgerRepository
                 .findByMemberIdOrderByIdDesc(memberId, pageable)
                 .stream()
                 .map(this::toItem)
                 .toList();
 
-        ResInfinityList<PointLedgerItem> ledger = ResInfinityList.of(items, totalCount, pageSize);
+        ResInfinityList<PointLedgerItem> ledger = ResInfinityList.of(items, totalCount, size);
         return new MemberPointsDto(member.getPointBalance(), ledger);
+    }
+
+    private static int clampPageNumber(int pageNumber) {
+        return Math.max(pageNumber, 0);
+    }
+
+    private static int clampPageSize(int pageSize) {
+        return Math.min(Math.max(pageSize, 1), 100);
     }
 
     private PointLedgerItem toItem(PointLedger ledger) {

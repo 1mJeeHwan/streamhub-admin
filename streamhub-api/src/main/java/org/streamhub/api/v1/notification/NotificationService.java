@@ -4,11 +4,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResultCode;
+import org.streamhub.api.base.security.AdminPrincipal;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
+import org.streamhub.api.v1.member.entity.Member;
 import org.streamhub.api.v1.member.repository.MemberRepository;
 import org.streamhub.api.v1.notification.dto.NotificationLogDto;
 import org.streamhub.api.v1.notification.dto.NotificationSearchRequest;
@@ -54,9 +58,14 @@ public class NotificationService {
      * Records a notification "send" (log-only — nothing is actually delivered). A BROADCAST send
      * reaches every member; a TARGETED send fans out to the given members via
      * {@code NOTIFICATION_RECIPIENT}. Members see it in their {@code /pub/v1/me/notifications} feed.
+     *
+     * <p>A TARGETED send is church-scoped: a CHURCH_MANAGER may only target members in its own
+     * church (every target must resolve to the operator's church, else FORBIDDEN); SYSTEM/VIEWER
+     * may target any member. A BROADCAST send is intentionally global (all churches) and is gated
+     * by the {@code notification:write} permission only.
      */
     @Transactional
-    public NotificationLogDto send(NotificationSendRequest request) {
+    public NotificationLogDto send(NotificationSendRequest request, AdminPrincipal principal) {
         boolean targeted = request.scope() == NotificationScope.TARGETED;
         List<Long> memberIds = targeted
                 ? (request.memberIds() == null ? List.of() : request.memberIds().stream().distinct().toList())
@@ -66,8 +75,13 @@ public class NotificationService {
             if (memberIds.isEmpty()) {
                 throw new ApiException(ResultCode.INVALID_PARAMETER); // 특정 회원 발송엔 수신자가 필요
             }
-            if (memberRepository.findAllByIdIn(memberIds).size() != memberIds.size()) {
+            List<Member> members = memberRepository.findAllByIdIn(memberIds);
+            if (members.size() != memberIds.size()) {
                 throw new ApiException(ResultCode.NOT_FOUND); // 존재하지 않는 회원 포함
+            }
+            if (!principal.isUnscoped()
+                    && members.stream().anyMatch(m -> !m.getChurchId().equals(principal.churchId()))) {
+                throw new ApiException(ResultCode.FORBIDDEN); // 타 교회 회원 대상 발송 차단
             }
         }
 
@@ -140,16 +154,45 @@ public class NotificationService {
         return dto;
     }
 
-    /** Purges a single log row. */
+    /**
+     * Purges a single log row, scoped to the operator's church. A TARGETED log is owned by the
+     * church of its recipients: a CHURCH_MANAGER may delete it only when every recipient is in its
+     * own church. A BROADCAST log (no recipients) spans all churches and may be deleted only by an
+     * unscoped operator (SYSTEM/VIEWER), so a manager cannot purge another operator's global log.
+     */
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, AdminPrincipal principal) {
         NotificationLog log = notificationLogRepository.findById(id)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        ensureLogInScope(id, principal);
         notificationLogRepository.delete(log);
         actionLogPublisher.publish("NOTIFICATION_DELETE", "NOTIFICATION", String.valueOf(id), log.getTitle());
     }
 
     // --- helpers -----------------------------------------------------------
+
+    /**
+     * Verifies a notification log is within the operator's church (unscoped bypasses). The log has
+     * no church column, so the owning church is derived from its recipients: every recipient must
+     * be in the operator's church. A BROADCAST log (no recipients) is global and forbidden to a
+     * scoped operator.
+     */
+    private void ensureLogInScope(Long notificationId, AdminPrincipal principal) {
+        if (principal.isUnscoped()) {
+            return;
+        }
+        List<Long> recipientIds = recipientRepository.findMemberIdsByNotificationId(notificationId);
+        if (recipientIds.isEmpty()) {
+            throw new ApiException(ResultCode.FORBIDDEN); // BROADCAST/global log
+        }
+        Set<Long> ownChurchMemberIds = memberRepository.findAllByIdIn(recipientIds).stream()
+                .filter(member -> member.getChurchId().equals(principal.churchId()))
+                .map(Member::getId)
+                .collect(Collectors.toSet());
+        if (ownChurchMemberIds.size() != Set.copyOf(recipientIds).size()) {
+            throw new ApiException(ResultCode.FORBIDDEN); // contains another church's recipient
+        }
+    }
 
     private boolean matches(NotificationLog log, NotificationSearchRequest request) {
         if (request == null) {

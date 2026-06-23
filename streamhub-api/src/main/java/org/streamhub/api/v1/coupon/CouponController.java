@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.streamhub.api.base.response.ResultDTO;
+import org.streamhub.api.base.security.AdminPrincipal;
 import org.streamhub.api.v1.coupon.dto.CouponDto;
 import org.streamhub.api.v1.coupon.dto.CouponRedemptionItem;
 import org.streamhub.api.v1.coupon.dto.CouponSearchRequest;
@@ -47,8 +49,9 @@ public class CouponController {
 
     @Operation(summary = "쿠폰 사용 내역", description = "해당 쿠폰을 사용한 회원/시각 목록(최신순).")
     @GetMapping("/{id}/redemptions")
-    public ResultDTO<List<CouponRedemptionItem>> redemptions(@PathVariable Long id) {
-        return ResultDTO.ok(couponService.redemptions(id));
+    public ResultDTO<List<CouponRedemptionItem>> redemptions(@PathVariable Long id,
+            @AuthenticationPrincipal AdminPrincipal principal) {
+        return ResultDTO.ok(couponService.redemptions(id, principal));
     }
 
     @Operation(summary = "쿠폰 등록")

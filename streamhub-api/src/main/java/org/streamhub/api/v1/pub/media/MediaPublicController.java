@@ -3,7 +3,9 @@ package org.streamhub.api.v1.pub.media;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Duration;
+import java.util.Set;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -26,6 +28,16 @@ import org.streamhub.api.base.storage.StorageService;
 @RequestMapping("/pub/v1/media")
 public class MediaPublicController {
 
+    /**
+     * First path segment of every key this proxy is allowed to serve. These are exactly the prefixes
+     * under which images are uploaded ({@code StorageService.upload(file, prefix)}): media library
+     * ({@code media/<category>}), church/content/goods/album thumbnails. Anything else — including
+     * {@code hls/*} (its own gated path) and log archives — is rejected as NOT_FOUND so the private
+     * bucket cannot be read object-by-object through this endpoint.
+     */
+    private static final Set<String> ALLOWED_PREFIXES =
+            Set.of("media", "church", "content", "goods", "album");
+
     private final StorageService storageService;
 
     public MediaPublicController(StorageService storageService) {
@@ -35,14 +47,30 @@ public class MediaPublicController {
     @Operation(summary = "미디어 파일", description = "저장된 미디어 객체(이미지 등)를 키로 스트리밍한다.")
     @GetMapping("/file")
     public ResponseEntity<byte[]> file(@RequestParam("key") String key) {
-        if (!StringUtils.hasText(key) || key.startsWith("hls/") || key.contains("..")) {
+        if (!StringUtils.hasText(key)
+                || key.startsWith("hls/")
+                || key.contains("..")
+                || !isAllowed(key)) {
             throw new ApiException(ResultCode.NOT_FOUND);
         }
         byte[] bytes = storageService.getBytes(key);
-        return ResponseEntity.ok()
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
                 .contentType(contentType(key))
-                .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic())
-                .body(bytes);
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic());
+        // SVGs can carry inline <script>; never let one render in the browser context. Force download.
+        if (key.toLowerCase().endsWith(".svg")) {
+            builder.header(HttpHeaders.CONTENT_DISPOSITION, "attachment");
+        }
+        return builder.body(bytes);
+    }
+
+    /** True only when the key's first path segment is one of {@link #ALLOWED_PREFIXES}. */
+    private boolean isAllowed(String key) {
+        int slash = key.indexOf('/');
+        if (slash <= 0) {
+            return false;
+        }
+        return ALLOWED_PREFIXES.contains(key.substring(0, slash));
     }
 
     private MediaType contentType(String key) {

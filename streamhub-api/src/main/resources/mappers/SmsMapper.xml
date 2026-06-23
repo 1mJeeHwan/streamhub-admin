@@ -3,7 +3,7 @@
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="org.streamhub.api.v1.sms.mapper.SmsMapper">
 
-    <!-- Shared filter block: keyword (content/number), kind, sent_at range. -->
+    <!-- Shared filter block: keyword (content/number), kind, church scope, sent_at range. -->
     <sql id="searchWhere">
         <where>
             <if test="keyword != null and keyword != ''">
@@ -12,6 +12,11 @@
             </if>
             <if test="kind != null and kind != ''">
                 AND s.kind = #{kind}
+            </if>
+            <!-- Church scope (CHURCH_MANAGER): only this church's members' SMS; rows with no member
+                 are excluded. SYSTEM/VIEWER pass churchId=null and see everything. -->
+            <if test="churchId != null">
+                AND s.member_id IN (SELECT m.id FROM MEMBER m WHERE m.church_id = #{churchId})
             </if>
             <if test="from != null">
                 AND s.sent_at &gt;= #{from}

@@ -33,10 +33,16 @@ public interface CouponRedemptionRepository extends JpaRepository<CouponRedempti
      * Usage history for one coupon — who redeemed it and when, newest first. Joins {@code MEMBER} to
      * carry the redeeming member's name so the admin drill-down (사용수 → 사용 내역) needs no extra
      * lookup. An ad-hoc entity join (no mapped relation between the two entities).
+     *
+     * <p>Coupons are global, but their redemptions expose member identity (PII), so a
+     * CHURCH_MANAGER may only see redemptions by its own church's members. Pass {@code churchId}
+     * to scope; pass {@code null} (SYSTEM/VIEWER) to see every church's redeemers.
      */
     @Query("SELECT new org.streamhub.api.v1.coupon.dto.CouponRedemptionItem("
             + "r.id, r.memberId, m.name, r.redeemedAt) "
             + "FROM CouponRedemption r JOIN Member m ON m.id = r.memberId "
-            + "WHERE r.couponId = :couponId ORDER BY r.redeemedAt DESC")
-    List<CouponRedemptionItem> findRedemptions(@Param("couponId") Long couponId);
+            + "WHERE r.couponId = :couponId AND (:churchId IS NULL OR m.churchId = :churchId) "
+            + "ORDER BY r.redeemedAt DESC")
+    List<CouponRedemptionItem> findRedemptions(@Param("couponId") Long couponId,
+            @Param("churchId") Long churchId);
 }

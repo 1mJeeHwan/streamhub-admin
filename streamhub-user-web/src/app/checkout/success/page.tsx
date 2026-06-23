@@ -14,24 +14,57 @@ function formatKRW(n: number): string {
 }
 
 /**
- * Toss redirect landing for a successful authorization. The window appends
+ * PortOne redirect landing for a successful authorization. The window appends
  * `paymentKey`/`orderId`/`amount`; we forward them to POST /pub/v1/orders/confirm, which calls the
- * live Toss confirm API and transitions the order to PAID. The member token is read straight from
- * storage because this is a fresh navigation (AuthProvider may not have revalidated yet).
+ * live PortOne confirm API and transitions the order to PAID. The member token is read straight
+ * from storage because this is a fresh navigation (AuthProvider may not have revalidated yet).
  */
 function CheckoutSuccessInner() {
   const params = useSearchParams();
   const [state, setState] = useState<State>("confirming");
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const confirmed = useRef(false);
+  // Authorization params parsed once from the redirect; kept so we can show them on failure and
+  // allow a retry. Confirm is idempotent on an already-paid order, so retrying a transient failure
+  // is safe.
+  const [authInfo, setAuthInfo] = useState<{
+    orderNo: string;
+    paymentKey: string;
+    amount: number;
+    token: string;
+  } | null>(null);
+  // Guards against React 18 StrictMode double-invocation of the initial confirm only. The explicit
+  // "다시 시도" button bypasses it so a transient failure is never permanently blocked.
+  const autoConfirmed = useRef(false);
+
+  function runConfirm(info: {
+    orderNo: string;
+    paymentKey: string;
+    amount: number;
+    token: string;
+  }) {
+    setError(null);
+    setState("confirming");
+    orderApi
+      .confirm(
+        { orderNo: info.orderNo, paymentKey: info.paymentKey, amount: info.amount },
+        info.token,
+      )
+      .then((result) => {
+        setOrder(result);
+        setState("done");
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "결제 승인에 실패했습니다.");
+        setState("error");
+      });
+  }
 
   useEffect(() => {
-    // Confirm exactly once — a second call would hit an already-approved order and fail.
-    if (confirmed.current) return;
-    confirmed.current = true;
+    if (autoConfirmed.current) return;
+    autoConfirmed.current = true;
 
-    // Param names differ per PG: Toss → orderId/paymentKey; Kakao → orderNo/pg_token;
+    // Param names differ per PG: PortOne → orderId/paymentKey; Kakao → orderNo/pg_token;
     // PayPal → orderNo/token. Read whichever is present.
     const orderNo = params.get("orderId") ?? params.get("orderNo");
     const paymentKey =
@@ -51,16 +84,9 @@ function CheckoutSuccessInner() {
       return;
     }
 
-    orderApi
-      .confirm({ orderNo, paymentKey, amount }, token)
-      .then((result) => {
-        setOrder(result);
-        setState("done");
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "결제 승인에 실패했습니다.");
-        setState("error");
-      });
+    const info = { orderNo, paymentKey, amount, token };
+    setAuthInfo(info);
+    runConfirm(info);
   }, [params]);
 
   if (state === "confirming") {
@@ -68,7 +94,7 @@ function CheckoutSuccessInner() {
       <section className="flex flex-col items-center px-5 pt-16 text-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
         <h1 className="mt-4 text-lg font-bold text-active">결제를 승인하는 중…</h1>
-        <p className="mt-1 text-sm text-inactive">토스 결제 결과를 확인하고 있습니다.</p>
+        <p className="mt-1 text-sm text-inactive">포트원 결제 결과를 확인하고 있습니다.</p>
       </section>
     );
   }
@@ -79,9 +105,45 @@ function CheckoutSuccessInner() {
         <XCircle className="mx-auto h-14 w-14 text-point" />
         <h1 className="mt-3 text-xl font-bold text-active">결제 승인 실패</h1>
         <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-inactive">{error}</p>
-        <Link href="/albums" className="btn-primary mt-6 inline-flex">
-          음반으로 돌아가기
-        </Link>
+
+        {authInfo && (
+          <>
+            <p className="mx-auto mt-3 max-w-xs text-xs leading-relaxed text-inactive">
+              결제는 이미 승인되었을 수 있습니다. 아래 번호로 다시 시도하거나 고객센터에 문의해
+              주세요.
+            </p>
+            <dl className="mx-auto mt-4 max-w-sm space-y-2 rounded-card border border-border bg-surface px-4 py-3 text-left text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-inactive">주문번호</dt>
+                <dd className="break-all text-right font-mono text-xs text-active">
+                  {authInfo.orderNo}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-inactive">결제키</dt>
+                <dd className="break-all text-right font-mono text-xs text-active">
+                  {authInfo.paymentKey}
+                </dd>
+              </div>
+            </dl>
+            <button
+              type="button"
+              onClick={() => runConfirm(authInfo)}
+              className="btn-primary mt-6 inline-flex"
+            >
+              다시 시도
+            </button>
+          </>
+        )}
+
+        <div className="mt-4">
+          <Link
+            href="/albums"
+            className="text-sm font-semibold text-inactive underline-offset-2 hover:underline"
+          >
+            음반으로 돌아가기
+          </Link>
+        </div>
       </section>
     );
   }
@@ -117,7 +179,7 @@ function CheckoutSuccessInner() {
 
       <div className="mx-auto mt-3 flex max-w-sm items-center gap-1.5 rounded-lg bg-primary/5 px-3 py-2 text-[11px] text-inactive">
         <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" />
-        토스 샌드박스(테스트 키)로 승인되었습니다. 실제 출금은 없습니다.
+        포트원 샌드박스(테스트 키)로 승인되었습니다. 실제 출금은 없습니다.
       </div>
 
       <div className="mx-auto mt-6 flex max-w-sm gap-2">

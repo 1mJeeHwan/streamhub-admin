@@ -14,7 +14,7 @@ import org.streamhub.api.v1.sms.entity.SmsChannel;
  */
 class SmsServiceTest {
 
-    private final SmsService service = new SmsService(null, null, null, null);
+    private final SmsService service = new SmsService(null, null, null, null, null);
 
     @DisplayName("EUC-KR 90바이트 초과 본문은 LMS, 이하이면 SMS")
     @ParameterizedTest(name = "[{index}] {1}")

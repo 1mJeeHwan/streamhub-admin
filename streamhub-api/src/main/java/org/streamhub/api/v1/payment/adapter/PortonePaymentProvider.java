@@ -55,6 +55,13 @@ public class PortonePaymentProvider implements PaymentProvider {
             throw new ApiException(ResultCode.INVALID_PARAMETER,
                     "결제가 완료되지 않았습니다 (" + payment.getStatus() + ")");
         }
+        // Bind the PG record to THIS order: the merchant_uid the browser passed to IMP.request_pay was
+        // the order's orderNo, so the paid record's merchant_uid must equal it. Without this an attacker
+        // could replay one paid imp_uid to confirm any other same-amount order. (Re-confirming the same
+        // order is already blocked by the payStatus==REQUESTED guard in PaymentService.approve.)
+        if (!request.orderNo().equals(payment.getMerchantUid())) {
+            throw new ApiException(ResultCode.INVALID_PARAMETER, "결제 정보가 주문과 일치하지 않습니다");
+        }
         long paid = payment.getAmount() == null ? -1L : payment.getAmount().longValue();
         if (paid != request.amount()) {
             // PG-recorded amount must equal the server total — guards against amount tampering.

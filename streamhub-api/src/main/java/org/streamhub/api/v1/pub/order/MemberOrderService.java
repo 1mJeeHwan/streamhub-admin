@@ -324,7 +324,8 @@ public class MemberOrderService {
     /** A member's own purchase history, newest first, one page at a time. */
     @Transactional(readOnly = true)
     public ResInfinityList<MemberOrderListItem> myOrders(Long memberId, int pageNumber, int pageSize) {
-        Pageable pageable = PageRequest.of(Math.max(0, pageNumber), pageSize);
+        int size = clampPageSize(pageSize);
+        Pageable pageable = PageRequest.of(clampPageNumber(pageNumber), size);
         Page<Order> page = orderRepository.findByMemberIdOrderByOrderedAtDescIdDesc(memberId, pageable);
         List<MemberOrderListItem> contents = page.getContent().stream()
                 .map(order -> new MemberOrderListItem(
@@ -334,7 +335,15 @@ public class MemberOrderService {
                         order.getStatus(),
                         order.getOrderedAt()))
                 .toList();
-        return ResInfinityList.of(contents, page.getTotalElements(), pageSize);
+        return ResInfinityList.of(contents, page.getTotalElements(), size);
+    }
+
+    private static int clampPageNumber(int pageNumber) {
+        return Math.max(pageNumber, 0);
+    }
+
+    private static int clampPageSize(int pageSize) {
+        return Math.min(Math.max(pageSize, 1), 100);
     }
 
     /**

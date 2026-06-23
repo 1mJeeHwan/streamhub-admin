@@ -4,12 +4,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.base.response.ResultDTO;
+import org.streamhub.api.base.security.AdminPrincipal;
 import org.streamhub.api.v1.sms.dto.SmsListItem;
 import org.streamhub.api.v1.sms.dto.SmsSearchRequest;
 import org.streamhub.api.v1.sms.dto.SmsSendRequest;
@@ -32,14 +34,16 @@ public class SmsController {
 
     @Operation(summary = "문자 발송 내역", description = "검색/종류/기간 필터 + 페이지네이션된 발송 내역.")
     @PostMapping("/list")
-    public ResultDTO<ResInfinityList<SmsListItem>> list(@RequestBody SmsSearchRequest request) {
-        return ResultDTO.ok(smsService.list(request));
+    public ResultDTO<ResInfinityList<SmsListItem>> list(@RequestBody SmsSearchRequest request,
+            @AuthenticationPrincipal AdminPrincipal principal) {
+        return ResultDTO.ok(smsService.list(request, principal));
     }
 
     @Operation(summary = "커스텀 문자 발송", description = "관리자 직접 발송. 실제 발송되지 않으며 로그만 저장된다(테스트).")
     @PreAuthorize("hasAuthority('sms:write')")
     @PostMapping("/send")
-    public ResultDTO<SmsListItem> send(@Valid @RequestBody SmsSendRequest request) {
-        return ResultDTO.ok(smsService.send(request));
+    public ResultDTO<SmsListItem> send(@Valid @RequestBody SmsSendRequest request,
+            @AuthenticationPrincipal AdminPrincipal principal) {
+        return ResultDTO.ok(smsService.send(request, principal));
     }
 }

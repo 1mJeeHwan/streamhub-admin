@@ -52,8 +52,8 @@ const PHASES = [
   {
     icon: CreditCard,
     title: "실 외부 연동",
-    desc: "토스 PG 샌드박스 실결제 · 스마트택배 배송조회까지 실제 외부 API 연동.",
-    tags: ["Toss Payments", "스마트택배", "어댑터 seam"],
+    desc: "포트원 PG 샌드박스 실결제 · 스마트택배 배송조회까지 실제 외부 API 연동.",
+    tags: ["PortOne", "스마트택배", "어댑터 seam"],
   },
   {
     icon: Cloud,

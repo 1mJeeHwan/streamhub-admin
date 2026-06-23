@@ -205,6 +205,7 @@ export default function SignupPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="이름"
+            aria-label="이름"
             required
             className={field}
           />
@@ -215,6 +216,7 @@ export default function SignupPage() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="휴대폰 번호 (- 없이)"
+            aria-label="휴대폰 번호"
             required
             className={field}
           />
@@ -225,6 +227,7 @@ export default function SignupPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="이메일"
+            aria-label="이메일"
             required
             className={field}
           />
@@ -234,6 +237,7 @@ export default function SignupPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="비밀번호 (8자 이상)"
+            aria-label="비밀번호"
             required
             minLength={8}
             className={field}
@@ -244,6 +248,7 @@ export default function SignupPage() {
             value={password2}
             onChange={(e) => setPassword2(e.target.value)}
             placeholder="비밀번호 확인"
+            aria-label="비밀번호 확인"
             required
             className={field}
           />

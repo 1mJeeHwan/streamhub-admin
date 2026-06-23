@@ -46,6 +46,12 @@ class MemberAuthServiceTest {
     @Mock
     private org.streamhub.api.v1.security.SecurityMonitor securityMonitor;
 
+    @Mock
+    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+
+    @Mock
+    private org.springframework.data.redis.core.ValueOperations<String, String> valueOps;
+
     @InjectMocks
     private MemberAuthService memberAuthService;
 
@@ -151,6 +157,39 @@ class MemberAuthServiceTest {
                 .isInstanceOf(ApiException.class)
                 .extracting("resultCode")
                 .isEqualTo(ResultCode.INVALID_PARAMETER);
+    }
+
+    @Test
+    void signup_duplicatePhone_throwsSameGenericMessageAsEmail() {
+        // Enumeration guard: a phone collision must surface the exact same generic message as an
+        // email collision so the caller cannot tell which field already exists.
+        MemberSignupRequest req = new MemberSignupRequest(
+                "fresh@streamhub.test", "password1", "신규회원", "010-9999-8888",
+                true, true, false);
+        when(memberRepository.existsByEmail("fresh@streamhub.test")).thenReturn(false);
+        when(memberRepository.existsByPhone("010-9999-8888")).thenReturn(true);
+
+        assertThatThrownBy(() -> memberAuthService.signup(req))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("이미 가입된 계정 정보가 있습니다")
+                .extracting("resultCode")
+                .isEqualTo(ResultCode.INVALID_PARAMETER);
+    }
+
+    @Test
+    void login_whenAccountLockedOut_rejectsBeforeCheckingPassword() {
+        // Failure counter already at the threshold → login is refused for the lockout window
+        // without ever touching the member repository, even if the password would be correct.
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(valueOps.get("memberLoginFail:member01@streamhub.test")).thenReturn("5");
+
+        assertThatThrownBy(() -> memberAuthService.login(
+                new MemberLoginRequest("member01@streamhub.test", "member1234")))
+                .isInstanceOf(ApiException.class)
+                .extracting("resultCode")
+                .isEqualTo(ResultCode.LOGIN_FAILED);
+
+        org.mockito.Mockito.verifyNoInteractions(memberRepository);
     }
 
     @Test

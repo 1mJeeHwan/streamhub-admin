@@ -25,6 +25,15 @@ public class AuthService {
 
     private static final String REFRESH_KEY_PREFIX = "refresh:";
 
+    /** Redis key prefix for the per-account login-failure counter. */
+    private static final String LOGIN_FAIL_KEY_PREFIX = "adminLoginFail:";
+
+    /** Consecutive failures (within the window) after which login is locked out. */
+    private static final int MAX_LOGIN_FAILURES = 5;
+
+    /** How long the failure counter (and therefore the lockout) lives. */
+    private static final Duration LOGIN_FAIL_WINDOW = Duration.ofMinutes(10);
+
     private final AdminAccountRepository adminRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
@@ -49,19 +58,62 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public TokenResponse login(LoginRequest request) {
+        String accountKey = request.loginId() == null ? "" : request.loginId().trim();
+        if (isLockedOut(accountKey)) {
+            throw new ApiException(ResultCode.LOGIN_FAILED,
+                    "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.");
+        }
         AdminAccount admin = adminRepository.findByLoginId(request.loginId())
                 .orElseThrow(() -> {
                     securityMonitor.recordAuthFailure(request.loginId(), "ADMIN");
+                    recordLoginFailure(accountKey);
                     return new ApiException(ResultCode.LOGIN_FAILED);
                 });
         if (!passwordEncoder.matches(request.password(), admin.getPassword())) {
             securityMonitor.recordAuthFailure(request.loginId(), "ADMIN");
+            recordLoginFailure(accountKey);
             throw new ApiException(ResultCode.LOGIN_FAILED);
         }
+        clearLoginFailures(accountKey);
         TokenResponse tokens = issueTokens(admin);
         actionLogPublisher.publishAs(admin.getId(), admin.getName(),
                 "LOGIN", "ADMIN", String.valueOf(admin.getId()), "로그인");
         return tokens;
+    }
+
+    /**
+     * Best-effort lockout check: returns {@code true} when the per-account failure counter in Redis
+     * has reached {@link #MAX_LOGIN_FAILURES} within {@link #LOGIN_FAIL_WINDOW}. Any Redis hiccup is
+     * swallowed (fail-open) so an infra outage never blocks legitimate logins.
+     */
+    private boolean isLockedOut(String accountKey) {
+        try {
+            String count = redisTemplate.opsForValue().get(LOGIN_FAIL_KEY_PREFIX + accountKey);
+            return count != null && Integer.parseInt(count) >= MAX_LOGIN_FAILURES;
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    /** Increments the per-account failure counter, (re)setting the sliding TTL. Best-effort. */
+    private void recordLoginFailure(String accountKey) {
+        try {
+            Long count = redisTemplate.opsForValue().increment(LOGIN_FAIL_KEY_PREFIX + accountKey);
+            if (count != null && count == 1L) {
+                redisTemplate.expire(LOGIN_FAIL_KEY_PREFIX + accountKey, LOGIN_FAIL_WINDOW);
+            }
+        } catch (RuntimeException ignored) {
+            // Redis unavailable — skip lockout bookkeeping rather than break login.
+        }
+    }
+
+    /** Clears the failure counter after a successful login. Best-effort. */
+    private void clearLoginFailures(String accountKey) {
+        try {
+            redisTemplate.delete(LOGIN_FAIL_KEY_PREFIX + accountKey);
+        } catch (RuntimeException ignored) {
+            // ignore
+        }
     }
 
     @Transactional(readOnly = true)

@@ -16,6 +16,7 @@ public interface SmsMapper {
     List<SmsListItem> selectList(
             @Param("keyword") String keyword,
             @Param("kind") String kind,
+            @Param("churchId") Long churchId,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to,
             @Param("orderBy") String orderBy,
@@ -25,6 +26,7 @@ public interface SmsMapper {
     long countList(
             @Param("keyword") String keyword,
             @Param("kind") String kind,
+            @Param("churchId") Long churchId,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useBanners } from "@/lib/queries";
+import { safeHref } from "@/lib/url";
 import { AdBanner, type AdSlide } from "./AdBanner";
 import type { BannerItem, BannerTarget } from "@/lib/types";
 
@@ -16,7 +17,7 @@ function toSlide(banner: BannerItem, index: number): AdSlide {
   return {
     title: banner.title,
     subtitle: banner.subtitle ?? "",
-    href: banner.linkUrl || "#",
+    href: safeHref(banner.linkUrl),
     gradient: GRADIENTS[index % GRADIENTS.length],
     imageUrl: banner.imageUrl,
   };

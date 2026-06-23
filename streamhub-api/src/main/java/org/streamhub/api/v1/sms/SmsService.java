@@ -5,9 +5,14 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResInfinityList;
+import org.streamhub.api.base.response.ResultCode;
+import org.streamhub.api.base.security.AdminPrincipal;
 import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
+import org.streamhub.api.v1.member.entity.Member;
+import org.streamhub.api.v1.member.repository.MemberRepository;
 import org.streamhub.api.v1.order.entity.Order;
 import org.streamhub.api.v1.sms.adapter.SmsSendCommand;
 import org.streamhub.api.v1.sms.adapter.SmsSendResult;
@@ -54,40 +59,71 @@ public class SmsService {
     private final SmsMessageRepository smsMessageRepository;
     private final SmsSenderRouter smsSenderRouter;
     private final ActionLogPublisher actionLogPublisher;
+    private final MemberRepository memberRepository;
 
     public SmsService(
             SmsMapper smsMapper,
             SmsMessageRepository smsMessageRepository,
             SmsSenderRouter smsSenderRouter,
-            ActionLogPublisher actionLogPublisher) {
+            ActionLogPublisher actionLogPublisher,
+            MemberRepository memberRepository) {
         this.smsMapper = smsMapper;
         this.smsMessageRepository = smsMessageRepository;
         this.smsSenderRouter = smsSenderRouter;
         this.actionLogPublisher = actionLogPublisher;
+        this.memberRepository = memberRepository;
     }
 
+    /**
+     * SMS history listing. SMS rows carry no church column, so the church filter is applied
+     * through the {@code MEMBER} join in the mapper; a CHURCH_MANAGER sees only its own church's
+     * history (rows with no member are excluded for scoped operators), SYSTEM/VIEWER see all.
+     */
     @Transactional(readOnly = true)
-    public ResInfinityList<SmsListItem> list(SmsSearchRequest request) {
+    public ResInfinityList<SmsListItem> list(SmsSearchRequest request, AdminPrincipal principal) {
         String keyword = blankToNull(request.keyword());
         String kind = request.kind() == null ? null : request.kind().name();
+        Long churchId = principal.isUnscoped() ? null : principal.churchId();
         int size = request.pageSizeOrDefault();
         String orderBy = SortResolver.resolve(request.sortBy(), request.sortDir(),
                 SMS_SORT_COLUMNS, "s.id", "s.sent_at DESC, s.id DESC");
 
         List<SmsListItem> contents =
-                smsMapper.selectList(keyword, kind, request.from(), request.to(), orderBy, request.offset(), size);
-        long total = smsMapper.countList(keyword, kind, request.from(), request.to());
+                smsMapper.selectList(keyword, kind, churchId, request.from(), request.to(), orderBy,
+                        request.offset(), size);
+        long total = smsMapper.countList(keyword, kind, churchId, request.from(), request.to());
         return ResInfinityList.of(contents, total, size);
     }
 
-    /** Admin custom send: persists a {@code CUSTOM} message (masked number, mock dispatch). */
+    /**
+     * Admin custom send: persists a {@code CUSTOM} message (masked number, mock dispatch).
+     * When a target member is given, it must belong to the operator's church — a CHURCH_MANAGER
+     * cannot SMS another church's member (cross-tenant IDOR).
+     */
     @Transactional
-    public SmsListItem send(SmsSendRequest request) {
+    public SmsListItem send(SmsSendRequest request, AdminPrincipal principal) {
+        ensureMemberInScope(request.memberId(), principal);
         SmsMessage saved = persist(
                 request.toNumber(), request.content(), SmsKind.CUSTOM,
                 request.memberId(), null, null);
         actionLogPublisher.publish("SMS_SEND", "SMS", String.valueOf(saved.getId()), maskNumber(request.toNumber()));
         return SmsListItem.from(saved);
+    }
+
+    /**
+     * Verifies the target member belongs to the operator's church (unscoped bypasses).
+     * A null member id means an unassociated send (the masked number is still required),
+     * which carries no member PII and so is left to the existing channel/permission gates.
+     */
+    private void ensureMemberInScope(Long memberId, AdminPrincipal principal) {
+        if (principal.isUnscoped() || memberId == null) {
+            return;
+        }
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND));
+        if (!member.getChurchId().equals(principal.churchId())) {
+            throw new ApiException(ResultCode.FORBIDDEN);
+        }
     }
 
     /**

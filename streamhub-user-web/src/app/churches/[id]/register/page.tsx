@@ -226,12 +226,14 @@ export default function WorshipRegisterPage({ params }: { params: { id: string }
             value={form.zipcode}
             onChange={(e) => set("zipcode", e.target.value)}
             placeholder="우편번호"
+            aria-label="우편번호"
             className="input !pl-3 w-32"
           />
           <input
             value={form.addr1}
             onChange={(e) => set("addr1", e.target.value)}
             placeholder="기본주소"
+            aria-label="기본주소"
             className="input !pl-3 flex-1"
           />
         </div>
@@ -239,6 +241,7 @@ export default function WorshipRegisterPage({ params }: { params: { id: string }
           value={form.addr2}
           onChange={(e) => set("addr2", e.target.value)}
           placeholder="상세주소"
+          aria-label="상세주소"
           className="input !pl-3"
         />
       </div>
@@ -309,12 +312,14 @@ export default function WorshipRegisterPage({ params }: { params: { id: string }
           value={form.leaderName}
           onChange={(e) => set("leaderName", e.target.value)}
           placeholder="인도자 이름"
+          aria-label="인도자 이름"
           className="input !pl-3 flex-1"
         />
         <input
           value={form.leaderPhone}
           onChange={(e) => set("leaderPhone", e.target.value)}
           placeholder="인도자 연락처"
+          aria-label="인도자 연락처"
           className="input !pl-3 flex-1"
         />
       </div>

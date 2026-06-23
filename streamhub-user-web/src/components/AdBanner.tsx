@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import clsx from "clsx";
+import { safeHref } from "@/lib/url";
 
 export type AdSlide = {
   title: string;
@@ -57,7 +58,7 @@ export function AdBanner({ slides }: { slides: AdSlide[] }) {
         {slides.map((s) => (
           <Link
             key={s.title}
-            href={s.href}
+            href={safeHref(s.href)}
             className={clsx(
               "relative flex aspect-[7/2] w-full shrink-0 snap-start flex-col justify-center overflow-hidden rounded-card px-20px text-white",
               !s.imageUrl && s.gradient,

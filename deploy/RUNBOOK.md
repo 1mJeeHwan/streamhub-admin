@@ -10,9 +10,9 @@
 | 항목 | 값 |
 |------|-----|
 | GitHub 레포 | `1mJeeHwan/graceon` (구 streamhub-admin) · 배포 브랜치 **`main`** |
-| AWS 계정 | **203677518232** (포트폴리오용) — ⚠️ default 프로파일(191984592385)은 **다른 계정** |
+| AWS 계정 | **`<AWS_ACCOUNT_ID>`** (포트폴리오용) — ⚠️ default 프로파일(`<OTHER_AWS_ACCOUNT_ID>`)은 **다른 계정** |
 | AWS 프로파일 | **`deployAccount`** (`~/.aws/credentials`) · 리전 `ap-northeast-2` |
-| 라이브 EC2 | `i-00bcbcea9869916b7` (tag `streamhub-api`) |
+| 라이브 EC2 | `<INSTANCE_ID>` (tag `streamhub-api`) |
 | 라이브 API(CDN) | `https://dpdtwguq8ke3x.cloudfront.net` |
 | VM env 파일 | `/etc/streamhub/api.env` (chmod 600, 컨테이너가 `--env-file`로 읽음) |
 | VM 롤 스크립트 | `/usr/local/bin/streamhub-deploy` (ECR pull → `docker run`) |
@@ -70,7 +70,7 @@ EC2의 `/etc/streamhub/api.env`에 줄을 넣고 컨테이너만 롤. (카카오
 export AWS_PROFILE=deployAccount AWS_DEFAULT_REGION=ap-northeast-2
 
 aws ssm send-command \
-  --instance-ids i-00bcbcea9869916b7 \
+  --instance-ids <INSTANCE_ID> \
   --document-name AWS-RunShellScript \
   --comment "set <KEY_NAME>" \
   --parameters 'commands=[
@@ -82,7 +82,7 @@ aws ssm send-command \
   ]' \
   --query 'Command.CommandId' --output text
 # → 나온 CommandId로 결과 확인:
-aws ssm get-command-invocation --command-id <CMD_ID> --instance-id i-00bcbcea9869916b7 \
+aws ssm get-command-invocation --command-id <CMD_ID> --instance-id <INSTANCE_ID> \
   --query 'StandardOutputContent' --output text
 ```
 - ⚠️ 시크릿이 SSM 커맨드 로그(CloudTrail)에 남습니다. 본인 계정이라 위험은 낮지만, 민감하면 SecureString 파라미터(방법 B)로.

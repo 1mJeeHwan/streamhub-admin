@@ -11,6 +11,7 @@ import { TabBanner } from "./TabBanner";
 import { ItemCarousel } from "./ItemCarousel";
 import { GoodsCard } from "./GoodsCard";
 import { CampaignCard } from "./CampaignCard";
+import { ErrorState } from "./States";
 
 const ROW = 10;
 
@@ -78,12 +79,19 @@ function WalletStrip() {
 
 /** Featured events/promotions row (16:9 banners). */
 function CampaignStoreRow() {
-  const { data, isLoading } = useCampaigns({ pageNumber: 0, pageSize: ROW });
+  const { data, isLoading, isError, refetch } = useCampaigns({ pageNumber: 0, pageSize: ROW });
   const items = data?.contents ?? [];
   if (isLoading) {
     return (
       <ContentContainer title="이벤트" moreHref="/campaigns">
         <CarouselSkeleton wide />
+      </ContentContainer>
+    );
+  }
+  if (isError) {
+    return (
+      <ContentContainer title="이벤트" moreHref="/campaigns">
+        <ErrorState message="이벤트를 불러오지 못했습니다." onRetry={() => void refetch()} />
       </ContentContainer>
     );
   }
@@ -103,12 +111,19 @@ function CampaignStoreRow() {
 
 /** Goods row, 더보기 into the full goods shop. */
 function GoodsStoreRow() {
-  const { data, isLoading } = useGoods({ pageNumber: 0, pageSize: ROW });
+  const { data, isLoading, isError, refetch } = useGoods({ pageNumber: 0, pageSize: ROW });
   const items = data?.contents ?? [];
   if (isLoading) {
     return (
       <ContentContainer title="굿즈샵" moreHref="/goods">
         <CarouselSkeleton />
+      </ContentContainer>
+    );
+  }
+  if (isError) {
+    return (
+      <ContentContainer title="굿즈샵" moreHref="/goods">
+        <ErrorState message="굿즈를 불러오지 못했습니다." onRetry={() => void refetch()} />
       </ContentContainer>
     );
   }

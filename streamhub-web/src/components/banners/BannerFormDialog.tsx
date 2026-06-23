@@ -47,6 +47,30 @@ interface LinkSearchResult {
 const FIELD_CLASS =
   "w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand";
 
+/**
+ * isSafeBannerLinkUrl accepts only an absolute http(s):// URL or a single-leading-slash internal
+ * path (e.g. "/music/3"). It rejects scheme-relative "//host" (open-redirect) and dangerous
+ * schemes (javascript:, data:, vbscript:, etc.) that would otherwise be stored and later rendered
+ * straight into an href on the public site.
+ */
+function isSafeBannerLinkUrl(raw: string): boolean {
+  const value = raw.trim();
+  if (!value) {
+    return false;
+  }
+  // Internal path: exactly one leading slash (reject "//host" scheme-relative redirects).
+  if (value.startsWith("/")) {
+    return !value.startsWith("//");
+  }
+  // Absolute URL: must parse and use the http/https scheme only.
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 const POSITION_LABELS: Record<BannerDtoPosition, string> = {
   MAIN_TOP: "메인 상단",
   MAIN_MIDDLE: "메인 중단",
@@ -279,6 +303,18 @@ export default function BannerFormDialog({
     if (isContentLink && form.linkRefId == null) {
       setMessage(`링크할 ${LINK_TYPE_LABELS[form.linkType]} 콘텐츠를 검색해서 선택해 주세요.`);
       return;
+    }
+
+    // URL link: only allow http(s):// or a single-leading-slash internal path. Blocks
+    // javascript:/data:/vbscript: and scheme-relative "//host" before the value is stored.
+    if (form.linkType === "URL") {
+      const trimmedUrl = form.linkUrl.trim();
+      if (trimmedUrl && !isSafeBannerLinkUrl(trimmedUrl)) {
+        setMessage(
+          "링크 URL은 http:// 또는 https:// 로 시작하거나 /로 시작하는 내부 경로여야 합니다.",
+        );
+        return;
+      }
     }
 
     const parsedSort = Number(form.sortOrder);

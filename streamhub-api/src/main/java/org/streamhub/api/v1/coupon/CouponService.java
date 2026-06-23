@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.base.exception.ApiException;
 import org.streamhub.api.base.response.ResultCode;
+import org.streamhub.api.base.security.AdminPrincipal;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.coupon.dto.CouponDto;
 import org.streamhub.api.v1.coupon.dto.CouponRedemptionItem;
@@ -62,13 +63,18 @@ public class CouponService {
         return CouponDto.from(coupon);
     }
 
-    /** Usage history of one coupon (who redeemed it and when, newest first). 404 if the coupon is unknown. */
+    /**
+     * Usage history of one coupon (who redeemed it and when, newest first). 404 if the coupon is
+     * unknown. Coupons are global, but the redeemer list exposes member identity (PII), so a
+     * CHURCH_MANAGER sees only its own church's redeemers; SYSTEM/VIEWER see all.
+     */
     @Transactional(readOnly = true)
-    public List<CouponRedemptionItem> redemptions(Long id) {
+    public List<CouponRedemptionItem> redemptions(Long id, AdminPrincipal principal) {
         if (!couponRepository.existsById(id)) {
             throw new ApiException(ResultCode.NOT_FOUND);
         }
-        return couponRedemptionRepository.findRedemptions(id);
+        Long churchId = principal.isUnscoped() ? null : principal.churchId();
+        return couponRedemptionRepository.findRedemptions(id, churchId);
     }
 
     @Transactional

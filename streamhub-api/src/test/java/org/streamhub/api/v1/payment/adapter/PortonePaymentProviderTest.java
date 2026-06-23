@@ -5,8 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import com.siot.IamportRestClient.response.Payment;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,12 +37,18 @@ class PortonePaymentProviderTest {
         provider = new PortonePaymentProvider(iamport, property);
     }
 
-    private static final ObjectMapper MAPPER =
-            new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    // The Iamport Payment DTO is deserialized with Gson (@SerializedName snake_case) by the real
+    // client — use Gson here too so field binding (incl. merchant_uid) matches production exactly.
+    private static final Gson GSON = new Gson();
 
-    private Payment payment(String status, long amount) throws Exception {
-        String json = "{\"status\":\"" + status + "\",\"amount\":" + amount + ",\"pay_method\":\"card\"}";
-        return MAPPER.readValue(json, Payment.class);
+    private Payment payment(String status, long amount) {
+        return payment(status, amount, "20260623-000001");
+    }
+
+    private Payment payment(String status, long amount, String merchantUid) {
+        String json = "{\"status\":\"" + status + "\",\"amount\":" + amount
+                + ",\"pay_method\":\"card\",\"merchant_uid\":\"" + merchantUid + "\"}";
+        return GSON.fromJson(json, Payment.class);
     }
 
     @Test
@@ -55,6 +60,17 @@ class PortonePaymentProviderTest {
         assertThat(result.status()).isEqualTo(PayStatus.APPROVED);
         assertThat(result.txnId()).isEqualTo("imp_1");
         assertThat(result.amount()).isEqualTo(10000L);
+    }
+
+    @Test
+    void approve_merchantUidMismatch_throws() throws Exception {
+        // Replay guard: a paid imp_uid whose merchant_uid is a DIFFERENT order must be rejected.
+        when(iamport.findByImpUid("imp_1")).thenReturn(Optional.of(payment("paid", 10000L, "OTHER-ORDER")));
+
+        assertThatThrownBy(() -> provider.approve(request, null, "imp_1", null))
+                .isInstanceOf(ApiException.class)
+                .extracting("resultCode")
+                .isEqualTo(ResultCode.INVALID_PARAMETER);
     }
 
     @Test

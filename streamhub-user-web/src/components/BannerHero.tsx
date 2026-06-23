@@ -5,6 +5,7 @@ import Link from "next/link";
 import clsx from "clsx";
 import { ChevronRight } from "lucide-react";
 import { useBanners } from "@/lib/queries";
+import { safeHref } from "@/lib/url";
 import type { BannerItem, BannerTarget } from "@/lib/types";
 
 /** Bottom-scrim gradient for legible title text over a photo (mirrors the home Hero). */
@@ -69,7 +70,7 @@ export function BannerHero({ target }: { target: BannerTarget }) {
         {banners.map((banner, i) => (
           <Link
             key={banner.id}
-            href={banner.linkUrl || "#"}
+            href={safeHref(banner.linkUrl)}
             aria-label={banner.title}
             className="relative aspect-[16/9] w-full shrink-0 snap-start overflow-hidden text-left"
           >
