@@ -1,6 +1,8 @@
 package org.streamhub.api.base.storage;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -24,16 +26,24 @@ public class StorageService {
     private final String bucket;
     private final String endpoint;
     private final String region;
+    private final String publicBaseUrl;
 
     public StorageService(
             S3Client s3Client,
             @Value("${storage.bucket}") String bucket,
             @Value("${storage.endpoint:}") String endpoint,
-            @Value("${storage.region}") String region) {
+            @Value("${storage.region}") String region,
+            // Public base for serving stored objects. Defaults to the CloudFront domain already set
+            // for HLS (app.hls.segment-base-url) — in prod the media bucket is private, so objects are
+            // served via the API proxy (/pub/v1/media/file) reachable on that same CloudFront domain.
+            @Value("${storage.public-base-url:${app.hls.segment-base-url:}}") String publicBaseUrl) {
         this.s3Client = s3Client;
         this.bucket = bucket;
         this.endpoint = endpoint;
         this.region = region;
+        this.publicBaseUrl = publicBaseUrl != null && publicBaseUrl.endsWith("/")
+                ? publicBaseUrl.substring(0, publicBaseUrl.length() - 1)
+                : publicBaseUrl;
     }
 
     /**
@@ -101,6 +111,13 @@ public class StorageService {
         if (key.startsWith("http://") || key.startsWith("https://")) {
             return key;
         }
+        // Prod: the bucket is private (only hls/* is fronted by CloudFront), so non-hls objects are
+        // served through the public API proxy on the CloudFront domain. hls/* keeps its own CDN path.
+        if (StringUtils.hasText(publicBaseUrl) && !key.startsWith("hls/")) {
+            return publicBaseUrl + "/pub/v1/media/file?key="
+                    + URLEncoder.encode(key, StandardCharsets.UTF_8);
+        }
+        // Local (MinIO): direct path-style access.
         if (StringUtils.hasText(endpoint)) {
             return endpoint + "/" + bucket + "/" + key;
         }
