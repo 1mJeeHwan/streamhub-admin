@@ -89,6 +89,7 @@ public class LlmChatProvider implements ChatProvider {
     private final ChatToolExecutor toolExecutor;
     private final RuleChatProvider fallback;
     private final org.streamhub.api.v1.chat.ChatKnowledgeService knowledgeService;
+    private final IntentClassifier intentClassifier;
     private final ArrayNode toolsNode;
 
     public LlmChatProvider(
@@ -99,7 +100,8 @@ public class LlmChatProvider implements ChatProvider {
             ObjectMapper objectMapper,
             ChatToolExecutor toolExecutor,
             RuleChatProvider fallback,
-            org.streamhub.api.v1.chat.ChatKnowledgeService knowledgeService) {
+            org.streamhub.api.v1.chat.ChatKnowledgeService knowledgeService,
+            IntentClassifier intentClassifier) {
         this.apiKey = apiKey;
         this.model = model;
         this.baseUrl = baseUrl;
@@ -107,6 +109,7 @@ public class LlmChatProvider implements ChatProvider {
         this.toolExecutor = toolExecutor;
         this.fallback = fallback;
         this.knowledgeService = knowledgeService;
+        this.intentClassifier = intentClassifier;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(CONNECT_TIMEOUT_MS);
         factory.setReadTimeout(READ_TIMEOUT_MS);
@@ -169,6 +172,15 @@ public class LlmChatProvider implements ChatProvider {
                 if (body.contains("[UNRESOLVED]")) {
                     body = body.replace("[UNRESOLVED]", "").trim();
                     intent = ChatIntent.FALLBACK;
+                }
+                // Deterministic fallback for "search content" requests the model answered without
+                // calling searchContents: attach result cards so 대신-검색 always works (G).
+                if (cards.isEmpty()
+                        && intentClassifier.classify(message) == ChatIntent.CONTENT_SEARCH) {
+                    cards.addAll(toolExecutor.contentCards(toolExecutor.contentKeyword(message)));
+                    if (!cards.isEmpty()) {
+                        intent = ChatIntent.CONTENT_SEARCH;
+                    }
                 }
                 return new ChatReply(body, intent, List.of(), cards);
             }

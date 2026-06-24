@@ -139,7 +139,7 @@ public class RuleChatProvider implements ChatProvider {
 
     /** Searches videos/music on the user's behalf and returns deep-link cards (G + 대신 검색). */
     private ChatReply replyContentSearch(String message) {
-        String keyword = productKeyword(message);
+        String keyword = toolExecutor.contentKeyword(message);
         List<ChatCard> cards = toolExecutor.contentCards(keyword);
         if (cards.isEmpty()) {
             return ChatReply.of(

@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
@@ -211,6 +212,30 @@ public class ChatToolExecutor {
                     "/goods/" + row.getId(),
                     soldOut ? "품절" : null);
         }).toList();
+    }
+
+    /** Search verbs / generic content words to drop when picking a content keyword from free text. */
+    private static final Set<String> CONTENT_STOPWORDS = Set.of(
+            "영상", "동영상", "비디오", "음악", "콘텐츠", "검색", "검색해줘", "찾아", "찾아줘", "찾아주세요",
+            "추천", "추천해줘", "보여줘", "보여주세요", "틀어", "틀어줘", "해줘", "관련", "있어", "있나요");
+
+    /**
+     * Picks a search keyword from free text for content lookup: the longest 2+ char token that isn't
+     * a search verb/stopword (so "예배 영상 찾아줘" → "예배"). Falls back to the trimmed message.
+     */
+    public String contentKeyword(String message) {
+        if (message == null) {
+            return "";
+        }
+        String best = "";
+        Matcher m = Pattern.compile("[가-힣A-Za-z]{2,}").matcher(message);
+        while (m.find()) {
+            String token = m.group();
+            if (!CONTENT_STOPWORDS.contains(token) && token.length() > best.length()) {
+                best = token;
+            }
+        }
+        return best.isBlank() ? message.trim() : best;
     }
 
     /** Top-N PUBLISHED videos/music matching a keyword, as a compact text list (LLM tool result). */
