@@ -24,9 +24,15 @@ public class IntentClassifier {
             List.of("상품", "가격", "재고", "구매", "앨범", "굿즈", "product", "price", "stock");
     private static final List<String> FAQ_KEYWORDS =
             List.of("배송비", "환불", "교환", "반품", "회원", "예배", "시간", "포인트", "쿠폰", "faq");
-    /** Content-search markers: ask the bot to find videos/music on the user's behalf. */
-    private static final List<String> CONTENT_KEYWORDS =
-            List.of("영상", "동영상", "비디오", "음악", "워십", "콘텐츠", "검색", "찾아", "보여줘", "틀어");
+    /**
+     * Content nouns — a strong "find me videos/music" signal. Checked BEFORE FAQ so "예배 영상 찾아줘"
+     * is a content search, not an FAQ about 예배. ("예배 시간 알려줘" has no content noun → FAQ.)
+     */
+    private static final List<String> CONTENT_NOUNS =
+            List.of("영상", "동영상", "비디오", "음악", "워십", "콘텐츠");
+    /** Content-search verbs (no noun) — checked after the specific intents. */
+    private static final List<String> CONTENT_VERBS =
+            List.of("검색", "찾아", "보여줘", "틀어");
     /**
      * Feature existence / how-to / location markers. Last before fallback (broadest), so specific
      * intents win. Includes "어디/위치" so a "○○ 어디서 하나요?" navigation question is answered from
@@ -42,6 +48,10 @@ public class IntentClassifier {
             return ChatIntent.FALLBACK;
         }
         String lower = message.toLowerCase(Locale.ROOT);
+        // Content nouns win first (영상/음악…), so "예배 영상 찾아줘" routes to content, not FAQ.
+        if (containsAny(lower, CONTENT_NOUNS)) {
+            return ChatIntent.CONTENT_SEARCH;
+        }
         if (containsAny(lower, FAQ_KEYWORDS)) {
             return ChatIntent.FAQ;
         }
@@ -51,7 +61,7 @@ public class IntentClassifier {
         if (containsAny(lower, PRODUCT_KEYWORDS)) {
             return ChatIntent.PRODUCT_INQUIRY;
         }
-        if (containsAny(lower, CONTENT_KEYWORDS)) {
+        if (containsAny(lower, CONTENT_VERBS)) {
             return ChatIntent.CONTENT_SEARCH;
         }
         if (containsAny(lower, FEATURE_KEYWORDS)) {
