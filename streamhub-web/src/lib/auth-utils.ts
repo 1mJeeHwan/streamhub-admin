@@ -33,3 +33,13 @@ export function isReadOnly(role: AdminRole | undefined | null): boolean {
 export function canWrite(role: AdminRole | undefined | null): boolean {
   return role === "SYSTEM" || role === "CHURCH_MANAGER";
 }
+
+/**
+ * canViewSystem reports whether the role may view the system screens (integrated ops dashboard,
+ * infrastructure status, security/audit logs). SYSTEM has full access; VIEWER gets read-only for the
+ * portfolio browse demo (the backend grants VIEWER the matching :read permissions, no :write).
+ * CHURCH_MANAGER is excluded — it holds no system :read, so those pages' APIs would 403.
+ */
+export function canViewSystem(role: AdminRole | undefined | null): boolean {
+  return role === "SYSTEM" || role === "VIEWER";
+}

@@ -43,7 +43,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-import { isSystem } from "@/lib/auth-utils";
+import { canViewSystem } from "@/lib/auth-utils";
 
 interface NavItem {
   label: string;
@@ -146,16 +146,17 @@ export const NAV_SECTIONS: NavSection[] = [
 
 /**
  * Sidebar renders the primary navigation for the protected shell.
- * System-only items are hidden from non-SYSTEM operators.
+ * System-only items are shown to roles that can view system screens (SYSTEM + read-only VIEWER);
+ * CHURCH_MANAGER (no system :read) does not see them.
  */
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const isSystemRole = isSystem(session?.user?.role);
+  const showSystem = canViewSystem(session?.user?.role);
 
   const sections = NAV_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) => !item.systemOnly || isSystemRole),
+    items: section.items.filter((item) => !item.systemOnly || showSystem),
   })).filter((section) => section.items.length > 0);
 
   return (

@@ -16,7 +16,7 @@ import type {
   PlanCreateRequest,
   PlanResponse,
 } from "@/apis/query/streamHubAdminAPI.schemas";
-import { isSystem } from "@/lib/auth-utils";
+import { canWrite, isSystem } from "@/lib/auth-utils";
 import { formatNumber } from "@/lib/format";
 import GradeBadge from "@/components/subscription/GradeBadge";
 import TestModeBadge from "@/components/donation/TestModeBadge";
@@ -32,6 +32,7 @@ type ModalState =
 
 export default function SubscriptionPlanPage() {
   const { data: session } = useSession();
+  const writable = canWrite(session?.user?.role);
   const canDelete = isSystem(session?.user?.role);
 
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
@@ -122,17 +123,19 @@ export default function SubscriptionPlanPage() {
             정기후원 멤버십 플랜을 등록 / 수정 / 삭제합니다.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setMessage(null);
-            setModal({ mode: "create" });
-          }}
-          className="flex items-center gap-1.5 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark"
-        >
-          <Plus className="h-4 w-4" />
-          플랜 등록
-        </button>
+        {writable && (
+          <button
+            type="button"
+            onClick={() => {
+              setMessage(null);
+              setModal({ mode: "create" });
+            }}
+            className="flex items-center gap-1.5 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark"
+          >
+            <Plus className="h-4 w-4" />
+            플랜 등록
+          </button>
+        )}
       </div>
 
       {listQuery.isLoading ? (
@@ -201,27 +204,29 @@ export default function SubscriptionPlanPage() {
                 <p className="mt-3 text-xs text-slate-500">{plan.benefit}</p>
               )}
 
-              <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMessage(null);
-                    setModal({ mode: "edit", plan });
-                  }}
-                  className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-                >
-                  수정
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(plan)}
-                  disabled={!canDelete || deleteMutation.isPending}
-                  title={canDelete ? undefined : "SYSTEM 관리자만 삭제할 수 있습니다."}
-                  className="flex-1 rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  삭제
-                </button>
-              </div>
+              {writable && (
+                <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMessage(null);
+                      setModal({ mode: "edit", plan });
+                    }}
+                    className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                  >
+                    수정
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(plan)}
+                    disabled={!canDelete || deleteMutation.isPending}
+                    title={canDelete ? undefined : "SYSTEM 관리자만 삭제할 수 있습니다."}
+                    className="flex-1 rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    삭제
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

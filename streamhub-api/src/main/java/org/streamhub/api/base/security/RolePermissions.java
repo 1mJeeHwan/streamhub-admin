@@ -16,7 +16,8 @@ import java.util.Set;
  *   <li>{@code SYSTEM} — every operational and system resource, read + write.</li>
  *   <li>{@code CHURCH_MANAGER} — every operational resource read + write (data is church-scoped at
  *       the service layer); no system resources.</li>
- *   <li>{@code VIEWER} — every operational resource read-only; no writes, no system resources.</li>
+ *   <li>{@code VIEWER} — every resource (operational + system) read-only; no writes at all. The
+ *       public portfolio "browse" role: can view every admin screen, can never mutate data.</li>
  * </ul>
  */
 public final class RolePermissions {
@@ -35,9 +36,9 @@ public final class RolePermissions {
             "announcement", "playlist");
 
     /**
-     * System-only resources (SYSTEM gets read+write; MANAGER/VIEWER get nothing). Mirrors the
-     * controllers currently restricted to SYSTEM: audit log, security monitoring, log archival,
-     * admin accounts, donations, and subscription plans.
+     * System resources (SYSTEM gets read+write; CHURCH_MANAGER gets nothing; VIEWER gets read-only
+     * for the portfolio browse demo). Audit log, security monitoring, log archival, admin accounts,
+     * donations, and subscription plans — write stays SYSTEM-exclusive.
      */
     private static final List<String> SYSTEM_ONLY = List.of(
             "security", "actionlog", "logarchive", "admin", "donation", "subscription-plan");
@@ -54,7 +55,13 @@ public final class RolePermissions {
         } else if (AuthoritiesConstants.CHURCH_MANAGER.equals(role)) {
             addReadWrite(perms, OPERATIONAL);
         } else if (AuthoritiesConstants.VIEWER.equals(role)) {
+            // Portfolio "browse" role: read on every resource (operational + system) so the public
+            // demo account can view every admin screen, but no :write at all — every mutation is
+            // blocked (403), so it can never touch real data.
             for (String resource : OPERATIONAL) {
+                perms.add(resource + READ);
+            }
+            for (String resource : SYSTEM_ONLY) {
                 perms.add(resource + READ);
             }
         }

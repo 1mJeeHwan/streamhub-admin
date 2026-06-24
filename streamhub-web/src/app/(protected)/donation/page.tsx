@@ -2,8 +2,11 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { useSession } from "next-auth/react";
 import { Loader2, Plus } from "lucide-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+
+import { canWrite } from "@/lib/auth-utils";
 
 import { donationList, useDonationOnce } from "@/apis/query/donation/donation";
 import {
@@ -53,6 +56,9 @@ function toIso(value: string, endOfDay: boolean): string | undefined {
 }
 
 export default function DonationPage() {
+  const { data: session } = useSession();
+  const writable = canWrite(session?.user?.role);
+
   // Committed search criteria.
   const [keyword, setKeyword] = useState("");
   const [type, setType] = useState<TypeFilter>("ALL");
@@ -154,17 +160,19 @@ export default function DonationPage() {
             단건 후원과 정기 구독 회차 결제 내역을 조회합니다.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setModalMessage(null);
-            setModalOpen(true);
-          }}
-          className="flex items-center gap-1.5 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark"
-        >
-          <Plus className="h-4 w-4" />
-          단건 후원 등록
-        </button>
+        {writable && (
+          <button
+            type="button"
+            onClick={() => {
+              setModalMessage(null);
+              setModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark"
+          >
+            <Plus className="h-4 w-4" />
+            단건 후원 등록
+          </button>
+        )}
       </div>
 
       {/* Search / filter bar */}
