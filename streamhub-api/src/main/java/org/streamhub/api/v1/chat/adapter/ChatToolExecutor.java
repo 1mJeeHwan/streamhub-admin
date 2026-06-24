@@ -180,6 +180,26 @@ public class ChatToolExecutor {
         return sb.toString().trim();
     }
 
+    /**
+     * Top-N matching products as rich-message cards (G), each deep-linking to {@code /goods/{id}}.
+     * Shared by the rule provider and the LLM provider (which attaches them when it calls
+     * {@code searchProducts}). Empty when nothing matches.
+     */
+    public List<ChatCard> productCards(String keyword) {
+        String kw = keyword == null ? "" : keyword.trim();
+        return chatMapper.selectGoodsByKeyword(kw, PRODUCT_TOP_N).stream().map(row -> {
+            boolean soldOut = "Y".equalsIgnoreCase(row.getSoldOut())
+                    || (row.getStock() != null && row.getStock() <= 0);
+            int stock = row.getStock() == null ? 0 : row.getStock();
+            return new ChatCard(
+                    row.getName(),
+                    "₩" + row.getPrice() + (soldOut ? " · 품절" : " · 재고 " + stock + "개"),
+                    null,
+                    "/goods/" + row.getId(),
+                    soldOut ? "품절" : null);
+        }).toList();
+    }
+
     /** Extracts a {@code YYYYMMDD-XXXXXX} order number from free text, or null. */
     public String extractOrderNo(String text) {
         if (text == null) {

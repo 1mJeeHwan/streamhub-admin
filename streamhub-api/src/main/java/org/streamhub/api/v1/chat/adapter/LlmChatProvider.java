@@ -71,6 +71,9 @@ public class LlmChatProvider implements ChatProvider {
             - 이전 대화 맥락을 반영한다. "구매는?", "그건?"처럼 짧은 후속 질문은 직전 주제에 이어서 해석한다.
             - 기능 상태가 데모/외부연동 대기면 그 점을 함께 알려준다.
             - 답변은 간결하고 자연스러운 한국어로, 조사를 올바르게 쓰고, 필요하면 단계로 안내한다.
+            - 사용자의 질문에 제대로 답하지 못했거나 의도를 이해하지 못한 경우, 답변 맨 끝에 정확히
+              [UNRESOLVED] 토큰을 덧붙여라(운영자가 제거하며, 미답변 학습 큐 수집에 쓰인다). 정상적으로
+              답했을 때는 절대 붙이지 않는다.
             """;
 
     private final String apiKey;
@@ -135,6 +138,7 @@ public class LlmChatProvider implements ChatProvider {
         contents.add(textContent("user", message));
 
         List<String> calledTools = new ArrayList<>();
+        List<ChatCard> cards = new ArrayList<>();
         for (int iter = 0; iter < MAX_TOOL_ITERS; iter++) {
             JsonNode response = callGemini(contents);
             JsonNode content = response.path("candidates").path(0).path("content");
@@ -154,7 +158,14 @@ public class LlmChatProvider implements ChatProvider {
                 String body = text.toString().isBlank()
                         ? "죄송합니다. 답변을 생성하지 못했습니다. 다시 질문해 주세요."
                         : text.toString().trim();
-                return new ChatReply(body, inferIntent(calledTools), List.of());
+                // Self-reported gap (A): strip the sentinel and mark FALLBACK so the question is
+                // collected into the learning queue.
+                ChatIntent intent = inferIntent(calledTools);
+                if (body.contains("[UNRESOLVED]")) {
+                    body = body.replace("[UNRESOLVED]", "").trim();
+                    intent = ChatIntent.FALLBACK;
+                }
+                return new ChatReply(body, intent, List.of(), cards);
             }
 
             // Echo the model's function-call turn, then append each tool result and loop again.
@@ -163,6 +174,10 @@ public class LlmChatProvider implements ChatProvider {
             for (JsonNode call : functionCalls) {
                 String name = call.path("name").asText();
                 calledTools.add(name);
+                // Rich-message cards (G): attach product tiles when the model looks up products.
+                if ("searchProducts".equals(name)) {
+                    cards.addAll(toolExecutor.productCards(call.path("args").path("keyword").asText("")));
+                }
                 String result = dispatchTool(name, call.path("args"));
                 resultParts.add(functionResponsePart(name, result));
             }

@@ -7,7 +7,6 @@ import java.util.regex.Pattern;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 import org.streamhub.api.v1.chat.ChatKnowledgeService;
-import org.streamhub.api.v1.chat.dto.ChatGoodsRow;
 import org.streamhub.api.v1.chat.dto.ChatOrderRow;
 import org.streamhub.api.v1.chat.entity.ChatIntent;
 import org.streamhub.api.v1.chat.mapper.ChatMapper;
@@ -21,7 +20,6 @@ import org.streamhub.api.v1.chat.mapper.ChatMapper;
 public class RuleChatProvider implements ChatProvider {
 
     private static final String CODE = "RULE";
-    private static final int PRODUCT_TOP_N = 3;
 
     /** {@code YYYYMMDD-XXXXXX} order-number pattern used to extract a number from free text. */
     private static final Pattern ORDER_NO_PATTERN = Pattern.compile("\\d{8}-\\d{4,6}");
@@ -127,25 +125,13 @@ public class RuleChatProvider implements ChatProvider {
 
     private ChatReply replyProductInquiry(String message) {
         String keyword = productKeyword(message);
-        List<ChatGoodsRow> rows = chatMapper.selectGoodsByKeyword(keyword, PRODUCT_TOP_N);
-        if (rows.isEmpty()) {
+        // Rich-message cards (G): each product becomes a deep-link tile to /goods/{id}.
+        List<ChatCard> cards = toolExecutor.productCards(keyword);
+        if (cards.isEmpty()) {
             return ChatReply.of(
                     "\"" + keyword + "\" 관련 상품을 찾지 못했습니다. 다른 키워드로 검색해 보세요.",
                     ChatIntent.PRODUCT_INQUIRY);
         }
-        // Rich-message cards (G): each product becomes a deep-link tile to /goods/{id}. The text
-        // line keeps a plain summary for accessibility / non-card clients.
-        List<ChatCard> cards = rows.stream().map(row -> {
-            boolean soldOut = "Y".equalsIgnoreCase(row.getSoldOut())
-                    || (row.getStock() != null && row.getStock() <= 0);
-            int stock = row.getStock() == null ? 0 : row.getStock();
-            return new ChatCard(
-                    row.getName(),
-                    "₩" + row.getPrice() + (soldOut ? " · 품절" : " · 재고 " + stock + "개"),
-                    null,
-                    "/goods/" + row.getId(),
-                    soldOut ? "품절" : null);
-        }).toList();
         return ChatReply.withCards(
                 "\"" + keyword + "\" 관련 상품입니다.", ChatIntent.PRODUCT_INQUIRY, cards);
     }
