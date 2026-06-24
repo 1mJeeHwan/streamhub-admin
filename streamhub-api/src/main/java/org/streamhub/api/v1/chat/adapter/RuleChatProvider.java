@@ -133,16 +133,21 @@ public class RuleChatProvider implements ChatProvider {
                     "\"" + keyword + "\" 관련 상품을 찾지 못했습니다. 다른 키워드로 검색해 보세요.",
                     ChatIntent.PRODUCT_INQUIRY);
         }
-        StringBuilder sb = new StringBuilder("\"").append(keyword).append("\" 관련 상품입니다:\n");
-        for (ChatGoodsRow row : rows) {
+        // Rich-message cards (G): each product becomes a deep-link tile to /goods/{id}. The text
+        // line keeps a plain summary for accessibility / non-card clients.
+        List<ChatCard> cards = rows.stream().map(row -> {
             boolean soldOut = "Y".equalsIgnoreCase(row.getSoldOut())
                     || (row.getStock() != null && row.getStock() <= 0);
-            sb.append("• ").append(row.getName())
-                    .append(" / ₩").append(row.getPrice())
-                    .append(soldOut ? " (품절)" : " (재고 " + (row.getStock() == null ? 0 : row.getStock()) + "개)")
-                    .append('\n');
-        }
-        return ChatReply.of(sb.toString().trim(), ChatIntent.PRODUCT_INQUIRY);
+            int stock = row.getStock() == null ? 0 : row.getStock();
+            return new ChatCard(
+                    row.getName(),
+                    "₩" + row.getPrice() + (soldOut ? " · 품절" : " · 재고 " + stock + "개"),
+                    null,
+                    "/goods/" + row.getId(),
+                    soldOut ? "품절" : null);
+        }).toList();
+        return ChatReply.withCards(
+                "\"" + keyword + "\" 관련 상품입니다.", ChatIntent.PRODUCT_INQUIRY, cards);
     }
 
     private ChatReply replyFaq(String message) {

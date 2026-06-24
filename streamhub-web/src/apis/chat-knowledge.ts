@@ -45,3 +45,24 @@ export const chatKnowledgeDelete = (id: number) =>
     url: `/v1/chat-admin/knowledge/${id}`,
     method: "DELETE",
   });
+
+/** An unanswered (FALLBACK) user question in the learning queue. */
+export interface ChatUnansweredDto {
+  id: number;
+  question: string;
+  sessionKey: string | null;
+  createdAt: string;
+}
+
+export const chatUnansweredList = (signal?: AbortSignal) =>
+  customInstance<ApiResponse<ChatUnansweredDto[]>>({
+    url: "/v1/chat-admin/unanswered",
+    method: "GET",
+    signal,
+  });
+
+export const chatUnansweredResolve = (id: number) =>
+  customInstance<ApiResponse<void>>({
+    url: `/v1/chat-admin/unanswered/${id}/resolve`,
+    method: "PUT",
+  });

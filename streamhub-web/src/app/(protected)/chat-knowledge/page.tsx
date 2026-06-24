@@ -3,14 +3,17 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Inbox, Loader2, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 
 import {
   chatKnowledgeCreate,
   chatKnowledgeDelete,
   chatKnowledgeList,
   chatKnowledgeUpdate,
+  chatUnansweredList,
+  chatUnansweredResolve,
   type ChatKnowledgeDto,
+  type ChatUnansweredDto,
 } from "@/apis/chat-knowledge";
 import { canWrite } from "@/lib/auth-utils";
 import { SUCCESS_CODE } from "@/types/api";
@@ -36,6 +39,8 @@ export default function ChatKnowledgePage() {
   const [form, setForm] = useState<ChatKnowledgeDto>(emptyForm);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // When the create modal was opened from an unanswered question, resolve it on successful save.
+  const [pendingUnansweredId, setPendingUnansweredId] = useState<number | null>(null);
 
   const listQuery = useQuery({
     queryKey: ["chat-knowledge"],
@@ -43,10 +48,34 @@ export default function ChatKnowledgePage() {
   });
   const items: ChatKnowledgeDto[] = listQuery.data?.resultObject ?? [];
 
+  const unansweredQuery = useQuery({
+    queryKey: ["chat-unanswered"],
+    queryFn: ({ signal }) => chatUnansweredList(signal),
+  });
+  const unanswered: ChatUnansweredDto[] = unansweredQuery.data?.resultObject ?? [];
+
   const openCreate = () => {
     setForm(emptyForm);
+    setPendingUnansweredId(null);
     setMessage(null);
     setModal({ mode: "create" });
+  };
+
+  /** Open the create modal prefilled from an unanswered question (one-click "teach"). */
+  const teachFromUnanswered = (item: ChatUnansweredDto) => {
+    setForm({ ...emptyForm, question: item.question.slice(0, 200), keywords: item.question.slice(0, 80) });
+    setPendingUnansweredId(item.id);
+    setMessage(null);
+    setModal({ mode: "create" });
+  };
+
+  const dismissUnanswered = async (id: number) => {
+    try {
+      await chatUnansweredResolve(id);
+      unansweredQuery.refetch();
+    } catch {
+      setMessage("처리 중 오류가 발생했습니다.");
+    }
   };
 
   const openEdit = (item: ChatKnowledgeDto) => {
@@ -81,6 +110,12 @@ export default function ChatKnowledgePage() {
           ? await chatKnowledgeUpdate(modal.item.id, payload)
           : await chatKnowledgeCreate(payload);
       if (res.resultCode === SUCCESS_CODE) {
+        // Taught from an unanswered question → mark it resolved (learning loop closed).
+        if (pendingUnansweredId != null) {
+          await chatUnansweredResolve(pendingUnansweredId).catch(() => undefined);
+          setPendingUnansweredId(null);
+          unansweredQuery.refetch();
+        }
         closeModal();
         setMessage("저장되었습니다.");
         listQuery.refetch();
@@ -133,6 +168,47 @@ export default function ChatKnowledgePage() {
           </button>
         )}
       </div>
+
+      {/* Learning queue (A): questions the bot couldn't answer → one-click teach */}
+      {unanswered.length > 0 && (
+        <div className="mb-5 rounded-md border border-amber-200 bg-amber-50/60 p-4">
+          <div className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-amber-800">
+            <Inbox className="h-4 w-4" /> 미답변 질문 (학습 대기) · {unanswered.length}
+          </div>
+          <p className="mb-3 text-xs text-amber-700/80">
+            챗봇이 답하지 못한 질문입니다. ‘지식 등록’으로 답변을 추가하면 다음부터 챗봇이 답합니다.
+          </p>
+          <ul className="space-y-1.5">
+            {unanswered.map((u) => (
+              <li
+                key={u.id}
+                className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-white px-3 py-2 text-sm"
+              >
+                <span className="truncate text-slate-800">{u.question}</span>
+                {writable && (
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => teachFromUnanswered(u)}
+                      className="inline-flex items-center gap-1 rounded-md bg-brand px-2.5 py-1 text-xs font-medium text-white transition hover:bg-brand-dark"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" /> 지식 등록
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void dismissUnanswered(u.id)}
+                      title="처리완료(무시)"
+                      className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mb-3 flex items-center gap-3">
         <span className="text-sm text-slate-600">총 {items.length.toLocaleString()}건</span>

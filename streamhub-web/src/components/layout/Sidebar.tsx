@@ -119,6 +119,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "1:1 문의", href: "/inquiry", icon: Headset },
       { label: "챗봇 상담", href: "/chat", icon: Bot },
       { label: "챗봇 지식관리", href: "/chat-knowledge", icon: BookOpen },
+      { label: "챗봇 분석", href: "/chat-analytics", icon: BarChart3 },
       { label: "SMS", href: "/sms", icon: MessageSquare },
     ],
   },

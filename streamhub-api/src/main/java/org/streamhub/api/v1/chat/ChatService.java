@@ -12,11 +12,14 @@ import org.streamhub.api.v1.chat.adapter.ChatTurn;
 import org.streamhub.api.v1.chat.dto.ChatHistoryItem;
 import org.streamhub.api.v1.chat.dto.ChatReplyDto;
 import org.streamhub.api.v1.chat.dto.ChatSendRequest;
+import org.streamhub.api.v1.chat.entity.ChatIntent;
 import org.streamhub.api.v1.chat.entity.ChatMessage;
 import org.streamhub.api.v1.chat.entity.ChatRole;
 import org.streamhub.api.v1.chat.entity.ChatSession;
+import org.streamhub.api.v1.chat.entity.ChatUnanswered;
 import org.streamhub.api.v1.chat.repository.ChatMessageRepository;
 import org.streamhub.api.v1.chat.repository.ChatSessionRepository;
+import org.streamhub.api.v1.chat.repository.ChatUnansweredRepository;
 
 /**
  * Chatbot orchestration (C5): resolves/creates the session, loads the recent conversation, persists
@@ -35,14 +38,17 @@ public class ChatService {
 
     private final ChatSessionRepository chatSessionRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final ChatUnansweredRepository chatUnansweredRepository;
     private final ChatProviderRouter chatProviderRouter;
 
     public ChatService(
             ChatSessionRepository chatSessionRepository,
             ChatMessageRepository chatMessageRepository,
+            ChatUnansweredRepository chatUnansweredRepository,
             ChatProviderRouter chatProviderRouter) {
         this.chatSessionRepository = chatSessionRepository;
         this.chatMessageRepository = chatMessageRepository;
+        this.chatUnansweredRepository = chatUnansweredRepository;
         this.chatProviderRouter = chatProviderRouter;
     }
 
@@ -73,6 +79,15 @@ public class ChatService {
                 .intent(reply.intent())
                 .content(reply.text())
                 .build());
+
+        // Learning queue (A): a FALLBACK means the bot had no answer — collect the question so an
+        // operator can review and turn it into knowledge.
+        if (reply.intent() == ChatIntent.FALLBACK) {
+            chatUnansweredRepository.save(ChatUnanswered.builder()
+                    .question(request.message())
+                    .sessionKey(session.getSessionKey())
+                    .build());
+        }
 
         boolean testMode = !"LLM".equals(provider.code());
         return ChatReplyDto.of(reply, testMode);

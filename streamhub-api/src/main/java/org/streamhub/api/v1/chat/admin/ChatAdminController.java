@@ -14,11 +14,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.streamhub.api.base.response.ResultDTO;
+import org.streamhub.api.v1.chat.ChatInsightService;
 import org.streamhub.api.v1.chat.ChatKnowledgeService;
 import org.streamhub.api.v1.chat.admin.dto.ChatKnowledgeDto;
 import org.streamhub.api.v1.chat.admin.dto.ChatMessageRow;
 import org.streamhub.api.v1.chat.admin.dto.ChatReplyRequest;
 import org.streamhub.api.v1.chat.admin.dto.ChatSessionRow;
+import org.streamhub.api.v1.chat.admin.dto.ChatStatsDto;
+import org.streamhub.api.v1.chat.admin.dto.ChatUnansweredDto;
 
 /**
  * Admin chat-console endpoints (SYSTEM or CHURCH_MANAGER). Lets operators browse chatbot
@@ -34,11 +37,14 @@ public class ChatAdminController {
 
     private final ChatAdminService chatAdminService;
     private final ChatKnowledgeService knowledgeService;
+    private final ChatInsightService insightService;
 
     public ChatAdminController(ChatAdminService chatAdminService,
-                              ChatKnowledgeService knowledgeService) {
+                              ChatKnowledgeService knowledgeService,
+                              ChatInsightService insightService) {
         this.chatAdminService = chatAdminService;
         this.knowledgeService = knowledgeService;
+        this.insightService = insightService;
     }
 
     @Operation(summary = "상담 세션 목록", description = "최근 활동순 세션 목록. 마지막 메시지/미응답 여부 포함.")
@@ -90,5 +96,27 @@ public class ChatAdminController {
     public ResultDTO<Void> knowledgeDelete(@PathVariable Long id) {
         knowledgeService.delete(id);
         return ResultDTO.ok();
+    }
+
+    // --- Learning queue (A) + analytics (F) --------------------------------
+
+    @Operation(summary = "미답변 질문 목록", description = "봇이 답하지 못한(FALLBACK) 질문 큐(미처리, 최신순).")
+    @GetMapping("/unanswered")
+    public ResultDTO<List<ChatUnansweredDto>> unanswered() {
+        return ResultDTO.ok(insightService.listUnanswered());
+    }
+
+    @Operation(summary = "미답변 처리완료", description = "지식 등록/무시 후 학습 큐에서 제거(처리완료 표시).")
+    @PreAuthorize("hasAuthority('chat:write')")
+    @PutMapping("/unanswered/{id}/resolve")
+    public ResultDTO<Void> resolveUnanswered(@PathVariable Long id) {
+        insightService.resolveUnanswered(id);
+        return ResultDTO.ok();
+    }
+
+    @Operation(summary = "챗봇 분석 통계", description = "세션·인텐트 분포·폴백률·일별 추이.")
+    @GetMapping("/stats")
+    public ResultDTO<ChatStatsDto> stats() {
+        return ResultDTO.ok(insightService.stats());
     }
 }

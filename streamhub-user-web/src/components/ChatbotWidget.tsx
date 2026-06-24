@@ -1,15 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessageCircle, X, Send, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { MessageCircle, X, Send, Sparkles, ChevronRight } from "lucide-react";
 import clsx from "clsx";
 import {
   sendChat,
   answerLocally,
   greeting,
   INITIAL_QUICK_REPLIES,
+  type ChatCard,
   type ChatMessage,
 } from "@/lib/chat";
+import { safeHref } from "@/lib/url";
 import { useAuth } from "@/lib/auth";
 import { useAudioPlayer } from "./player/AudioPlayerProvider";
 
@@ -84,7 +87,7 @@ export function ChatbotWidget() {
 
       setMessages((prev) => [
         ...prev,
-        { id: nextId(), role: "BOT", content: reply.text, intent: reply.intent },
+        { id: nextId(), role: "BOT", content: reply.text, intent: reply.intent, cards: reply.cards },
       ]);
       setQuickReplies(reply.quickReplies ?? []);
       // Only a real backend reply tells us the provider; client mock answers (mocked) don't.
@@ -320,8 +323,9 @@ export function ChatbotWidget() {
 
 function Bubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "USER";
+  const cards = message.cards ?? [];
   return (
-    <div className={clsx("flex", isUser ? "justify-end" : "justify-start")}>
+    <div className={clsx("flex flex-col gap-2", isUser ? "items-end" : "items-start")}>
       <div
         className={clsx(
           "max-w-[82%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
@@ -332,7 +336,54 @@ function Bubble({ message }: { message: ChatMessage }) {
       >
         {message.content}
       </div>
+      {/* Rich-message cards (G): product/content tiles with a deep link. */}
+      {cards.length > 0 && (
+        <div className="w-[88%] space-y-2">
+          {cards.map((card, i) => (
+            <CardTile key={`${card.title}-${i}`} card={card} />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function CardTile({ card }: { card: ChatCard }) {
+  const href = card.href ? safeHref(card.href) : null;
+  const body = (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-bg px-3 py-2.5 transition active:bg-card">
+      {card.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={card.imageUrl}
+          alt=""
+          className="h-12 w-12 shrink-0 rounded-lg border border-border object-cover"
+        />
+      ) : (
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-surface text-inactive">
+          <Sparkles className="h-5 w-5" />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <p className="truncate text-sm font-semibold text-active">{card.title}</p>
+          {card.badge && (
+            <span className="shrink-0 rounded bg-point/15 px-1.5 py-0.5 text-[10px] font-bold text-point">
+              {card.badge}
+            </span>
+          )}
+        </div>
+        {card.subtitle && <p className="mt-0.5 truncate text-xs text-inactive">{card.subtitle}</p>}
+      </div>
+      {href && <ChevronRight className="h-4 w-4 shrink-0 text-inactive" />}
+    </div>
+  );
+  return href ? (
+    <Link href={href} className="block">
+      {body}
+    </Link>
+  ) : (
+    body
   );
 }
 

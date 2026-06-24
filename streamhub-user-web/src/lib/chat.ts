@@ -22,11 +22,22 @@ export type ChatIntent = "PRODUCT_INQUIRY" | "ORDER_LOOKUP" | "FAQ" | "FEATURE_G
 /** Author of a chat message — mirrors backend ChatRole. */
 export type ChatRole = "USER" | "BOT";
 
+/** A rich-message card (G) — product/content tile with a deep link. Mirrors backend ChatCard. */
+export interface ChatCard {
+  title: string;
+  subtitle: string | null;
+  imageUrl: string | null;
+  href: string | null;
+  badge: string | null;
+}
+
 /** Backend reply payload (ChatReplyDto). `testMode` is always true in the demo. */
 export interface ChatReply {
   text: string;
   intent: ChatIntent;
   quickReplies: string[];
+  /** Rich-message cards (product/content tiles); empty/absent for plain replies. */
+  cards?: ChatCard[];
   testMode: boolean;
   /** True when produced by the local mock rather than the backend (UI hint only). */
   mocked?: boolean;
@@ -38,6 +49,7 @@ export interface ChatMessage {
   role: ChatRole;
   content: string;
   intent?: ChatIntent;
+  cards?: ChatCard[];
 }
 
 interface ChatSendRequest {
