@@ -150,7 +150,7 @@ public class SmsService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SmsListItem sendForDonation(Long memberId, Long donationId, Long amount) {
-        String content = "[StreamHub] ₩" + amount + " 후원이 정상 접수되었습니다. 감사합니다. (테스트발송)";
+        String content = "[그레이스온] ₩" + amount + " 후원이 정상 접수되었습니다. 감사합니다. (테스트발송)";
         SmsMessage saved = persist(
                 null, content, SmsKind.DONATION_ONCE, memberId, "DONATION", String.valueOf(donationId));
         return SmsListItem.from(saved);
@@ -207,9 +207,9 @@ public class SmsService {
 
     private String orderBody(SmsKind kind, String orderNo) {
         return switch (kind) {
-            case ORDER_PAID -> "[StreamHub] " + orderNo + " 결제가 완료되었습니다. (테스트발송)";
-            case ORDER_SHIPPING -> "[StreamHub] " + orderNo + " 상품이 배송 시작되었습니다. 운송장은 주문내역에서 확인하세요. (테스트발송)";
-            default -> "[StreamHub] " + orderNo + " 주문 알림입니다. (테스트발송)";
+            case ORDER_PAID -> "[그레이스온] " + orderNo + " 결제가 완료되었습니다. (테스트발송)";
+            case ORDER_SHIPPING -> "[그레이스온] " + orderNo + " 상품이 배송 시작되었습니다. 운송장은 주문내역에서 확인하세요. (테스트발송)";
+            default -> "[그레이스온] " + orderNo + " 주문 알림입니다. (테스트발송)";
         };
     }
 

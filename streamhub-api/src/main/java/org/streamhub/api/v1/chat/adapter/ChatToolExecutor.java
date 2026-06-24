@@ -102,7 +102,7 @@ public class ChatToolExecutor {
                 bucket.add(f.title());
             }
         }
-        StringBuilder sb = new StringBuilder("StreamHub 주요 기능입니다:\n");
+        StringBuilder sb = new StringBuilder("그레이스온 주요 기능입니다:\n");
         for (Map.Entry<String, String> e : DOMAIN_LABELS.entrySet()) {
             List<String> titles = byDomain.get(e.getKey());
             if (titles != null && !titles.isEmpty()) {

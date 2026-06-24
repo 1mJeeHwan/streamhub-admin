@@ -1,11 +1,15 @@
 package org.streamhub.api.v1.chat.adapter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.streamhub.api.v1.chat.ChatKnowledgeService;
 import org.streamhub.api.v1.chat.entity.ChatIntent;
 import org.streamhub.api.v1.chat.entity.ChatRole;
 import org.streamhub.api.v1.chat.feature.FeatureCatalogService;
@@ -21,8 +25,14 @@ class RuleChatProviderTest {
     private final ChatMapper chatMapper = mock(ChatMapper.class);
     private final FeatureCatalogService catalog = new FeatureCatalogService(new ObjectMapper());
     private final ChatToolExecutor toolExecutor = new ChatToolExecutor(catalog, chatMapper);
+    private final ChatKnowledgeService knowledgeService = mock(ChatKnowledgeService.class);
     private final RuleChatProvider provider =
-            new RuleChatProvider(new IntentClassifier(), chatMapper, toolExecutor);
+            new RuleChatProvider(new IntentClassifier(), chatMapper, toolExecutor, knowledgeService);
+
+    {
+        // No admin-taught match by default → fall through to the normal rule path.
+        when(knowledgeService.findAnswer(anyString())).thenReturn(Optional.empty());
+    }
 
     @Test
     void featureQuestion_answersFromCatalog_withRecommendationQuickReplies() {

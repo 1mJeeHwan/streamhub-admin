@@ -1109,8 +1109,8 @@ public class PortfolioSeeder implements CommandLineRunner {
                     || order.getStatus() == OrderStatus.DONE) && order.getTrackingNo() != null;
             SmsKind kind = shipped ? SmsKind.ORDER_SHIPPING : SmsKind.ORDER_PAID;
             String content = shipped
-                    ? "[StreamHub] 주문하신 상품이 발송되었습니다. 운송장 " + order.getTrackingNo() + " (테스트발송)"
-                    : "[StreamHub] 결제가 완료되었습니다. 주문번호 " + order.getOrderNo() + " (테스트발송)";
+                    ? "[그레이스온] 주문하신 상품이 발송되었습니다. 운송장 " + order.getTrackingNo() + " (테스트발송)"
+                    : "[그레이스온] 결제가 완료되었습니다. 주문번호 " + order.getOrderNo() + " (테스트발송)";
             messages.add(buildSms(content, kind, maskedTo(rnd), order.getMemberId(),
                     "ORDER", String.valueOf(order.getId()), order.getOrderedAt()));
         }
@@ -1122,7 +1122,7 @@ public class PortfolioSeeder implements CommandLineRunner {
             if (donation.getType() != DonationType.ONCE || i % 17 != 0) {
                 continue;
             }
-            String content = "[StreamHub] 후원해 주셔서 감사합니다. 후원금 "
+            String content = "[그레이스온] 후원해 주셔서 감사합니다. 후원금 "
                     + String.format("%,d", donation.getAmount()) + "원 (테스트발송)";
             messages.add(buildSms(content, SmsKind.DONATION_ONCE, maskedTo(rnd), donation.getMemberId(),
                     "DONATION", String.valueOf(donation.getId()), donation.getPaidAt()));

@@ -31,10 +31,10 @@ public class NotificationSeeder implements CommandLineRunner {
     private static final int WINDOW_DAYS = 45;
 
     private static final String[] TITLES = {
-            "[StreamHub] 새 설교 영상이 등록되었습니다",
+            "[그레이스온] 새 설교 영상이 등록되었습니다",
             "정기후원 결제 안내",
             "주문이 발송되었습니다",
-            "[StreamHub] 이번 주 주보가 도착했습니다",
+            "[그레이스온] 이번 주 주보가 도착했습니다",
             "새가족 등록을 환영합니다",
             "출석 체크 리마인드",
             "후원 영수증 발급 안내"

@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Optional;
 import org.springframework.stereotype.Component;
+import org.streamhub.api.v1.chat.ChatKnowledgeService;
 import org.streamhub.api.v1.chat.dto.ChatGoodsRow;
 import org.streamhub.api.v1.chat.dto.ChatOrderRow;
 import org.streamhub.api.v1.chat.entity.ChatIntent;
@@ -49,12 +51,14 @@ public class RuleChatProvider implements ChatProvider {
     private final IntentClassifier intentClassifier;
     private final ChatMapper chatMapper;
     private final ChatToolExecutor toolExecutor;
+    private final ChatKnowledgeService knowledgeService;
 
     public RuleChatProvider(IntentClassifier intentClassifier, ChatMapper chatMapper,
-                            ChatToolExecutor toolExecutor) {
+                            ChatToolExecutor toolExecutor, ChatKnowledgeService knowledgeService) {
         this.intentClassifier = intentClassifier;
         this.chatMapper = chatMapper;
         this.toolExecutor = toolExecutor;
+        this.knowledgeService = knowledgeService;
     }
 
     @Override
@@ -65,6 +69,12 @@ public class RuleChatProvider implements ChatProvider {
     @Override
     public ChatReply reply(String message, java.util.List<ChatTurn> history) {
         // Rule provider is stateless — history is ignored (kept for the context-aware LLM provider).
+        // Admin-taught knowledge wins first: any enabled keyword match returns the curated answer,
+        // regardless of intent, so operators can add answers without touching the classifier.
+        Optional<String> taught = knowledgeService.findAnswer(message);
+        if (taught.isPresent()) {
+            return ChatReply.of(taught.get(), ChatIntent.FAQ);
+        }
         ChatIntent intent = intentClassifier.classify(message);
         return switch (intent) {
             case ORDER_LOOKUP -> replyOrderLookup(message);

@@ -61,7 +61,7 @@ public class KakaoPaymentProvider implements PaymentProvider {
         body.put("cid", cid);
         body.put("partner_order_id", request.orderNo());
         body.put("partner_user_id", partnerUserId(request.orderNo()));
-        body.put("item_name", "StreamHub 음반");
+        body.put("item_name", "그레이스온 음반");
         body.put("quantity", 1);
         body.put("total_amount", request.amount());
         body.put("tax_free_amount", 0);

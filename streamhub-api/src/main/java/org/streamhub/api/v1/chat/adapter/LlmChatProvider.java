@@ -53,7 +53,7 @@ public class LlmChatProvider implements ChatProvider {
     private static final int READ_TIMEOUT_MS = 12_000;
 
     private static final String SYSTEM_PROMPT = """
-            너는 StreamHub(교회·CCM 스트리밍/커머스 플랫폼)의 한국어 상담 도우미다.
+            너는 그레이스온(GraceOn, 교회·CCM 예배 미디어/커머스 플랫폼)의 한국어 상담 도우미다.
             역할: 기능의 유무·사용법 안내, "어디서 하나요?" 같은 위치 안내, 주문/배송 조회와 상품 문의를 돕는다.
 
             사용자 사이트 구조(위치 안내에 사용):
@@ -80,6 +80,7 @@ public class LlmChatProvider implements ChatProvider {
     private final ObjectMapper objectMapper;
     private final ChatToolExecutor toolExecutor;
     private final RuleChatProvider fallback;
+    private final org.streamhub.api.v1.chat.ChatKnowledgeService knowledgeService;
     private final ArrayNode toolsNode;
 
     public LlmChatProvider(
@@ -89,13 +90,15 @@ public class LlmChatProvider implements ChatProvider {
             RestClient.Builder restClientBuilder,
             ObjectMapper objectMapper,
             ChatToolExecutor toolExecutor,
-            RuleChatProvider fallback) {
+            RuleChatProvider fallback,
+            org.streamhub.api.v1.chat.ChatKnowledgeService knowledgeService) {
         this.apiKey = apiKey;
         this.model = model;
         this.baseUrl = baseUrl;
         this.objectMapper = objectMapper;
         this.toolExecutor = toolExecutor;
         this.fallback = fallback;
+        this.knowledgeService = knowledgeService;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(CONNECT_TIMEOUT_MS);
         factory.setReadTimeout(READ_TIMEOUT_MS);
@@ -204,7 +207,9 @@ public class LlmChatProvider implements ChatProvider {
         ObjectNode request = objectMapper.createObjectNode();
         ObjectNode sys = objectMapper.createObjectNode();
         ArrayNode sysParts = objectMapper.createArrayNode();
-        sysParts.add(objectMapper.createObjectNode().put("text", SYSTEM_PROMPT));
+        // Base instruction + admin-taught knowledge (FAQ), so operators can teach the bot live.
+        sysParts.add(objectMapper.createObjectNode()
+                .put("text", SYSTEM_PROMPT + knowledgeService.promptBlock()));
         sys.set("parts", sysParts);
         request.set("systemInstruction", sys);
         request.set("contents", contents);
@@ -245,10 +250,10 @@ public class LlmChatProvider implements ChatProvider {
     private ArrayNode buildToolDeclarations() {
         ArrayNode decls = objectMapper.createArrayNode();
         decls.add(declaration("listFeatures",
-                "StreamHub의 전체 기능 개요를 도메인별로 나열한다. '어떤 기능이 있어?' 같은 광범위한 질문에 사용.",
+                "그레이스온의 전체 기능 개요를 도메인별로 나열한다. '어떤 기능이 있어?' 같은 광범위한 질문에 사용.",
                 noParams()));
         decls.add(declaration("searchFeatures",
-                "StreamHub에 어떤 기능이 있는지, 사용법은 무엇인지 기능 카탈로그에서 검색한다.",
+                "그레이스온에 어떤 기능이 있는지, 사용법은 무엇인지 기능 카탈로그에서 검색한다.",
                 stringParams("query", "찾을 기능 키워드. 예: 쿠폰, 주문, 포인트 적립, 교회찾기")));
         decls.add(declaration("getFeature",
                 "특정 기능 id의 사용법 상세를 가져온다.",
