@@ -12,6 +12,7 @@ import { formatNumber } from "@/lib/format";
 /** ChatIntent enum → Korean label for the charts. */
 const INTENT_LABELS: Record<string, string> = {
   PRODUCT_INQUIRY: "상품 문의",
+  CONTENT_SEARCH: "콘텐츠 검색",
   ORDER_LOOKUP: "주문 조회",
   FAQ: "자주 묻는 질문",
   FEATURE_GUIDE: "기능 안내",

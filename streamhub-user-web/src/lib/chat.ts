@@ -17,7 +17,13 @@ const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8080";
 const SUCCESS_CODE = "0000";
 
 /** Classified user intent — mirrors backend org.streamhub.api.v1.chat.entity.ChatIntent. */
-export type ChatIntent = "PRODUCT_INQUIRY" | "ORDER_LOOKUP" | "FAQ" | "FEATURE_GUIDE" | "FALLBACK";
+export type ChatIntent =
+  | "PRODUCT_INQUIRY"
+  | "CONTENT_SEARCH"
+  | "ORDER_LOOKUP"
+  | "FAQ"
+  | "FEATURE_GUIDE"
+  | "FALLBACK";
 
 /** Author of a chat message — mirrors backend ChatRole. */
 export type ChatRole = "USER" | "BOT";

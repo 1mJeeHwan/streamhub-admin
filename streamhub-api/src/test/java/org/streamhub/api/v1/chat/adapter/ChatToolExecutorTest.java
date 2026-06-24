@@ -24,7 +24,8 @@ class ChatToolExecutorTest {
 
     private final ChatMapper chatMapper = mock(ChatMapper.class);
     private final FeatureCatalogService catalog = new FeatureCatalogService(new ObjectMapper());
-    private final ChatToolExecutor executor = new ChatToolExecutor(catalog, chatMapper);
+    private final ChatToolExecutor executor =
+            new ChatToolExecutor(catalog, chatMapper, mock(org.streamhub.api.v1.content.ContentService.class));
 
     @Test
     void searchFeatures_knownKeyword_returnsHowTo() {

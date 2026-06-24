@@ -1,5 +1,8 @@
 package org.streamhub.api.v1.chat.adapter;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -12,6 +15,10 @@ import org.streamhub.api.v1.chat.dto.ChatOrderRow;
 import org.streamhub.api.v1.chat.feature.FeatureCatalogService;
 import org.streamhub.api.v1.chat.feature.FeatureInfo;
 import org.streamhub.api.v1.chat.mapper.ChatMapper;
+import org.streamhub.api.v1.content.ContentService;
+import org.streamhub.api.v1.content.dto.ContentListItem;
+import org.streamhub.api.v1.content.dto.ContentSearchRequest;
+import org.streamhub.api.v1.content.entity.ContentType;
 
 /**
  * Shared chatbot tool layer (C5) — the read-only "tools" both the rule provider and the LLM
@@ -49,12 +56,18 @@ public class ChatToolExecutor {
         return m;
     }
 
+    /** Top-N content results returned when searching on the user's behalf. */
+    private static final int CONTENT_TOP_N = 4;
+
     private final FeatureCatalogService featureCatalog;
     private final ChatMapper chatMapper;
+    private final ContentService contentService;
 
-    public ChatToolExecutor(FeatureCatalogService featureCatalog, ChatMapper chatMapper) {
+    public ChatToolExecutor(FeatureCatalogService featureCatalog, ChatMapper chatMapper,
+                            ContentService contentService) {
         this.featureCatalog = featureCatalog;
         this.chatMapper = chatMapper;
+        this.contentService = contentService;
     }
 
     /**
@@ -198,6 +211,49 @@ public class ChatToolExecutor {
                     "/goods/" + row.getId(),
                     soldOut ? "품절" : null);
         }).toList();
+    }
+
+    /** Top-N PUBLISHED videos/music matching a keyword, as a compact text list (LLM tool result). */
+    public String searchContents(String keyword) {
+        String kw = keyword == null ? "" : keyword.trim();
+        List<ContentListItem> rows = contentService.listPublic(
+                new ContentSearchRequest(0, CONTENT_TOP_N, kw, null, null, null, null, null)).getContents();
+        if (rows.isEmpty()) {
+            return "\"" + safe(kw) + "\" 관련 영상/음악을 찾지 못했습니다.";
+        }
+        StringBuilder sb = new StringBuilder("\"").append(safe(kw)).append("\" 검색 결과:\n");
+        for (ContentListItem c : rows) {
+            sb.append("• ").append(c.getType() == ContentType.VIDEO ? "[영상] " : "[음악] ")
+                    .append(c.getTitle());
+            if (c.getChannelName() != null) {
+                sb.append(" / ").append(c.getChannelName());
+            }
+            sb.append('\n');
+        }
+        return sb.toString().trim();
+    }
+
+    /**
+     * "Search on the user's behalf" (대신 검색): top-N content results as deep-link cards plus a final
+     * card to the pre-filled global search page ({@code /search?q=...}). Empty when nothing matches.
+     */
+    public List<ChatCard> contentCards(String keyword) {
+        String kw = keyword == null ? "" : keyword.trim();
+        List<ContentListItem> rows = contentService.listPublic(
+                new ContentSearchRequest(0, CONTENT_TOP_N, kw, null, null, null, null, null)).getContents();
+        List<ChatCard> cards = new ArrayList<>();
+        for (ContentListItem c : rows) {
+            boolean video = c.getType() == ContentType.VIDEO;
+            String sub = (video ? "영상" : "음악")
+                    + (c.getChannelName() != null ? " · " + c.getChannelName() : "");
+            cards.add(new ChatCard(c.getTitle(), sub, c.getThumbnailUrl(),
+                    (video ? "/video/" : "/music/") + c.getId(), null));
+        }
+        if (!cards.isEmpty() && !kw.isBlank()) {
+            cards.add(new ChatCard("\"" + kw + "\" 전체 검색결과 보기", "영상·음악·소식 통합검색", null,
+                    "/search?q=" + URLEncoder.encode(kw, StandardCharsets.UTF_8), null));
+        }
+        return cards;
     }
 
     /** Extracts a {@code YYYYMMDD-XXXXXX} order number from free text, or null. */

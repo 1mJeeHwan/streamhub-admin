@@ -77,6 +77,7 @@ public class RuleChatProvider implements ChatProvider {
         return switch (intent) {
             case ORDER_LOOKUP -> replyOrderLookup(message);
             case PRODUCT_INQUIRY -> replyProductInquiry(message);
+            case CONTENT_SEARCH -> replyContentSearch(message);
             case FAQ -> replyFaq(message);
             case FEATURE_GUIDE -> replyFeatureGuide(message);
             case FALLBACK -> replyFallback();
@@ -134,6 +135,19 @@ public class RuleChatProvider implements ChatProvider {
         }
         return ChatReply.withCards(
                 "\"" + keyword + "\" 관련 상품입니다.", ChatIntent.PRODUCT_INQUIRY, cards);
+    }
+
+    /** Searches videos/music on the user's behalf and returns deep-link cards (G + 대신 검색). */
+    private ChatReply replyContentSearch(String message) {
+        String keyword = productKeyword(message);
+        List<ChatCard> cards = toolExecutor.contentCards(keyword);
+        if (cards.isEmpty()) {
+            return ChatReply.of(
+                    "\"" + keyword + "\" 관련 영상/음악을 찾지 못했습니다. 다른 키워드로 검색해 보세요.",
+                    ChatIntent.CONTENT_SEARCH);
+        }
+        return ChatReply.withCards(
+                "\"" + keyword + "\" 검색 결과입니다.", ChatIntent.CONTENT_SEARCH, cards);
     }
 
     private ChatReply replyFaq(String message) {

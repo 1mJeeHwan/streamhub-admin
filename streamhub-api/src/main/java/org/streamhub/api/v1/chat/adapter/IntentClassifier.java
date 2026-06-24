@@ -24,6 +24,9 @@ public class IntentClassifier {
             List.of("상품", "가격", "재고", "구매", "앨범", "굿즈", "product", "price", "stock");
     private static final List<String> FAQ_KEYWORDS =
             List.of("배송비", "환불", "교환", "반품", "회원", "예배", "시간", "포인트", "쿠폰", "faq");
+    /** Content-search markers: ask the bot to find videos/music on the user's behalf. */
+    private static final List<String> CONTENT_KEYWORDS =
+            List.of("영상", "동영상", "비디오", "음악", "워십", "콘텐츠", "검색", "찾아", "보여줘", "틀어");
     /**
      * Feature existence / how-to / location markers. Last before fallback (broadest), so specific
      * intents win. Includes "어디/위치" so a "○○ 어디서 하나요?" navigation question is answered from
@@ -47,6 +50,9 @@ public class IntentClassifier {
         }
         if (containsAny(lower, PRODUCT_KEYWORDS)) {
             return ChatIntent.PRODUCT_INQUIRY;
+        }
+        if (containsAny(lower, CONTENT_KEYWORDS)) {
+            return ChatIntent.CONTENT_SEARCH;
         }
         if (containsAny(lower, FEATURE_KEYWORDS)) {
             return ChatIntent.FEATURE_GUIDE;

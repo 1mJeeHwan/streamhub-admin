@@ -177,9 +177,11 @@ public class LlmChatProvider implements ChatProvider {
             for (JsonNode call : functionCalls) {
                 String name = call.path("name").asText();
                 calledTools.add(name);
-                // Rich-message cards (G): attach product tiles when the model looks up products.
+                // Rich-message cards (G): attach product/content tiles when the model looks them up.
                 if ("searchProducts".equals(name)) {
                     cards.addAll(toolExecutor.productCards(call.path("args").path("keyword").asText("")));
+                } else if ("searchContents".equals(name)) {
+                    cards.addAll(toolExecutor.contentCards(call.path("args").path("keyword").asText("")));
                 }
                 String result = dispatchTool(name, call.path("args"));
                 resultParts.add(functionResponsePart(name, result));
@@ -203,6 +205,7 @@ public class LlmChatProvider implements ChatProvider {
             case "lookupOrder" -> toolExecutor.lookupOrder(
                     args.path("orderNo").asText(""), args.path("name").asText(""));
             case "searchProducts" -> toolExecutor.searchProducts(args.path("keyword").asText(""));
+            case "searchContents" -> toolExecutor.searchContents(args.path("keyword").asText(""));
             default -> "알 수 없는 도구입니다: " + name;
         };
     }
@@ -214,6 +217,9 @@ public class LlmChatProvider implements ChatProvider {
         }
         if (calledTools.contains("searchProducts")) {
             return ChatIntent.PRODUCT_INQUIRY;
+        }
+        if (calledTools.contains("searchContents")) {
+            return ChatIntent.CONTENT_SEARCH;
         }
         if (calledTools.contains("searchFeatures") || calledTools.contains("getFeature")) {
             return ChatIntent.FEATURE_GUIDE;
@@ -283,6 +289,10 @@ public class LlmChatProvider implements ChatProvider {
         decls.add(declaration("searchProducts",
                 "상품명 키워드로 판매 상품의 가격·재고를 조회한다.",
                 stringParams("keyword", "상품명 키워드")));
+        decls.add(declaration("searchContents",
+                "사용자 대신 예배·찬양 영상/음악 콘텐츠를 키워드로 검색해 결과를 안내한다. "
+                        + "'○○ 영상 찾아줘/검색해줘' 같은 요청에 사용.",
+                stringParams("keyword", "검색할 콘텐츠 키워드(예: 주일예배, 새벽기도, 워십)")));
 
         ArrayNode tools = objectMapper.createArrayNode();
         ObjectNode tool = objectMapper.createObjectNode();

@@ -4,6 +4,8 @@ package org.streamhub.api.v1.chat.entity;
 public enum ChatIntent {
     /** 상품/가격/재고 문의. */
     PRODUCT_INQUIRY,
+    /** 영상/음악 콘텐츠 검색(대신 검색해 결과 카드로 안내). */
+    CONTENT_SEARCH,
     /** 주문/배송 조회. */
     ORDER_LOOKUP,
     /** 자주 묻는 질문(배송비/환불/회원 등). */

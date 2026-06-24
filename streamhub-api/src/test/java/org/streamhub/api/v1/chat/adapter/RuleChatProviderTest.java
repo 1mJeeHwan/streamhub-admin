@@ -24,7 +24,8 @@ class RuleChatProviderTest {
 
     private final ChatMapper chatMapper = mock(ChatMapper.class);
     private final FeatureCatalogService catalog = new FeatureCatalogService(new ObjectMapper());
-    private final ChatToolExecutor toolExecutor = new ChatToolExecutor(catalog, chatMapper);
+    private final ChatToolExecutor toolExecutor =
+            new ChatToolExecutor(catalog, chatMapper, mock(org.streamhub.api.v1.content.ContentService.class));
     private final ChatKnowledgeService knowledgeService = mock(ChatKnowledgeService.class);
     private final RuleChatProvider provider =
             new RuleChatProvider(new IntentClassifier(), chatMapper, toolExecutor, knowledgeService);
