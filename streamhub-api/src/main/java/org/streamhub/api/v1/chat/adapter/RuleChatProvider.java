@@ -67,13 +67,18 @@ public class RuleChatProvider implements ChatProvider {
     @Override
     public ChatReply reply(String message, java.util.List<ChatTurn> history) {
         // Rule provider is stateless — history is ignored (kept for the context-aware LLM provider).
-        // Admin-taught knowledge wins first: any enabled keyword match returns the curated answer,
-        // regardless of intent, so operators can add answers without touching the classifier.
+        ChatIntent intent = intentClassifier.classify(message);
+        // An explicit content search (영상/음악 …) wins over a broad knowledge keyword, so
+        // "예배 영상 찾아줘" returns search cards instead of the "예배 시간" FAQ answer.
+        if (intent == ChatIntent.CONTENT_SEARCH) {
+            return replyContentSearch(message);
+        }
+        // Admin-taught knowledge wins next: any enabled keyword match returns the curated answer,
+        // so operators can add answers without touching the classifier.
         Optional<String> taught = knowledgeService.findAnswer(message);
         if (taught.isPresent()) {
             return ChatReply.of(taught.get(), ChatIntent.FAQ);
         }
-        ChatIntent intent = intentClassifier.classify(message);
         return switch (intent) {
             case ORDER_LOOKUP -> replyOrderLookup(message);
             case PRODUCT_INQUIRY -> replyProductInquiry(message);
