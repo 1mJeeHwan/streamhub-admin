@@ -75,11 +75,20 @@ public class FeatureCatalogService {
         String[] tokens = query.toLowerCase(Locale.ROOT).trim().split("\\s+");
         List<Scored> scored = new ArrayList<>();
         for (FeatureInfo f : all) {
-            String haystack = haystack(f);
+            String primary = primaryHaystack(f);     // id + title + keywords (the intended hooks)
+            String secondary = secondaryHaystack(f);  // summary + howTo + domain (incidental mentions)
             int score = 0;
             for (String token : tokens) {
-                if (!token.isBlank() && haystack.contains(token)) {
-                    score++;
+                if (token.isBlank()) {
+                    continue;
+                }
+                // A hit on the title/keywords is worth more than an incidental how-to mention, so a
+                // feature whose name IS the query ("마이페이지") outranks one that only references it
+                // in passing ("…는 마이페이지에서 확인합니다").
+                if (primary.contains(token)) {
+                    score += 2;
+                } else if (secondary.contains(token)) {
+                    score += 1;
                 }
             }
             if (score > 0) {
@@ -90,9 +99,15 @@ public class FeatureCatalogService {
         return scored.stream().limit(cap).map(Scored::feature).toList();
     }
 
-    private String haystack(FeatureInfo f) {
-        return (nullToEmpty(f.id()) + ' ' + nullToEmpty(f.title()) + ' ' + nullToEmpty(f.summary())
-                + ' ' + nullToEmpty(f.howTo()) + ' ' + nullToEmpty(f.domain()))
+    /** The intended search hooks: id, title and the curated user-phrasing keywords. */
+    private String primaryHaystack(FeatureInfo f) {
+        return (nullToEmpty(f.id()) + ' ' + nullToEmpty(f.title()) + ' ' + nullToEmpty(f.keywords()))
+                .toLowerCase(Locale.ROOT);
+    }
+
+    /** Incidental text — a match here is weaker than a title/keyword hit. */
+    private String secondaryHaystack(FeatureInfo f) {
+        return (nullToEmpty(f.summary()) + ' ' + nullToEmpty(f.howTo()) + ' ' + nullToEmpty(f.domain()))
                 .toLowerCase(Locale.ROOT);
     }
 
