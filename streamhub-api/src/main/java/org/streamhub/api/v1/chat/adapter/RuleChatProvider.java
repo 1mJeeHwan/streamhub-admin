@@ -69,9 +69,17 @@ public class RuleChatProvider implements ChatProvider {
         // Rule provider is stateless — history is ignored (kept for the context-aware LLM provider).
         ChatIntent intent = intentClassifier.classify(message);
         // An explicit content search (영상/음악 …) wins over a broad knowledge keyword, so
-        // "예배 영상 찾아줘" returns search cards instead of the "예배 시간" FAQ answer.
+        // "예배 영상 찾아줘" returns search cards instead of the "예배 시간" FAQ answer. But a how-to
+        // phrasing that found no content ("통합검색 어떻게 해?") is retried as a feature guide so it
+        // explains the feature instead of dead-ending as a failed search.
         if (intent == ChatIntent.CONTENT_SEARCH) {
-            return replyContentSearch(message);
+            ChatReply contentReply = replyContentSearch(message);
+            if (contentReply.cards().isEmpty()
+                    && intentClassifier.looksLikeFeature(message)
+                    && toolExecutor.hasFeature(message)) {
+                return replyFeatureGuide(message);
+            }
+            return contentReply;
         }
         // Admin-taught knowledge wins next: any enabled keyword match returns the curated answer,
         // so operators can add answers without touching the classifier.
@@ -85,7 +93,12 @@ public class RuleChatProvider implements ChatProvider {
             case CONTENT_SEARCH -> replyContentSearch(message);
             case FAQ -> replyFaq(message);
             case FEATURE_GUIDE -> replyFeatureGuide(message);
-            case FALLBACK -> replyFallback();
+            // Last resort: if the message names a real feature ("찜한 곡 재생목록", "시청 기록")
+            // answer from the catalog instead of a generic fallback — only a true non-match (no
+            // catalog hit) shows the fallback prompt.
+            case FALLBACK -> toolExecutor.hasFeature(message)
+                    ? replyFeatureGuide(message)
+                    : replyFallback();
         };
     }
 
@@ -162,7 +175,7 @@ public class RuleChatProvider implements ChatProvider {
                 return ChatReply.of(faq.answer(), ChatIntent.FAQ);
             }
         }
-        return replyFallback();
+        return toolExecutor.hasFeature(message) ? replyFeatureGuide(message) : replyFallback();
     }
 
     private ChatReply replyFallback() {

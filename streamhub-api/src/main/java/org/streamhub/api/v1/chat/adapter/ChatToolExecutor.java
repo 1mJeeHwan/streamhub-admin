@@ -104,6 +104,15 @@ public class ChatToolExecutor {
         return sb.toString().trim();
     }
 
+    /**
+     * Whether any catalog feature matches the message. Lets the rule provider use the feature
+     * catalog as a safety net: a message that would otherwise fall back (or fail a content search)
+     * but names a real feature ("찜한 곡 재생목록", "통합검색") is answered from the catalog instead.
+     */
+    public boolean hasFeature(String message) {
+        return !featureCatalog.search(message, 1).isEmpty();
+    }
+
     /** A grouped, domain-by-domain overview of the whole catalog (capped per domain). */
     public String featureOverview() {
         Map<String, List<String>> byDomain = new LinkedHashMap<>();

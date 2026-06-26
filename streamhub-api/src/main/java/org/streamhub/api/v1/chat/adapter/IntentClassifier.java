@@ -70,6 +70,18 @@ public class IntentClassifier {
         return ChatIntent.FALLBACK;
     }
 
+    /**
+     * Whether the message carries a feature-guide marker ("어떻게/기능/방법/있어…"). Used by the rule
+     * provider to decide if an empty content search should retry as a feature how-to (so "통합검색
+     * 어떻게 해?" is answered from the catalog instead of dead-ending as a failed content search).
+     */
+    public boolean looksLikeFeature(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        return containsAny(message.toLowerCase(Locale.ROOT), FEATURE_KEYWORDS);
+    }
+
     private boolean containsAny(String lower, List<String> keywords) {
         for (String keyword : keywords) {
             if (lower.contains(keyword)) {
