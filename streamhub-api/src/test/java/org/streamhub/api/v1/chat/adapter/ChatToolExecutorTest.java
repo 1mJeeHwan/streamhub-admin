@@ -81,6 +81,14 @@ class ChatToolExecutorTest {
     }
 
     @Test
+    void maskTracking_hidesAllButLastFour() {
+        assertThat(ChatToolExecutor.maskTracking("650000001432")).isEqualTo("********1432");
+        assertThat(ChatToolExecutor.maskTracking("1432")).isEqualTo("****");
+        assertThat(ChatToolExecutor.maskTracking("")).isEmpty();
+        assertThat(ChatToolExecutor.maskTracking(null)).isNull();
+    }
+
+    @Test
     void lookupOrder_withoutOrderNo_asksForIt() {
         assertThat(executor.lookupOrder("주문 알려줘", "홍길동")).contains("주문번호");
     }

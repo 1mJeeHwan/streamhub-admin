@@ -40,11 +40,12 @@ public class SecurityConfig {
             "/v1/chat/*/history",
             "/swagger-ui/**",
             "/v3/api-docs/**",
-            // Observability: health (K8s probes) + the Prometheus scrape endpoint. Metrics carry no
-            // sensitive data; in a hardened deploy these would sit on a separate management port.
+            // Observability: only health (K8s probes, status-only for anonymous) is public. The
+            // Prometheus scrape endpoint is NOT public — prod has no scraper, so exposing app
+            // metrics (endpoint inventory, traffic) anonymously is pure leakage; a real scraper
+            // would collect it over a private network / management port with auth instead.
             "/actuator/health",
-            "/actuator/health/**",
-            "/actuator/prometheus"
+            "/actuator/health/**"
     };
 
     /**

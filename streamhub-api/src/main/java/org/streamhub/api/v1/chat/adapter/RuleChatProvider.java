@@ -137,7 +137,8 @@ public class RuleChatProvider implements ChatProvider {
         sb.append("주문 ").append(order.getOrderNo()).append(" 상태: ").append(order.getStatus())
                 .append(" / 결제금액 ₩").append(order.getTotal());
         if (order.getTrackingNo() != null && !order.getTrackingNo().isBlank()) {
-            sb.append(" / 운송장 ").append(order.getShipCompany()).append(' ').append(order.getTrackingNo());
+            sb.append(" / 운송장 ").append(order.getShipCompany()).append(' ')
+                    .append(ChatToolExecutor.maskTracking(order.getTrackingNo()));
         }
         return ChatReply.of(sb.toString(), ChatIntent.ORDER_LOOKUP);
     }

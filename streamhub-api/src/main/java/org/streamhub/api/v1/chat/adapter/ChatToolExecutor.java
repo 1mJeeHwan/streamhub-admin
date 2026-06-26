@@ -221,7 +221,8 @@ public class ChatToolExecutor {
         sb.append("주문 ").append(order.getOrderNo()).append(" 상태: ").append(order.getStatus())
                 .append(" / 결제금액 ₩").append(order.getTotal());
         if (order.getTrackingNo() != null && !order.getTrackingNo().isBlank()) {
-            sb.append(" / 운송장 ").append(order.getShipCompany()).append(' ').append(order.getTrackingNo());
+            sb.append(" / 운송장 ").append(order.getShipCompany()).append(' ')
+                    .append(maskTracking(order.getTrackingNo()));
         }
         return sb.toString();
     }
@@ -330,6 +331,23 @@ public class ChatToolExecutor {
                     "/search?q=" + URLEncoder.encode(kw, StandardCharsets.UTF_8), null));
         }
         return cards;
+    }
+
+    /**
+     * Masks all but the last 4 characters of a tracking number ("650000001432" → "********1432").
+     * The chatbot reply is persisted to per-session history that replays on reload, so the full
+     * courier tracking number (which would reveal parcel/recipient movements) is never stored. The
+     * logged-in owner sees the full number in 마이페이지 구매 내역.
+     */
+    public static String maskTracking(String tracking) {
+        if (tracking == null || tracking.isBlank()) {
+            return tracking;
+        }
+        String s = tracking.trim();
+        if (s.length() <= 4) {
+            return "*".repeat(s.length());
+        }
+        return "*".repeat(s.length() - 4) + s.substring(s.length() - 4);
     }
 
     /** Extracts a {@code YYYYMMDD-XXXXXX} order number from free text, or null. */
