@@ -59,7 +59,7 @@ deployment pipeline on top.
         │   ├ Repository (JPA, simple CRUD)              │
         │   └ Mapper (MyBatis, dynamic search/join/agg)  │
         └────┬──────────┬───────────┬──────────┬─────────┘
-          MySQL 8     Redis      S3 / MinIO   SQS / LocalStack
+          MySQL 8.4   Redis      S3 / MinIO   SQS / LocalStack
           (main DB)   (cache)    (media)      (audit-log queue)
 ```
 

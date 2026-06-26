@@ -57,7 +57,7 @@
         │   ├ Repository (JPA, 단순 CRUD)                │
         │   └ Mapper (MyBatis, 동적 검색·조인·집계)       │
         └────┬──────────┬───────────┬──────────┬─────────┘
-          MySQL 8     Redis      S3 / MinIO   SQS / LocalStack
+          MySQL 8.4   Redis      S3 / MinIO   SQS / LocalStack
           (주 DB)    (캐시)    (미디어 저장)  (감사로그 큐)
 ```
 
