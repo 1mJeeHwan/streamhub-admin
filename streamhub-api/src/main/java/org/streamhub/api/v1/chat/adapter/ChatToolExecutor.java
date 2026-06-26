@@ -342,8 +342,10 @@ public class ChatToolExecutor {
     }
 
     private String formatFeature(FeatureInfo f) {
+        // No route/path is ever surfaced to the user — howTo already names the on-screen location in
+        // plain language (e.g. "마이페이지 '구매 내역'에서"). The href is used only for clickable cards.
         return "• " + f.title() + " [" + statusLabel(f.status()) + "] — " + f.summary()
-                + "\n  사용법: " + f.howTo() + " (경로: " + f.href() + ")";
+                + "\n  사용법: " + f.howTo();
     }
 
     private String statusLabel(String status) {

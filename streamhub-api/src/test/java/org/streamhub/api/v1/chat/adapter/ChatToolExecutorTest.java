@@ -65,6 +65,22 @@ class ChatToolExecutorTest {
     }
 
     @Test
+    void featureAnswers_exposeNoRouteOrPath() {
+        // The chatbot must never surface an internal route/path. Check the how-to, search, overview
+        // and per-id detail surfaces for any "경로:" label or a "/route" token.
+        List<String> surfaces = List.of(
+                executor.featureGuide("쿠폰"),
+                executor.featureGuide("마이페이지"),
+                executor.searchFeatures("주문"),
+                executor.getFeature("goods"),
+                executor.featureOverview());
+        for (String text : surfaces) {
+            assertThat(text).as("no '경로:' label").doesNotContain("경로:");
+            assertThat(text).as("no URL path token in: %s", text).doesNotContainPattern("/[a-z]");
+        }
+    }
+
+    @Test
     void lookupOrder_withoutOrderNo_asksForIt() {
         assertThat(executor.lookupOrder("주문 알려줘", "홍길동")).contains("주문번호");
     }
