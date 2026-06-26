@@ -20,6 +20,7 @@ import org.streamhub.api.v1.actionlog.ActionLogPublisher;
 import org.streamhub.api.v1.church.dto.ChurchDetail;
 import org.streamhub.api.v1.church.dto.ChurchListItem;
 import org.streamhub.api.v1.church.dto.ChurchNearbyItem;
+import org.streamhub.api.v1.church.dto.PublicChurchDetail;
 import org.streamhub.api.v1.church.dto.ChurchNearbyRequest;
 import org.streamhub.api.v1.church.dto.ChurchSearchRequest;
 import org.streamhub.api.v1.church.dto.ChurchUpsertRequest;
@@ -124,14 +125,18 @@ public class ChurchService {
         return detail;
     }
 
-    /** Public detail: 404 unless visible ({@code use_yn = "Y"}). Includes worship times. */
+    /**
+     * Public detail: 404 unless visible ({@code use_yn = "Y"}). Returns a curated
+     * {@link PublicChurchDetail} so the anonymous user site never sees internal counts, flags or the
+     * raw storage key.
+     */
     @Transactional(readOnly = true)
-    public ChurchDetail getPublicDetail(Long id) {
+    public PublicChurchDetail getPublicDetail(Long id) {
         ChurchDetail detail = loadDetail(id);
         if (!"Y".equals(detail.getUseYn())) {
             throw new ApiException(ResultCode.NOT_FOUND);
         }
-        return detail;
+        return PublicChurchDetail.from(detail);
     }
 
     /** Enum → Korean-label list for the denomination select box. */

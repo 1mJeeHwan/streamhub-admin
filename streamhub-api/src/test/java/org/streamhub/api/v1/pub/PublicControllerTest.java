@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.streamhub.api.base.response.ResInfinityList;
 import org.streamhub.api.v1.content.ContentService;
 import org.streamhub.api.v1.content.dto.ContentDetail;
+import org.streamhub.api.v1.content.dto.PublicContentDetail;
 import org.streamhub.api.v1.content.dto.ContentListItem;
 import org.streamhub.api.v1.content.entity.ContentStatus;
 import org.streamhub.api.v1.content.entity.ContentType;
@@ -83,13 +84,18 @@ class PublicControllerTest {
         detail.setTitle("찬양 모음");
         detail.setType(ContentType.SOUND);
         detail.setStatus(ContentStatus.PUBLISHED);
+        detail.setThumbnailKey("internal/key/7.jpg");
         detail.setViewCount(42L);
-        when(contentService.getPublicDetail(7L)).thenReturn(detail);
+        when(contentService.getPublicDetail(7L)).thenReturn(PublicContentDetail.from(detail));
 
         mvc.perform(get("/pub/v1/contents/7"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultObject.id").value(7))
-                .andExpect(jsonPath("$.resultObject.viewCount").value(42));
+                .andExpect(jsonPath("$.resultObject.viewCount").value(42))
+                // Internal fields must not be exposed on the public endpoint.
+                .andExpect(jsonPath("$.resultObject.status").doesNotExist())
+                .andExpect(jsonPath("$.resultObject.thumbnailKey").doesNotExist())
+                .andExpect(jsonPath("$.resultObject.updatedAt").doesNotExist());
     }
 
     @Test

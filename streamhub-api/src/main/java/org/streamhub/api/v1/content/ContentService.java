@@ -19,6 +19,7 @@ import org.streamhub.api.base.util.SortResolver;
 import org.streamhub.api.v1.content.dto.ContentCreateRequest;
 import org.streamhub.api.v1.content.dto.ContentDetail;
 import org.streamhub.api.v1.content.dto.ContentFileDto;
+import org.streamhub.api.v1.content.dto.PublicContentDetail;
 import org.streamhub.api.v1.content.dto.ContentListItem;
 import org.streamhub.api.v1.content.dto.ContentSearchRequest;
 import org.streamhub.api.v1.content.entity.Channel;
@@ -165,16 +166,20 @@ public class ContentService {
         return contentMapper.selectPublicChannels(typeName, safeLimit);
     }
 
-    /** Public detail: 404 unless PUBLISHED, and atomically increments the view count. */
+    /**
+     * Public detail: 404 unless PUBLISHED, and atomically increments the view count. Returns a
+     * curated {@link PublicContentDetail} so anonymous callers never see the internal status, the
+     * raw storage key or audit timestamps.
+     */
     @Transactional
-    public ContentDetail getPublicDetail(Long id) {
+    public PublicContentDetail getPublicDetail(Long id) {
         ContentDetail detail = getDetail(id, SYSTEM_PRINCIPAL); // throws NOT_FOUND if missing
         if (detail.getStatus() != ContentStatus.PUBLISHED) {
             throw new ApiException(ResultCode.NOT_FOUND);
         }
         contentRepository.incrementViewCount(id);
         detail.setViewCount((detail.getViewCount() == null ? 0L : detail.getViewCount()) + 1);
-        return detail;
+        return PublicContentDetail.from(detail);
     }
 
     /**

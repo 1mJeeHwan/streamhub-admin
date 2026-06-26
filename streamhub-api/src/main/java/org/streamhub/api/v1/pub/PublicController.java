@@ -25,12 +25,12 @@ import org.streamhub.api.v1.banner.BannerService;
 import org.streamhub.api.v1.banner.dto.BannerDto;
 import org.streamhub.api.v1.banner.entity.BannerTarget;
 import org.streamhub.api.v1.church.ChurchService;
-import org.streamhub.api.v1.church.dto.ChurchDetail;
+import org.streamhub.api.v1.church.dto.PublicChurchDetail;
 import org.streamhub.api.v1.church.dto.ChurchNearbyItem;
 import org.streamhub.api.v1.church.dto.ChurchNearbyRequest;
 import org.streamhub.api.v1.church.entity.Denomination;
 import org.streamhub.api.v1.content.ContentService;
-import org.streamhub.api.v1.content.dto.ContentDetail;
+import org.streamhub.api.v1.content.dto.PublicContentDetail;
 import org.streamhub.api.v1.content.dto.ContentListItem;
 import org.streamhub.api.v1.content.dto.ContentSearchRequest;
 import org.streamhub.api.v1.content.dto.PublicChannelItem;
@@ -144,7 +144,7 @@ public class PublicController {
 
     @Operation(summary = "공개 콘텐츠 상세", description = "PUBLISHED만 반환하며 조회수를 1 증가시킨다.")
     @GetMapping("/contents/{id}")
-    public ResultDTO<ContentDetail> contentDetail(@PathVariable Long id) {
+    public ResultDTO<PublicContentDetail> contentDetail(@PathVariable Long id) {
         return ResultDTO.ok(contentService.getPublicDetail(id));
     }
 
@@ -186,7 +186,7 @@ public class PublicController {
 
     @Operation(summary = "공개 교회 상세", description = "노출(use_yn=Y) 교회만 반환하며 예배시간을 포함한다.")
     @GetMapping("/churches/{id}")
-    public ResultDTO<ChurchDetail> churchDetail(@PathVariable Long id) {
+    public ResultDTO<PublicChurchDetail> churchDetail(@PathVariable Long id) {
         return ResultDTO.ok(churchService.getPublicDetail(id));
     }
 
