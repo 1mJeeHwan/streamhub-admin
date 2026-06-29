@@ -18,9 +18,10 @@ export const viewport = {
   initialScale: 1,
 };
 
-// No-flash theme: apply the visitor's stored light/dark choice before first paint (default dark).
+// No-flash theme: apply the visitor's stored choice before first paint; default is LIGHT (only an
+// explicit stored 'dark' shows dark), so a first-time visitor sees light mode.
 const THEME_SCRIPT =
-  "(function(){try{var t=localStorage.getItem('streamhub.theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();";
+  "(function(){try{var t=localStorage.getItem('streamhub.theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}})();";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

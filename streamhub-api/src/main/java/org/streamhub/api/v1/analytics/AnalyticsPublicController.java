@@ -12,6 +12,7 @@ import org.streamhub.api.base.response.ResultDTO;
 import org.streamhub.api.base.util.ClientIpResolver;
 import org.streamhub.api.v1.analytics.dto.EventIngestBatchRequest;
 import org.streamhub.api.v1.analytics.dto.EventIngestRequest;
+import org.streamhub.api.v1.visit.VisitService;
 
 /**
  * Public, unauthenticated analytics ingest consumed by the user site ({@code streamhub-user-web}).
@@ -31,24 +32,32 @@ import org.streamhub.api.v1.analytics.dto.EventIngestRequest;
 @RequestMapping("/pub/v1/events")
 public class AnalyticsPublicController {
 
+    /** Event type (string) that counts as a real site visit for the per-IP 접속 통계. */
+    private static final String PAGE_VIEW = "PAGE_VIEW";
+
     private final AnalyticsService analyticsService;
     private final PublicIngestRateLimiter rateLimiter;
     private final ClientIpResolver clientIpResolver;
+    private final VisitService visitService;
 
     public AnalyticsPublicController(AnalyticsService analyticsService,
                                      PublicIngestRateLimiter rateLimiter,
-                                     ClientIpResolver clientIpResolver) {
+                                     ClientIpResolver clientIpResolver,
+                                     VisitService visitService) {
         this.analyticsService = analyticsService;
         this.rateLimiter = rateLimiter;
         this.clientIpResolver = clientIpResolver;
+        this.visitService = visitService;
     }
 
     @Operation(summary = "분석 이벤트 수집", description = "페이지뷰/콘텐츠뷰/세션시작 이벤트 1건을 적재한다. 잘못된 입력은 기본값으로 보정. 과도한 요청은 무시(200).")
     @PostMapping
     public ResultDTO<Void> ingest(@RequestBody(required = false) EventIngestRequest request,
                                   HttpServletRequest httpRequest) {
-        if (rateLimiter.tryAcquire("analytics:" + clientIpResolver.resolve(httpRequest))) {
+        String ip = clientIpResolver.resolve(httpRequest);
+        if (rateLimiter.tryAcquire("analytics:" + ip)) {
             analyticsService.ingest(request);
+            recordVisit(request, ip, httpRequest.getHeader("User-Agent"));
         }
         return ResultDTO.ok();
     }
@@ -59,9 +68,19 @@ public class AnalyticsPublicController {
     public ResultDTO<Void> ingestBatch(@Valid @RequestBody EventIngestBatchRequest request,
                                        HttpServletRequest httpRequest) {
         int cost = request.events().size();
-        if (rateLimiter.tryAcquire("analytics:" + clientIpResolver.resolve(httpRequest), cost)) {
+        String ip = clientIpResolver.resolve(httpRequest);
+        if (rateLimiter.tryAcquire("analytics:" + ip, cost)) {
             analyticsService.ingestBatch(request.events());
+            String userAgent = httpRequest.getHeader("User-Agent");
+            request.events().forEach(e -> recordVisit(e, ip, userAgent));
         }
         return ResultDTO.ok();
+    }
+
+    /** Records a real visit (per-IP) for a PAGE_VIEW event; ignores other event types. */
+    private void recordVisit(EventIngestRequest event, String ip, String userAgent) {
+        if (event != null && PAGE_VIEW.equalsIgnoreCase(event.type())) {
+            visitService.record(ip, userAgent, event.path(), event.deviceType(), event.memberId());
+        }
     }
 }

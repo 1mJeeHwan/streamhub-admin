@@ -7,10 +7,10 @@ import { Moon, Sun } from "lucide-react";
 const THEME_KEY = "streamhub.theme";
 type Theme = "dark" | "light";
 
-/** Reads the theme currently applied to <html> (set by the no-flash script), defaulting to dark. */
+/** Reads the theme currently applied to <html> (set by the no-flash script), defaulting to light. */
 function currentTheme(): Theme {
-  if (typeof document === "undefined") return "dark";
-  return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  if (typeof document === "undefined") return "light";
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
 }
 
 /**
@@ -21,7 +21,7 @@ function currentTheme(): Theme {
  */
 export function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     setTheme(currentTheme());

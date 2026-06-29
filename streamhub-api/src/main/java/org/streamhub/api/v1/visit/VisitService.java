@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.streamhub.api.v1.visit.dto.DailyCountDto;
@@ -25,6 +26,7 @@ import org.streamhub.api.v1.visit.repository.VisitLogRepository;
  * aggregate is computed in memory from a single range scan rather than via grouped SQL — no
  * analytics store or window functions needed.
  */
+@Slf4j
 @Service
 public class VisitService {
 
@@ -41,6 +43,64 @@ public class VisitService {
 
     public VisitService(VisitLogRepository visitLogRepository) {
         this.visitLogRepository = visitLogRepository;
+    }
+
+    /**
+     * Records one real site visit (접속 통계), keyed by the client's IP masked to its first two
+     * octets ({@code "211.45.*.*"}). Called from the public analytics ingest on every PAGE_VIEW, so
+     * the visit stat reflects who actually accesses the site — not just the seeded demo rows.
+     * Best-effort: a failure here never breaks the page-view ingest.
+     * ponytail: one row per page view; add a per-session+path cooldown if volume ever matters.
+     */
+    @Transactional
+    public void record(String clientIp, String userAgent, String path, String deviceType, Long memberId) {
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            visitLogRepository.save(VisitLog.builder()
+                    .visitedAt(now)
+                    .createdAt(now)
+                    .ipMasked(maskIp(clientIp))
+                    .userAgent(clamp(userAgent, 300))
+                    .deviceType(deviceFrom(deviceType, userAgent))
+                    .path(clamp(path, 200))
+                    .memberId(memberId)
+                    .build());
+        } catch (RuntimeException ex) {
+            log.warn("visit record skipped: {}", ex.getMessage());
+        }
+    }
+
+    /** Masks an IP to its first two octets (IPv4) or first two hextets (IPv6); null/blank → null. */
+    static String maskIp(String ip) {
+        if (ip == null || ip.isBlank()) {
+            return null;
+        }
+        String s = ip.trim();
+        if (s.indexOf('.') > 0) {
+            String[] p = s.split("\\.");
+            return p.length == 4 ? p[0] + "." + p[1] + ".*.*" : s;
+        }
+        if (s.contains(":")) {
+            String[] p = s.split(":");
+            return p.length >= 2 ? p[0] + ":" + p[1] + ":*" : s;
+        }
+        return s;
+    }
+
+    private DeviceType deviceFrom(String deviceType, String userAgent) {
+        String dt = deviceType == null ? "" : deviceType.toUpperCase(java.util.Locale.ROOT);
+        if (dt.contains("MOBILE")) {
+            return DeviceType.MOBILE;
+        }
+        if (dt.contains("PC") || dt.contains("DESKTOP")) {
+            return DeviceType.PC;
+        }
+        return userAgent != null && userAgent.toLowerCase(java.util.Locale.ROOT).contains("mobi")
+                ? DeviceType.MOBILE : DeviceType.PC;
+    }
+
+    private String clamp(String s, int max) {
+        return s == null || s.length() <= max ? s : s.substring(0, max);
     }
 
     /** Visit list within the requested period (newest first), capped to {@value #LIST_LIMIT} rows. */

@@ -81,7 +81,7 @@ const AREAS = [
     icon: LayoutDashboard,
     title: "관리자 콘솔",
     color: "from-cyan-400/20 to-cyan-400/0",
-    accent: "text-cyan-300",
+    accent: "text-cyan-600",
     items: [
       "통합 운영 대시보드 · 접속/콘텐츠 통계",
       "회원 · 포인트 원장",
@@ -96,7 +96,7 @@ const AREAS = [
     icon: MonitorSmartphone,
     title: "사용자 사이트",
     color: "from-violet-500/20 to-violet-500/0",
-    accent: "text-violet-300",
+    accent: "text-violet-600",
     items: [
       "홈 · 예배 영상 · 찬양 음악",
       "CCM 음반 + 30초 미리듣기 · 실구매",
@@ -110,7 +110,7 @@ const AREAS = [
     icon: Database,
     title: "백엔드",
     color: "from-emerald-400/20 to-emerald-400/0",
-    accent: "text-emerald-300",
+    accent: "text-emerald-600",
     items: [
       "JWT 인증 · 역할 기반 권한(RBAC)",
       "JPA(Hibernate) + MyBatis 하이브리드",
@@ -124,7 +124,7 @@ const AREAS = [
     icon: Cloud,
     title: "인프라 · 배포",
     color: "from-rose-500/20 to-rose-500/0",
-    accent: "text-rose-300",
+    accent: "text-rose-600",
     items: [
       "Docker Compose 로컬 (MySQL·Redis·MinIO·LocalStack)",
       "Terraform IaC — AWS 18+ 자원",
@@ -165,7 +165,7 @@ const LINKS = [
 
 export default function RoadmapPage() {
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#0a0b10] text-slate-200">
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-50 text-slate-700">
       {/* ambient glows */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -left-24 -top-24 h-96 w-96 rounded-full bg-cyan-500/20 blur-[120px]" />
@@ -176,7 +176,7 @@ export default function RoadmapPage() {
       {/* home link */}
       <Link
         href="/"
-        className="fixed right-4 top-4 z-20 flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-medium text-slate-200 backdrop-blur transition hover:bg-white/10"
+        className="fixed right-4 top-4 z-20 flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 px-3.5 py-2 text-xs font-medium text-slate-700 backdrop-blur transition hover:bg-slate-200"
       >
         <Home className="h-3.5 w-3.5" /> 홈으로
       </Link>
@@ -185,17 +185,17 @@ export default function RoadmapPage() {
         {/* ---- hero ---- */}
         <header className="flex min-h-[88vh] flex-col justify-center py-20">
           <div className="animate-fade-up">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[12px] font-medium text-cyan-300">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-[12px] font-medium text-cyan-600">
               <Sparkles className="h-3.5 w-3.5" /> 풀스택 포트폴리오 · 라이브 운영 중
             </span>
-            <h1 className="mt-6 text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-7xl">
+            <h1 className="mt-6 text-5xl font-black leading-[1.05] tracking-tight text-slate-900 sm:text-7xl">
               Grace
               <span className="bg-gradient-to-r from-cyan-400 via-sky-400 to-violet-500 bg-clip-text text-transparent">
                 On
               </span>
             </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-slate-300 sm:text-xl">
-              교회 · 예배 미디어 플랫폼을 <span className="font-semibold text-white">실제 운영 서비스의 프로덕션 스택 그대로</span>{" "}
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-slate-600 sm:text-xl">
+              교회 · 예배 미디어 플랫폼을 <span className="font-semibold text-slate-900">실제 운영 서비스의 프로덕션 스택 그대로</span>{" "}
               재현했습니다. 하나의 Spring Boot 백엔드 위에 관리자 콘솔과 공개 사용자 사이트, 그리고
               클라우드 배포 파이프라인까지 — 직접 만든 모든 것의 로드맵입니다.
             </p>
@@ -206,10 +206,10 @@ export default function RoadmapPage() {
                   href={l.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="group inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-cyan-400/50 hover:bg-cyan-400/10"
+                  className="group inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:border-cyan-400/50 hover:bg-cyan-400/10"
                 >
                   {l.label}
-                  <ArrowUpRight className="h-4 w-4 text-slate-400 transition group-hover:text-cyan-300" />
+                  <ArrowUpRight className="h-4 w-4 text-slate-500 transition group-hover:text-cyan-600" />
                 </a>
               ))}
             </div>
@@ -221,12 +221,12 @@ export default function RoadmapPage() {
           {STATS.map((s) => (
             <div
               key={s.label}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur transition hover:border-white/20 hover:bg-white/[0.06]"
+              className="rounded-2xl border border-slate-200 bg-white p-5 backdrop-blur transition hover:border-slate-300 hover:bg-slate-100"
             >
-              <div className="bg-gradient-to-r from-cyan-300 to-violet-400 bg-clip-text text-4xl font-black tracking-tight text-transparent sm:text-5xl">
+              <div className="bg-gradient-to-r from-cyan-600 to-violet-600 bg-clip-text text-4xl font-black tracking-tight text-transparent sm:text-5xl">
                 <CountUp value={s.value} suffix={s.suffix} />
               </div>
-              <div className="mt-1.5 text-xs font-medium text-slate-400">{s.label}</div>
+              <div className="mt-1.5 text-xs font-medium text-slate-500">{s.label}</div>
             </div>
           ))}
         </section>
@@ -234,33 +234,33 @@ export default function RoadmapPage() {
         {/* ---- timeline ---- */}
         <section className="mt-24">
           <SectionTitle icon={GitBranch} kicker="JOURNEY" title="구현 로드맵" />
-          <ol className="relative mt-10 space-y-6 border-l border-white/10 pl-8">
+          <ol className="relative mt-10 space-y-6 border-l border-slate-200 pl-8">
             {PHASES.map((p, i) => {
               const Icon = p.icon;
               return (
                 <li key={p.title} className="relative">
-                  <span className="absolute -left-[42px] grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-[#0a0b10]">
+                  <span className="absolute -left-[42px] grid h-7 w-7 place-items-center rounded-full border border-slate-300 bg-slate-50">
                     <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-cyan-400 to-violet-500 shadow-[0_0_12px] shadow-cyan-500/50" />
                   </span>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-white/20 hover:bg-white/[0.05]">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:bg-slate-100">
                     <div className="flex items-center gap-2.5">
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/5 text-cyan-300">
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-cyan-600">
                         <Icon className="h-4.5 w-4.5" />
                       </span>
-                      <h3 className="text-base font-bold text-white">
+                      <h3 className="text-base font-bold text-slate-900">
                         <span className="mr-1.5 text-slate-500">{String(i + 1).padStart(2, "0")}</span>
                         {p.title}
                       </h3>
                       {p.soon && (
-                        <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-300">
+                        <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-600">
                           NEW
                         </span>
                       )}
                     </div>
-                    <p className="mt-2.5 text-sm leading-relaxed text-slate-300">{p.desc}</p>
+                    <p className="mt-2.5 text-sm leading-relaxed text-slate-600">{p.desc}</p>
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {p.tags.map((t) => (
-                        <span key={t} className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-400">
+                        <span key={t} className="rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
                           {t}
                         </span>
                       ))}
@@ -281,17 +281,17 @@ export default function RoadmapPage() {
               return (
                 <div
                   key={a.title}
-                  className={`relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b ${a.color} p-6 transition hover:border-white/20`}
+                  className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-b ${a.color} p-6 transition hover:border-slate-300`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10">
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-200">
                       <Icon className={`h-5 w-5 ${a.accent}`} />
                     </span>
-                    <h3 className="text-lg font-bold text-white">{a.title}</h3>
+                    <h3 className="text-lg font-bold text-slate-900">{a.title}</h3>
                   </div>
                   <ul className="mt-4 space-y-2">
                     {a.items.map((it) => (
-                      <li key={it} className="flex gap-2 text-sm leading-relaxed text-slate-300">
+                      <li key={it} className="flex gap-2 text-sm leading-relaxed text-slate-600">
                         <span className={`mt-2 h-1 w-1 shrink-0 rounded-full ${a.accent} bg-current`} />
                         {it}
                       </li>
@@ -310,7 +310,7 @@ export default function RoadmapPage() {
             {STACK.map((s) => (
               <span
                 key={s}
-                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-400/40 hover:text-white"
+                className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-cyan-400/40 hover:text-slate-900"
               >
                 {s}
               </span>
@@ -319,10 +319,10 @@ export default function RoadmapPage() {
         </section>
 
         {/* ---- cta ---- */}
-        <section className="mt-24 rounded-3xl border border-white/10 bg-gradient-to-br from-cyan-500/10 via-violet-600/10 to-rose-500/10 p-10 text-center">
-          <h2 className="text-2xl font-bold text-white sm:text-3xl">직접 둘러보세요</h2>
-          <p className="mx-auto mt-3 max-w-md text-sm text-slate-300">
-            라이브로 운영 중입니다. 관리자 콘솔은 <code className="rounded bg-white/10 px-1.5 py-0.5 text-cyan-300">viewer / viewer1234</code> (읽기 전용)로 둘러보세요.
+        <section className="mt-24 rounded-3xl border border-slate-200 bg-gradient-to-br from-cyan-500/10 via-violet-600/10 to-rose-500/10 p-10 text-center">
+          <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">직접 둘러보세요</h2>
+          <p className="mx-auto mt-3 max-w-md text-sm text-slate-600">
+            라이브로 운영 중입니다. 관리자 콘솔은 <code className="rounded bg-slate-200 px-1.5 py-0.5 text-cyan-600">viewer / viewer1234</code> (읽기 전용)로 둘러보세요.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             {LINKS.map((l) => (
@@ -331,7 +331,7 @@ export default function RoadmapPage() {
                 href={l.href}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-200 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-200"
               >
                 {l.label}
                 <ArrowUpRight className="h-4 w-4" />
@@ -363,7 +363,7 @@ function SectionTitle({
         <Icon className="h-4 w-4" />
         {kicker}
       </div>
-      <h2 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">{title}</h2>
+      <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">{title}</h2>
     </div>
   );
 }
