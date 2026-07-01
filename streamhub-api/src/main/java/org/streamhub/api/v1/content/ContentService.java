@@ -23,6 +23,12 @@ import org.streamhub.api.v1.content.dto.PublicContentDetail;
 import org.streamhub.api.v1.content.dto.ContentListItem;
 import org.streamhub.api.v1.content.dto.ContentSearchRequest;
 import org.streamhub.api.v1.content.entity.Channel;
+import org.streamhub.api.v1.member.entity.Member;
+import org.streamhub.api.v1.member.repository.MemberRepository;
+import org.streamhub.api.v1.notification.NotificationService;
+import org.streamhub.api.v1.notification.dto.NotificationSendRequest;
+import org.streamhub.api.v1.notification.entity.NotificationChannel;
+import org.streamhub.api.v1.notification.entity.NotificationScope;
 import org.streamhub.api.v1.content.entity.Content;
 import org.streamhub.api.v1.content.entity.ContentFile;
 import org.streamhub.api.v1.content.entity.ContentHashtag;
@@ -65,6 +71,8 @@ public class ContentService {
     private final ContentFileRepository contentFileRepository;
     private final StorageService storageService;
     private final org.streamhub.api.v1.actionlog.ActionLogPublisher actionLogPublisher;
+    private final MemberRepository memberRepository;
+    private final NotificationService notificationService;
 
     public ContentService(
             ContentMapper contentMapper,
@@ -75,7 +83,9 @@ public class ContentService {
             ContentHashtagRepository contentHashtagRepository,
             ContentFileRepository contentFileRepository,
             StorageService storageService,
-            org.streamhub.api.v1.actionlog.ActionLogPublisher actionLogPublisher) {
+            org.streamhub.api.v1.actionlog.ActionLogPublisher actionLogPublisher,
+            MemberRepository memberRepository,
+            NotificationService notificationService) {
         this.contentMapper = contentMapper;
         this.contentRepository = contentRepository;
         this.channelRepository = channelRepository;
@@ -85,6 +95,8 @@ public class ContentService {
         this.contentFileRepository = contentFileRepository;
         this.storageService = storageService;
         this.actionLogPublisher = actionLogPublisher;
+        this.memberRepository = memberRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -239,7 +251,32 @@ public class ContentService {
         applyHashtags(saved.getId(), request.hashtags());
         recordThumbnailFile(saved.getId(), request.thumbnailKey());
         actionLogPublisher.publish("CONTENT_CREATE", "CONTENT", String.valueOf(saved.getId()), request.title());
+        // 게시(PUBLISHED)로 등록할 때만 공지 — 초안은 회원에게 안 보이므로 알림도 안 보낸다.
+        if (request.notifyOnPublish() && saved.getStatus() == ContentStatus.PUBLISHED) {
+            notifyChurchMembers(saved, principal);
+        }
         return getDetail(saved.getId(), principal);
+    }
+
+    /**
+     * Notifies the content's own church members (TARGETED — never BROADCAST, which would fan out to
+     * every church). Runs in {@code create()}'s transaction on purpose: a notification failure rolls
+     * the whole publish back and surfaces as a 500 so QA sees it. No members → silent skip.
+     * ponytail: coupled to the content tx; make NotificationService.send REQUIRES_NEW (or move to an
+     * AFTER_COMMIT event) only if you want the content to survive a notification failure.
+     */
+    private void notifyChurchMembers(Content content, AdminPrincipal principal) {
+        Long churchId = channelRepository.findById(content.getChannelId())
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND))
+                .getChurchId();
+        List<Long> memberIds = memberRepository.findAllByChurchId(churchId).stream()
+                .map(Member::getId).toList();
+        if (memberIds.isEmpty()) {
+            return;
+        }
+        notificationService.send(new NotificationSendRequest(
+                NotificationChannel.PUSH, NotificationScope.TARGETED,
+                "새 영상이 등록되었습니다", content.getTitle(), memberIds), principal);
     }
 
     /**

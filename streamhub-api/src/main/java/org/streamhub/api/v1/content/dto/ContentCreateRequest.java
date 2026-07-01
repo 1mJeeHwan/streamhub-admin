@@ -18,5 +18,7 @@ public record ContentCreateRequest(
         Integer durationSec,
         String thumbnailKey,
         ContentStatus status,
-        List<String> hashtags) {
+        List<String> hashtags,
+        // 등록(PUBLISHED)시 해당 교회 회원에게 자동 공지. record라 프론트 생략 시 false. notification:write 필요.
+        boolean notifyOnPublish) {
 }

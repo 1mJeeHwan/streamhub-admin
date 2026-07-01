@@ -18,6 +18,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     long countByChurchId(Long churchId);
 
+    /** Members of one church — for church-scoped TARGETED notifications (never BROADCAST). */
+    List<Member> findAllByChurchId(Long churchId);
+
     /** Member login is by email. */
     Optional<Member> findByEmail(String email);
 

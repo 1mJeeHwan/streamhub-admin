@@ -65,7 +65,10 @@ public class ContentController {
     }
 
     @Operation(summary = "콘텐츠 등록")
-    @PreAuthorize("hasAuthority('content:write')")
+    // 알림 트리거(notifyOnPublish=true)는 notification:write도 요구 — content:write만 있는 역할이
+    // 부작용으로 회원 공지를 발송하지 못하게 한다.
+    @PreAuthorize("hasAuthority('content:write') "
+            + "and (#request.notifyOnPublish() == false or hasAuthority('notification:write'))")
     @PostMapping
     public ResultDTO<ContentDetail> create(
             @Valid @RequestBody ContentCreateRequest request,

@@ -1,5 +1,6 @@
 package org.streamhub.api.v1.content;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -20,8 +21,10 @@ import org.streamhub.api.base.security.AdminPrincipal;
 import org.streamhub.api.base.security.AuthoritiesConstants;
 import org.streamhub.api.base.storage.StorageService;
 import org.streamhub.api.v1.actionlog.ActionLogPublisher;
+import org.streamhub.api.v1.content.dto.ContentCreateRequest;
 import org.streamhub.api.v1.content.dto.ContentDetail;
 import org.streamhub.api.v1.content.dto.ContentSearchRequest;
+import org.streamhub.api.v1.content.entity.ContentStatus;
 import org.streamhub.api.v1.content.entity.Channel;
 import org.streamhub.api.v1.content.entity.Content;
 import org.streamhub.api.v1.content.mapper.ContentMapper;
@@ -48,6 +51,8 @@ class ContentServiceTest {
     @Mock private ContentFileRepository contentFileRepository;
     @Mock private StorageService storageService;
     @Mock private ActionLogPublisher actionLogPublisher;
+    @Mock private org.streamhub.api.v1.member.repository.MemberRepository memberRepository;
+    @Mock private org.streamhub.api.v1.notification.NotificationService notificationService;
 
     /** CHURCH_MANAGER pinned to church 100. */
     private static final AdminPrincipal MANAGER_100 =
@@ -57,7 +62,7 @@ class ContentServiceTest {
         return new ContentService(
                 contentMapper, contentRepository, channelRepository, hashtagRepository,
                 hashtagWriter, contentHashtagRepository, contentFileRepository,
-                storageService, actionLogPublisher);
+                storageService, actionLogPublisher, memberRepository, notificationService);
     }
 
     private Channel channelInChurch(Long churchId) {
@@ -92,6 +97,41 @@ class ContentServiceTest {
                 .isInstanceOf(ApiException.class);
 
         verify(contentRepository, never()).delete(any()); // nothing destroyed cross-tenant
+    }
+
+    @Test
+    void create_notifyOnPublish_notifiesOwnChurchMembers_targetedNotBroadcast() {
+        // Channel 9 belongs to church 100 (the manager's own) — used by ensureChannelInScope, the
+        // notify path, and the getDetail tail.
+        Channel ownChannel = channelInChurch(100L);
+        when(channelRepository.findById(9L)).thenReturn(Optional.of(ownChannel));
+        Content saved = mock(Content.class);
+        when(saved.getId()).thenReturn(5L);
+        when(saved.getChannelId()).thenReturn(9L);
+        when(saved.getStatus()).thenReturn(ContentStatus.PUBLISHED);
+        when(saved.getTitle()).thenReturn("주일예배 실황");
+        when(contentRepository.save(any())).thenReturn(saved);
+        org.streamhub.api.v1.member.entity.Member m1 = mock(org.streamhub.api.v1.member.entity.Member.class);
+        org.streamhub.api.v1.member.entity.Member m2 = mock(org.streamhub.api.v1.member.entity.Member.class);
+        when(m1.getId()).thenReturn(11L);
+        when(m2.getId()).thenReturn(22L);
+        when(memberRepository.findAllByChurchId(100L)).thenReturn(java.util.List.of(m1, m2));
+        ContentDetail detail = mock(ContentDetail.class);
+        when(detail.getChannelId()).thenReturn(9L); // getDetail tail: in-scope for MANAGER_100
+        when(contentMapper.selectDetail(5L)).thenReturn(detail);
+
+        ContentCreateRequest request = new ContentCreateRequest(
+                "주일예배 실황", null, org.streamhub.api.v1.content.entity.ContentType.VIDEO, 9L,
+                null, null, null, ContentStatus.PUBLISHED, null, true);
+        service().create(request, MANAGER_100);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(
+                org.streamhub.api.v1.notification.dto.NotificationSendRequest.class);
+        verify(notificationService).send(captor.capture(), eq(MANAGER_100));
+        var sent = captor.getValue();
+        // Must be TARGETED to this church's members — never BROADCAST (all-church leak).
+        assertThat(sent.scope()).isEqualTo(org.streamhub.api.v1.notification.entity.NotificationScope.TARGETED);
+        assertThat(sent.memberIds()).containsExactly(11L, 22L);
     }
 
     @Test
